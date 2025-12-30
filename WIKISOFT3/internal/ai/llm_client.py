@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from openai import AzureOpenAI, OpenAI
 
@@ -40,6 +40,36 @@ class LLMClient:
             max_tokens=max_tokens,
         )
         return response.choices[0].message.content or ""
+
+    def chat_with_tools(
+        self, messages: List[Dict[str, Any]], tools: Optional[List[Dict[str, Any]]] = None, temperature: float = 0.2
+    ) -> Dict[str, Any]:
+        """툴 호출 지원하는 채팅 (OpenAI function calling)"""
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": 800,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            kwargs["tool_choice"] = "auto"
+
+        response = self.client.chat.completions.create(**kwargs)
+        choice = response.choices[0]
+        message = choice.message
+
+        result = {"content": message.content or ""}
+        if message.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in message.tool_calls
+            ]
+        return result
 
 
 @lru_cache(maxsize=1)
