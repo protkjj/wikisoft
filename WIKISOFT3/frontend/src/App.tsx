@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { api } from './api'
 import ChatBot from './ChatBot'
+import FloatingChat from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
 import ThemeToggle from './components/ThemeToggle'
 import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch } from './types'
@@ -616,6 +617,9 @@ function App() {
           onCancel={() => setShowManualMapping(false)}
         />
       )}
+
+      {/* Floating AI Chat */}
+      <FloatingChat />
     </div>
   )
 }
