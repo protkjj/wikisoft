@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from internal.agent.tool_registry import get_registry
 from internal.ai.diagnostic_questions import ALL_QUESTIONS
+from internal.ai.knowledge_base import get_system_context
 from internal.ai.llm_client import get_llm_client
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -57,11 +58,17 @@ def _execute_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_messages(req: AgentAskRequest) -> List[Dict[str, str]]:
-    system_prompt = (
-        "You are the WIKISOFT3 validation co-pilot. "
-        "Help users validate HR/pension Excel files. "
-        "Use tools when needed. Be concise in Korean."
-    )
+    # 시스템 지식 로드
+    knowledge = get_system_context(req.message)
+    
+    system_prompt = f"""You are the WIKISOFT3 validation co-pilot.
+Help users validate HR/pension Excel files.
+Use tools when needed. Be concise in Korean.
+
+=== System Knowledge ===
+{knowledge}
+
+When answering questions about the system, refer to this knowledge base."""
 
     user_content = req.message.strip()
     if req.context:
