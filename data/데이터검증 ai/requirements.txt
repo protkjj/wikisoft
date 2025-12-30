@@ -1,0 +1,16 @@
+# 확정급여채무평가 데이터 검증 AI Agent 필수 라이브러리
+
+# 데이터 처리
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# AI 에이전트 (LangChain)
+langchain>=0.1.0
+langchain-experimental>=0.0.50
+langchain-openai>=0.0.5
+
+# 환경 변수 관리
+python-dotenv>=1.0.0
+
+# OpenAI API (LangChain에서 사용)
+openai>=1.0.0

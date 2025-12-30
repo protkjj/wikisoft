@@ -58,7 +58,8 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
 
   // 매핑 통계
   const mappedCount = localMatches.filter(m => m.target).length
-  const unmappedCount = localMatches.filter(m => !m.target).length
+  const skippedCount = localMatches.filter(m => m.skipped).length
+  const unmappedCount = localMatches.filter(m => !m.target && !m.skipped).length
   const requiredFields = STANDARD_FIELDS.filter(f => f.required)
   const mappedRequired = requiredFields.filter(f => 
     localMatches.some(m => m.target === f.name)
@@ -66,6 +67,9 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
   const missingRequired = requiredFields.filter(f => 
     !localMatches.some(m => m.target === f.name)
   )
+
+  // 모든 항목이 처리되었는지 (매핑됨 또는 건너뛰기)
+  const allProcessed = localMatches.every(m => m.target || m.skipped)
 
   // 이미 매핑된 필드들
   const usedTargets = new Set(localMatches.filter(m => m.target).map(m => m.target))
@@ -87,9 +91,13 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
             <span className="stat-value">{mappedCount}</span>
             <span className="stat-label">매핑됨</span>
           </div>
+          <div className="stat-item" style={{ background: 'rgba(156, 163, 175, 0.1)' }}>
+            <span className="stat-value">{skippedCount}</span>
+            <span className="stat-label">건너뛰기</span>
+          </div>
           <div className="stat-item warning">
             <span className="stat-value">{unmappedCount}</span>
-            <span className="stat-label">미매핑</span>
+            <span className="stat-label">미처리</span>
           </div>
           <div className="stat-item success">
             <span className="stat-value">{mappedRequired.length}/{requiredFields.length}</span>
@@ -123,10 +131,23 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
                   <td className="target-cell">
                     <select 
                       className="target-select"
-                      value={match.target || ''}
-                      onChange={(e) => handleMappingChange(index, e.target.value || null)}
+                      value={match.target || (match.unmapped ? '__skip__' : '')}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__skip__') {
+                          // 매핑 안함 선택
+                          setLocalMatches(prev => prev.map((m, i) => 
+                            i === index 
+                              ? { ...m, target: null, confidence: 0, unmapped: true, skipped: true }
+                              : m
+                          ));
+                        } else {
+                          handleMappingChange(index, val || null);
+                        }
+                      }}
                     >
                       <option value="">[선택]</option>
+                      <option value="__skip__">⊘ 매핑 안함 (건너뛰기)</option>
                       {STANDARD_FIELDS.map(field => (
                         <option 
                           key={field.name} 
@@ -143,6 +164,8 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
                       <>
                         <span className="confidence-badge">{Math.round(match.confidence * 100)}%</span>
                       </>
+                    ) : match.skipped ? (
+                      <span className="skipped-badge">✓ 생략</span>
                     ) : (
                       <span className="unmapped-badge">--</span>
                     )}
@@ -181,9 +204,9 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
           <button 
             className="confirm-btn"
             onClick={() => onConfirm(localMatches)}
-            disabled={missingRequired.length > 0}
+            disabled={!allProcessed || missingRequired.length > 0}
           >
-            확인
+            확인 {!allProcessed && `(${unmappedCount}개 미처리)`}
           </button>
         </div>
       </div>

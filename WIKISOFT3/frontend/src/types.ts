@@ -83,6 +83,7 @@ export interface HeaderMatch {
   target: string | null    // 표준 필드
   confidence: number       // 0.0~1.0
   unmapped?: boolean       // 매핑 안 됨
+  skipped?: boolean        // 의도적으로 건너뛰기 (매핑 안함 선택)
   fallback?: boolean       // 폴백 사용
   used_ai?: boolean        // AI 사용
   reason?: string          // AI 매칭 이유

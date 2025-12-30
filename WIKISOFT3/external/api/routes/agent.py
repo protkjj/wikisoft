@@ -87,6 +87,16 @@ async def ask_agent(req: AgentAskRequest) -> Dict[str, Any]:
 
     try:
         client = get_llm_client()
+    except ValueError as e:
+        # API 키가 없는 경우 친절한 메시지 반환
+        return {
+            "answer": "⚠️ AI 기능을 사용하려면 OpenAI API 키가 필요합니다.\n\n설정 방법:\n1. `.env` 파일에 `OPENAI_API_KEY=sk-...` 추가\n2. 또는 환경변수로 설정\n\n현재는 AI 없이 기본 검증 기능만 사용 가능합니다.",
+            "provider": "none",
+            "used_tools": [],
+            "error": "no_api_key"
+        }
+    
+    try:
         messages = _build_messages(req)
 
         # 1차 LLM 호출 (툴 사용 가능)

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './ChatBot.css'
 import type { DiagnosticQuestion } from './types'
 
@@ -12,10 +12,19 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | number>>({})
   const [userInput, setUserInput] = useState('')
+  const questionRefs = useRef<(HTMLLIElement | null)[]>([])
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress = ((Object.keys(answers).length) / questions.length) * 100
   const allAnswered = Object.keys(answers).length === questions.length
+
+  // 현재 질문이 변경되면 해당 항목으로 스크롤
+  useEffect(() => {
+    const currentRef = questionRefs.current[currentQuestionIndex]
+    if (currentRef) {
+      currentRef.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [currentQuestionIndex])
 
   const handleAnswer = (value: string | number) => {
     if (!currentQuestion) return
@@ -27,10 +36,11 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
     setAnswers(newAnswers)
     setUserInput('')
 
-    // 다음 질문으로 자동 이동
+    // 마지막 질문이 아니면 다음으로 이동
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
     }
+    // 마지막 질문 완료 시 자동으로 완료 처리하지 않고 현재 화면 유지
   }
 
   const handleChoiceClick = (choice: string) => {
@@ -98,6 +108,7 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
             return (
               <li 
                 key={q.id}
+                ref={(el) => { questionRefs.current[index] = el }}
                 className={`question-item ${status}`}
                 onClick={() => handleQuestionClick(index)}
               >
@@ -116,83 +127,106 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
         )}
       </div>
 
-      {/* 오른쪽 메인: 현재 질문 */}
+      {/* 오른쪽 메인: 현재 질문 또는 완료 화면 */}
       <div className="question-main">
-        <div className="main-header">
-          <div className={`category-badge ${currentQuestion.category}`}>
-            {categoryLabels[currentQuestion.category] || currentQuestion.category}
-          </div>
-          <span className="question-id">{currentQuestion.id.toUpperCase()}</span>
-        </div>
+        {allAnswered ? (
+          // 모든 질문 완료 시 완료 화면 표시
+          <div className="completion-screen">
+            <div className="completion-icon">✅</div>
+            <h2 className="completion-title">모든 질문 완료!</h2>
+            <p className="completion-subtitle">13개 질문에 모두 답변하셨습니다.</p>
+            
+            <div className="completion-summary">
+              <p>이제 검증할 Excel 명부 파일을 업로드해주세요.</p>
+            </div>
 
-        <h2 className="question-text">{currentQuestion.question}</h2>
-
-        {answers[currentQuestion.id] !== undefined && (
-          <div className="answered-badge">
-            ✓ 답변: <strong>{answers[currentQuestion.id]}</strong>
+            <button 
+              className="completion-next-button"
+              onClick={handleComplete}
+            >
+              📁 파일 업로드로 이동 →
+            </button>
           </div>
+        ) : (
+          // 질문 진행 중
+          <>
+            <div className="main-header">
+              <div className={`category-badge ${currentQuestion.category}`}>
+                {categoryLabels[currentQuestion.category] || currentQuestion.category}
+              </div>
+              <span className="question-id">{currentQuestion.id.toUpperCase()}</span>
+            </div>
+
+            <h2 className="question-text">{currentQuestion.question}</h2>
+
+            {answers[currentQuestion.id] !== undefined && (
+              <div className="answered-badge">
+                ✓ 답변: <strong>{answers[currentQuestion.id]}</strong>
+              </div>
+            )}
+
+            <div className="answer-area">
+              {currentQuestion.choices ? (
+                <div className="choice-buttons">
+                  {currentQuestion.choices.map((choice, i) => (
+                    <button
+                      key={i}
+                      className={`choice-button ${answers[currentQuestion.id] === choice ? 'selected' : ''}`}
+                      onClick={() => handleChoiceClick(choice)}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+              ) : currentQuestion.type === 'number' ? (
+                <div className="input-group">
+                  <input
+                    type="number"
+                    className="text-input"
+                    placeholder={`숫자 입력${currentQuestion.unit ? ` (${currentQuestion.unit})` : ''}`}
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    autoFocus
+                  />
+                  {currentQuestion.unit && <span className="unit-label">{currentQuestion.unit}</span>}
+                  <button className="submit-button" onClick={handleInputSubmit} disabled={!userInput.trim()}>확인</button>
+                </div>
+              ) : (
+                <div className="input-group">
+                  <input
+                    type="text"
+                    className="text-input"
+                    placeholder="입력해주세요"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    autoFocus
+                  />
+                  <button className="submit-button" onClick={handleInputSubmit} disabled={!userInput.trim()}>확인</button>
+                </div>
+              )}
+            </div>
+
+            <div className="navigation-buttons">
+              <button 
+                className="nav-button"
+                onClick={() => currentQuestionIndex > 0 && setCurrentQuestionIndex(currentQuestionIndex - 1)}
+                disabled={currentQuestionIndex === 0}
+              >
+                ← 이전
+              </button>
+              <span className="nav-info">{currentQuestionIndex + 1} / {questions.length}</span>
+              <button 
+                className="nav-button"
+                onClick={() => currentQuestionIndex < questions.length - 1 && setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                disabled={currentQuestionIndex === questions.length - 1}
+              >
+                다음 →
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="answer-area">
-          {currentQuestion.choices ? (
-            <div className="choice-buttons">
-              {currentQuestion.choices.map((choice, i) => (
-                <button
-                  key={i}
-                  className={`choice-button ${answers[currentQuestion.id] === choice ? 'selected' : ''}`}
-                  onClick={() => handleChoiceClick(choice)}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
-          ) : currentQuestion.type === 'number' ? (
-            <div className="input-group">
-              <input
-                type="number"
-                className="text-input"
-                placeholder={`숫자 입력${currentQuestion.unit ? ` (${currentQuestion.unit})` : ''}`}
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                autoFocus
-              />
-              {currentQuestion.unit && <span className="unit-label">{currentQuestion.unit}</span>}
-              <button className="submit-button" onClick={handleInputSubmit} disabled={!userInput.trim()}>확인</button>
-            </div>
-          ) : (
-            <div className="input-group">
-              <input
-                type="text"
-                className="text-input"
-                placeholder="입력해주세요"
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                autoFocus
-              />
-              <button className="submit-button" onClick={handleInputSubmit} disabled={!userInput.trim()}>확인</button>
-            </div>
-          )}
-        </div>
-
-        <div className="navigation-buttons">
-          <button 
-            className="nav-button"
-            onClick={() => currentQuestionIndex > 0 && setCurrentQuestionIndex(currentQuestionIndex - 1)}
-            disabled={currentQuestionIndex === 0}
-          >
-            ← 이전
-          </button>
-          <span className="nav-info">{currentQuestionIndex + 1} / {questions.length}</span>
-          <button 
-            className="nav-button"
-            onClick={() => currentQuestionIndex < questions.length - 1 && setCurrentQuestionIndex(currentQuestionIndex + 1)}
-            disabled={currentQuestionIndex === questions.length - 1}
-          >
-            다음 →
-          </button>
-        </div>
       </div>
     </div>
   )

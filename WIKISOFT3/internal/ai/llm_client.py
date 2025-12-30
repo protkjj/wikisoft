@@ -75,3 +75,15 @@ class LLMClient:
 @lru_cache(maxsize=1)
 def get_llm_client() -> LLMClient:
     return LLMClient()
+
+
+def chat(prompt: str, temperature: float = 0.2, max_tokens: int = 800) -> str:
+    """간단한 채팅 함수 (프롬프트 문자열만 받음)"""
+    try:
+        client = get_llm_client()
+        messages = [{"role": "user", "content": prompt}]
+        return client.chat(messages, temperature=temperature, max_tokens=max_tokens)
+    except Exception as e:
+        # API 키가 없거나 오류 시 빈 문자열 반환
+        print(f"LLM chat error: {e}")
+        return "[]"

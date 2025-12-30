@@ -188,6 +188,15 @@
   font-weight: 600;
 }
 
+.skipped-badge {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.85rem;
+  background: rgba(107, 114, 128, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
 /* AI 매핑 도우미 */
 .mapping-assistant {
   background: var(--bg-card);

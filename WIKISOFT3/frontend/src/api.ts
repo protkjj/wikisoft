@@ -23,14 +23,16 @@ export const api = {
     return response.data
   },
 
-  // 명부 파일 + 챗봇 답변으로 교차 검증 (v2 호환)
+  // 명부 파일 + 챗봇 답변으로 교차 검증
   async validateWithRoster(
     file: File,
     chatbotAnswers: Record<string, string | number>
-  ): Promise<ValidationResult> {
+  ): Promise<AutoValidateResult> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('chatbot_answers', JSON.stringify(chatbotAnswers))
+
+    console.log('📤 진단 답변 전송:', chatbotAnswers)
 
     const response = await axios.post(`${API_BASE}/auto-validate`, formData, {
       headers: {

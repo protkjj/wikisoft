@@ -76,8 +76,9 @@ function App() {
     try {
       setLoading(true)
       setError('')
-      console.log('📤 API 호출 중...')
-      const result = await api.autoValidate(file)
+      console.log('📤 API 호출 중... (진단 답변 포함)')
+      // 진단 질문 답변을 함께 전송하여 교차 검증
+      const result = await api.validateWithRoster(file, answers)
       console.log('✅ API 응답:', result)
       setValidationResult(result)
       
@@ -170,7 +171,7 @@ function App() {
         <div className={`step ${getStepStatus('questions')}`}>
           <div className="step-number">1</div>
           <h3>진단 질문</h3>
-          <p>14개 질문에 답변</p>
+          <p>13개 질문에 답변</p>
         </div>
         <div className={`step ${getStepStatus('upload')}`}>
           <div className="step-number">2</div>
@@ -233,7 +234,7 @@ function App() {
                 </svg>
               </div>
               <h3 className="card-title">진단 질문</h3>
-              <p className="card-description">14개 질문에 답변</p>
+              <p className="card-description">13개 질문에 답변</p>
             </div>
 
             <div className="onboarding-card">
@@ -473,14 +474,43 @@ function App() {
           {/* 이상 목록 */}
           {validationResult.anomalies?.detected && validationResult.anomalies.anomalies.length > 0 && (
             <div className="anomalies-section">
-              <h3>이상 목록 및 조치</h3>
+              <h3>🤖 AI 분석 결과</h3>
               <div className="anomalies-list">
-                {validationResult.anomalies.anomalies.map((anomaly, idx) => (
-                  <div key={idx} className={`anomaly-item ${anomaly.severity === 'error' ? 'error' : 'warning'}`}>
+                {/* AI 질문 (고객 확인 필요) */}
+                {validationResult.anomalies.anomalies
+                  .filter((a: any) => a.severity === 'question')
+                  .map((anomaly: any, idx: number) => (
+                  <div key={`q-${idx}`} className="anomaly-item question">
                     <div className="anomaly-title">
-                      <span className="anomaly-icon">{anomaly.severity === 'error' ? '🔴' : '🟠'}</span>
+                      <span className="anomaly-icon">❓</span>
+                      <strong>AI 질문:</strong> {anomaly.message}
+                    </div>
+                    <div className="ai-question-actions">
+                      <button className="btn-ai-answer" onClick={() => {
+                        // FloatingChat 열기
+                        const chatBtn = document.querySelector('.floating-chat-button') as HTMLButtonElement;
+                        if (chatBtn) chatBtn.click();
+                      }}>💬 AI와 대화로 답변</button>
+                    </div>
+                  </div>
+                ))}
+                
+                {/* 오류/경고 */}
+                {validationResult.anomalies.anomalies
+                  .filter((a: any) => a.severity !== 'question')
+                  .map((anomaly: any, idx: number) => (
+                  <div key={idx} className={`anomaly-item ${anomaly.severity === 'error' ? 'error' : anomaly.severity === 'warning' ? 'warning' : 'info'}`}>
+                    <div className="anomaly-title">
+                      <span className="anomaly-icon">
+                        {anomaly.severity === 'error' ? '🔴' : anomaly.severity === 'warning' ? '🟠' : 'ℹ️'}
+                      </span>
                       {anomaly.message}
                     </div>
+                    {anomaly.auto_fix && (
+                      <div className="anomaly-fix">
+                        💡 수정 제안: {anomaly.auto_fix}
+                      </div>
+                    )}
                     <div className="anomaly-details">
                       유형: {anomaly.type}
                     </div>
@@ -525,6 +555,7 @@ function App() {
             </button>
           </div>
         </div>
+      </div>
       )}
 
       {/* Step 4: 완료 */}
