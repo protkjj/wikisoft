@@ -1,0 +1,8 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+openpyxl>=3.1.5
+redis>=5.0.0  # 큐 선택 시 사용 (RQ/Celery 등)
+rq>=1.16.2    # 기본 추천 큐 옵션
+chardet>=5.2.0
+openai>=1.57.0

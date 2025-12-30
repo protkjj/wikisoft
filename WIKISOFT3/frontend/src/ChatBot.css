@@ -1,0 +1,355 @@
+/* 챗봇 레이아웃: 사이드바 + 메인 */
+.chatbot-layout {
+  display: flex;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 600px;
+}
+
+/* 왼쪽 사이드바 */
+.question-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.sidebar-header p {
+  margin: 0.5rem 0 0 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+/* 진행 바 */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+/* 질문 목록 */
+.question-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 450px;
+}
+
+.question-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  margin-bottom: 0.3rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+
+.question-item:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: rgba(102, 126, 234, 0.3);
+}
+
+.question-item.current {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.question-item.answered {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.question-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #888;
+  flex-shrink: 0;
+}
+
+.question-item.current .question-number {
+  background: #667eea;
+  color: #fff;
+}
+
+.question-item.answered .question-number {
+  background: #22c55e;
+  color: #fff;
+}
+
+.question-preview {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.question-item.current .question-preview {
+  color: #fff;
+}
+
+.check-mark {
+  color: #22c55e;
+  font-weight: bold;
+}
+
+/* 완료 버튼 */
+.complete-button {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.complete-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+/* 오른쪽 메인 영역 */
+.question-main {
+  flex: 1;
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.main-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.category-badge {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background: rgba(102, 126, 234, 0.15);
+  color: #667eea;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.category-badge.data_quality {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.category-badge.headcount_aggregates {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.category-badge.amount_aggregates {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+}
+
+.question-id {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #666;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.question-text {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.5;
+}
+
+.answered-badge {
+  padding: 0.8rem 1.2rem;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 8px;
+  color: #22c55e;
+  font-size: 0.95rem;
+}
+
+/* 답변 영역 */
+.answer-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 1.5rem;
+  background: #16213e;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 150px;
+}
+
+/* 선택지 버튼 */
+.choice-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.choice-button {
+  padding: 1.2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.choice-button:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.choice-button.selected {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+/* 입력 그룹 */
+.input-group {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.text-input {
+  flex: 1;
+  padding: 1rem 1.2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.text-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.unit-label {
+  padding: 0.7rem 1rem;
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.submit-button {
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submit-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 네비게이션 */
+.navigation-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-button {
+  padding: 0.8rem 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover:not(:disabled) {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.nav-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-info {
+  color: #888;
+  font-size: 0.95rem;
+}
