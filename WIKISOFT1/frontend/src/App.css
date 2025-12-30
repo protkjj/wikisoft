@@ -1,0 +1,85 @@
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  width: 100%;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+.upload-section {
+  margin: 2rem 0;
+  padding: 2rem;
+  border: 2px dashed #646cff;
+  border-radius: 8px;
+}
+
+.upload-section input {
+  margin-right: 1rem;
+}
+
+.upload-section button {
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background-color: #646cff;
+  color: white;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+.upload-section button:hover {
+  border-color: #646cff;
+  background-color: #535bf2;
+}
+
+.upload-section button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.session-info {
+  margin: 2rem 0;
+  padding: 1rem;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+}
+
+.guide {
+  margin-top: 3rem;
+  text-align: left;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.guide ol {
+  padding-left: 2rem;
+}
+
+.guide li {
+  margin: 0.5rem 0;
+}
