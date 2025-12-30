@@ -3,7 +3,7 @@ from fastapi import APIRouter
 router = APIRouter(prefix="/diagnostic-questions", tags=["diagnostic-questions"])
 
 
-# 재직자 명부 검증용 14개 질문 (24개에서 축소)
+# 재직자 명부 검증용 13개 질문 (24개에서 축소)
 # - 퇴직자 관련 제거 (재직자 명부만 받음)
 # - 추계액 관련 제거 (계리 계산 불필요)
 # - 재직자 인원은 유지 (누락/중복 검증용)
@@ -13,7 +13,6 @@ FIXED_QUESTIONS = [
     {"id": "q2", "type": "choice", "category": "data_quality", "question": "정년 - 정년은 만 60 세 입니까?", "choices": ["예", "아니오"], "mapping": "정년"},
     {"id": "q3", "type": "choice", "category": "data_quality", "question": "임금피크제 - 임금피크제 미적용 기업입니까?", "choices": ["예", "아니오"], "mapping": "임금피크제"},
     {"id": "q4", "type": "choice", "category": "data_quality", "question": "기타장기종업원급여 - 기타장기종업원급여 미적용 기업입니까?", "choices": ["예", "아니오"], "mapping": "기타장기급여"},
-    {"id": "q5", "type": "choice", "category": "data_quality", "question": "퇴직금제도 - 퇴직금제도는 법정제를 적용합니까?", "choices": ["예", "아니오"], "mapping": "퇴직금제도"},
     {"id": "q6", "type": "choice", "category": "data_quality", "question": "연봉제/호봉제 - 근무기간에 따른 호봉 미적용 기업입니까?", "choices": ["예", "아니오"], "mapping": "급여체계"},
     {"id": "q7", "type": "choice", "category": "data_quality", "question": "채권 등급 - 할인율 산출기준 채권 회사채 AA++ 적용 기업입니까?", "choices": ["예", "아니오"], "mapping": "할인율기준"},
     {"id": "q8", "type": "choice", "category": "data_quality", "question": "1년 미만 재직자 - 1년 미만 재직자도 기재 하셨습니까?", "choices": ["예", "아니오"], "mapping": "1년미만재직자"},
@@ -32,7 +31,7 @@ FIXED_QUESTIONS = [
 
 @router.get("")
 async def list_questions() -> dict:
-    """재직자 명부 검증용 14개 질문 반환.
+    """재직자 명부 검증용 13개 질문 반환.
     
     - 퇴직자/추계액 관련 제거 (재직자 명부만 검증)
     - 재직자 인원(q21-23)은 유지 (누락/중복 검증용)
@@ -40,5 +39,5 @@ async def list_questions() -> dict:
     return {
         "total": len(FIXED_QUESTIONS),
         "questions": FIXED_QUESTIONS,
-        "note": "재직자 명부 검증용 14개 질문 (퇴직자/추계액 제외)",
+        "note": "재직자 명부 검증용 13개 질문 (퇴직자/추계액 제외)",
     }
