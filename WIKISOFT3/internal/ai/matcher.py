@@ -5,6 +5,7 @@ import re
 from difflib import SequenceMatcher
 
 from internal.parsers.standard_schema import STANDARD_SCHEMA, get_required_fields
+from internal.memory.case_store import get_few_shot_examples, save_successful_case
 
 
 def _normalize(header: str) -> str:
@@ -50,7 +51,7 @@ def _rule_match(headers: List[str], sheet_type: str = "재직자") -> Dict[str, 
 
 
 def ai_match_columns(headers: List[str], sheet_type: str = "재직자", api_key: Optional[str] = None) -> Dict[str, Any]:
-    """AI 매칭 호출 (OpenAI). 키 없으면 폴백 사용."""
+    """AI 매칭 호출 (OpenAI) + Few-shot Learning. 키 없으면 폴백 사용."""
     api_key_to_use = api_key or os.getenv("OPENAI_API_KEY")
     schema = {
         name: meta
@@ -61,11 +62,24 @@ def ai_match_columns(headers: List[str], sheet_type: str = "재직자", api_key:
     if not api_key_to_use:
         return {**_rule_match(headers, sheet_type), "used_ai": False, "warnings": ["OPENAI_API_KEY missing, fallback matcher used"]}
 
+    # Few-shot 예제 가져오기 (과거 성공 케이스)
+    few_shot_examples = get_few_shot_examples(headers, k=3)
+    few_shot_prompt = ""
+    if few_shot_examples:
+        few_shot_prompt = "\n\n### 과거 성공 매칭 예제 (참고용):\n"
+        for i, ex in enumerate(few_shot_examples, 1):
+            few_shot_prompt += f"예제 {i}:\n"
+            few_shot_prompt += f"  입력 헤더: {ex['input_headers'][:5]}\n"
+            few_shot_prompt += f"  매칭 결과: {ex['output_matches'][:5]}\n"
+            if ex.get("human_corrections"):
+                few_shot_prompt += f"  (사람 수정: {ex['human_corrections']})\n"
+
     prompt = f"""
 당신은 HR 데이터 스키마 매칭 전문가입니다. 고객 헤더를 표준 스키마에 매핑하세요.
 
 고객 헤더: {json.dumps(headers, ensure_ascii=False)}
 표준 스키마: {json.dumps(schema, ensure_ascii=False)}
+{few_shot_prompt}
 규칙:
 1) 가장 의미적으로 가까운 필드에 매칭, aliases 참고
 2) 확실치 않으면 unmapped

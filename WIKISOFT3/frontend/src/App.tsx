@@ -4,6 +4,7 @@ import { api } from './api'
 import ChatBot from './ChatBot'
 import FloatingChat from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
+import ValidationResults from './ValidationResults'
 import ThemeToggle from './components/ThemeToggle'
 import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch } from './types'
 

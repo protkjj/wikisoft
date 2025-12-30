@@ -103,3 +103,45 @@ export interface StandardField {
   aliases: string[]
   sheet: string
 }
+
+// 이상 탐지 항목
+export interface AnomalyItem {
+  type: string
+  severity: 'error' | 'warning' | 'info' | 'question' | 'high' | 'medium' | 'low'
+  message: string
+  field?: string
+  row?: number
+  value?: any
+  auto_fix?: string
+}
+
+// AI 에이전트 추론 단계
+export interface AgentReasoningStep {
+  step: number
+  thought: string
+  action: string
+  result_success: boolean
+  confidence: number
+  error?: string
+}
+
+// 동적 질문
+export interface DynamicQuestion {
+  id: string
+  question: string
+  type: 'confirmation' | 'unmapped_header' | 'ai_question' | 'ai_generated'
+  severity: 'error' | 'warning' | 'info' | 'question'
+  options: Array<{ value: string; label: string }>
+  dynamic: boolean
+  required?: boolean
+  context?: any
+  reason?: string
+}
+
+// AutoValidateResult 확장 (ReACT Agent용)
+export interface AutoValidateResultExtended extends AutoValidateResult {
+  agent_reasoning?: AgentReasoningStep[]
+  agent_explanation?: string
+  iterations?: number
+  needs_human_review?: boolean
+}

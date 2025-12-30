@@ -1,0 +1,493 @@
+/* ValidationResults.css - 검증 결과 화면 스타일 */
+
+.validation-results {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* 헤더 */
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.results-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: var(--text-primary);
+}
+
+.back-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.action-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn.primary {
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+}
+
+.action-btn.primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.action-btn.secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.action-btn.secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+/* 메인 대시보드 */
+.results-dashboard {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* 신뢰도 카드 */
+.confidence-card {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.confidence-card h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.confidence-gauge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gauge-svg {
+  width: 200px;
+  height: 120px;
+}
+
+.gauge-value {
+  position: absolute;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gauge-value .score {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.gauge-value .grade {
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* 통계 그리드 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 28px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.stat-card.error .stat-value {
+  color: #FF6B6B;
+}
+
+.stat-card.warning .stat-value {
+  color: #FFB84D;
+}
+
+/* 섹션 */
+.section {
+  background: var(--bg-card);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.section h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 매핑 테이블 */
+.mapping-table-container {
+  overflow-x: auto;
+}
+
+.mapping-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.mapping-table th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mapping-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.mapping-table tr:hover {
+  background: var(--bg-secondary);
+}
+
+.mapping-table tr.unmapped td {
+  color: var(--text-secondary);
+}
+
+.mapping-table .empty {
+  color: var(--text-tertiary);
+}
+
+/* 신뢰도 바 */
+.confidence-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confidence-bar > div {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  width: 80px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.confidence-bar span {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 40px;
+}
+
+/* 상태 뱃지 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.success {
+  background: rgba(81, 207, 102, 0.15);
+  color: #40C057;
+}
+
+.status-badge.error {
+  background: rgba(255, 107, 107, 0.15);
+  color: #FF6B6B;
+}
+
+.status-badge.warning {
+  background: rgba(255, 224, 102, 0.15);
+  color: #FFB84D;
+}
+
+/* 이상 탐지 목록 */
+.anomaly-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.anomaly-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--bg-secondary);
+}
+
+.anomaly-item.error,
+.anomaly-item.high {
+  background: rgba(255, 107, 107, 0.1);
+  border-left: 4px solid #FF6B6B;
+}
+
+.anomaly-item.warning,
+.anomaly-item.medium {
+  background: rgba(255, 184, 77, 0.1);
+  border-left: 4px solid #FFB84D;
+}
+
+.anomaly-item.question {
+  background: rgba(124, 77, 255, 0.1);
+  border-left: 4px solid #7C4DFF;
+}
+
+.anomaly-item.info {
+  border-left: 4px solid #4DABF7;
+}
+
+.anomaly-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.anomaly-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.anomaly-type {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.anomaly-message {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* 추론 과정 타임라인 */
+.reasoning-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 8px;
+}
+
+.reasoning-step {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.reasoning-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 32px;
+  bottom: -16px;
+  width: 2px;
+  background: var(--border-color);
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+  padding-bottom: 8px;
+}
+
+.step-thought {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.step-action {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.step-action code {
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.step-confidence {
+  margin-left: 8px;
+  color: var(--text-tertiary);
+}
+
+/* 권장 조치 */
+.recommendation {
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+}
+
+.recommendation-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.recommendation-content p {
+  margin: 0;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .validation-results {
+    padding: 16px;
+  }
+
+  .results-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .results-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapping-table {
+    font-size: 12px;
+  }
+
+  .mapping-table th,
+  .mapping-table td {
+    padding: 8px 12px;
+  }
+}
+
+/* 다크 테마 조정 */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .confidence-card,
+[data-theme="dark"] .section {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .anomaly-item.error,
+[data-theme="dark"] .anomaly-item.high {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+[data-theme="dark"] .anomaly-item.warning,
+[data-theme="dark"] .anomaly-item.medium {
+  background: rgba(255, 184, 77, 0.15);
+}

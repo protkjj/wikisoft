@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import agent, batch, diagnostic_questions, health, validate
+from .routes import agent, batch, diagnostic_questions, health, validate, react_agent
 
 app = FastAPI(title="WIKISOFT3 API", version="0.0.1")
 
@@ -20,6 +20,7 @@ app.include_router(diagnostic_questions.router, prefix="/api")
 app.include_router(validate.router, prefix="/api")
 app.include_router(batch.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
+app.include_router(react_agent.router, prefix="/api")
 
 # 기존 경로도 유지 (하위 호환)
 app.include_router(health.router)
@@ -27,3 +28,4 @@ app.include_router(diagnostic_questions.router)
 app.include_router(validate.router)
 app.include_router(batch.router)
 app.include_router(agent.router)
+app.include_router(react_agent.router)

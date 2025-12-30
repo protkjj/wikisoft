@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "case_id": "115f8b331f13",
+      "header_count": 6,
+      "was_auto_approved": true
+    }
+  ],
+  "header_patterns": {
+    "사원번호": [
+      "115f8b331f13"
+    ],
+    "이름": [
+      "115f8b331f13"
+    ],
+    "생년월일": [
+      "115f8b331f13"
+    ],
+    "입사일": [
+      "115f8b331f13"
+    ],
+    "기준급여": [
+      "115f8b331f13"
+    ],
+    "종업원구분": [
+      "115f8b331f13"
+    ]
+  },
+  "stats": {
+    "total_cases": 1,
+    "auto_approved": 1,
+    "manual_corrected": 0
+  }
+}

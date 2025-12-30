@@ -6,7 +6,12 @@ import json
 
 from internal.agent.confidence import detect_anomalies, estimate_confidence
 from internal.agent.tool_registry import get_registry
+from internal.agent.react_agent import create_react_agent
+from internal.agent.retry_strategies import (
+    get_async_retry_strategy, RetryReason, StrategyType
+)
 from internal.generators.report import generate_excel_report
+from internal.memory.case_store import save_successful_case
 
 router = APIRouter(prefix="/auto-validate", tags=["auto-validate"])
 
@@ -84,7 +89,100 @@ async def auto_validate(
     _last_validation_result = result
     _last_parsed_data = parsed
     
+    # 성공 케이스 자동 저장 (Memory 시스템)
+    if confidence.get("score", 0) >= 0.8:
+        try:
+            save_successful_case(
+                headers=parsed.get("headers", []),
+                matches=matches.get("matches", []),
+                confidence=confidence.get("score", 0),
+                was_auto_approved=True,
+                metadata={"filename": file.filename}
+            )
+        except Exception as e:
+            print(f"케이스 저장 실패: {e}")
+    
     return result
+
+
+@router.post("/react")
+async def auto_validate_with_react(
+    file: UploadFile = File(...),
+    chatbot_answers: Optional[str] = Form(None)
+) -> dict:
+    """
+    ReACT Agent를 사용한 자율적 파일 검증
+    
+    ReACT (Reasoning + Acting) 패턴:
+    1. Think: 현재 상황 분석
+    2. Act: 도구 실행
+    3. Observe: 결과 확인, 신뢰도 체크
+    4. 필요시 재시도 또는 사람에게 질문
+    
+    특징:
+    - 자동 재시도 (신뢰도 낮으면 다른 전략 시도)
+    - 의사결정 투명성 (추론 과정 기록)
+    - 사람 개입 에스컬레이션
+    """
+    global _last_validation_result, _last_parsed_data, _last_diagnostic_answers
+    
+    if not file:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is required")
+    
+    # 진단 답변 파싱
+    diagnostic_answers = {}
+    if chatbot_answers:
+        try:
+            diagnostic_answers = json.loads(chatbot_answers)
+            _last_diagnostic_answers = diagnostic_answers
+        except json.JSONDecodeError:
+            pass
+    
+    file_bytes = await file.read()
+    
+    # ReACT Agent 생성 및 실행
+    registry = get_registry()
+    agent = create_react_agent(registry, verbose=True)
+    
+    try:
+        result = agent.run(
+            file_bytes=file_bytes,
+            diagnostic_answers=diagnostic_answers,
+            sheet_type="재직자"
+        )
+        
+        # 추론 과정 설명 추가
+        result["agent_explanation"] = agent.explain_reasoning()
+        
+        # 결과 저장
+        _last_validation_result = result
+        if result.get("steps", {}).get("parsed_summary"):
+            _last_parsed_data = {
+                "headers": result["steps"]["parsed_summary"].get("headers", []),
+                "rows": []  # 원본 rows는 별도 저장 필요
+            }
+        
+        # 성공 케이스 자동 저장
+        confidence_score = result.get("confidence", {}).get("score", 0)
+        if confidence_score >= 0.8:
+            try:
+                save_successful_case(
+                    headers=result.get("steps", {}).get("parsed_summary", {}).get("headers", []),
+                    matches=result.get("steps", {}).get("matches", {}).get("matches", []),
+                    confidence=confidence_score,
+                    was_auto_approved=result.get("status") == "completed",
+                    metadata={"filename": file.filename, "mode": "react"}
+                )
+            except Exception as e:
+                print(f"케이스 저장 실패: {e}")
+        
+        return result
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"ReACT Agent 오류: {str(e)}"
+        )
 
 
 def check_diagnostic_consistency(parsed: dict, answers: dict) -> list:

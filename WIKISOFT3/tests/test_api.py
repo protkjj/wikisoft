@@ -60,7 +60,7 @@ class TestDiagnosticQuestionsEndpoint:
         data = response.json()
         assert "questions" in data
         assert "total" in data
-        assert data["total"] == 24
+        assert data["total"] == 13
     
     def test_questions_structure(self):
         """질문 구조 확인"""

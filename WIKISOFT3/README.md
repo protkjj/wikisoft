@@ -8,39 +8,52 @@
 
 ## 📅 최근 업데이트 (2024.12.31)
 
-### ✅ 오늘 완료된 작업
+### ✅ Phase D 진행 - AI Agent 고도화
 
-#### 1. AI Agent 자유 분석 시스템
-- **하이브리드 검증**: 기본 규칙(코드) + AI 자유 분석(LLM)
-- AI가 데이터를 자유롭게 분석하고 문제 발견
-- 확신 없는 것은 고객에게 질문 생성 (`severity: "question"`)
-- 자동 수정 제안 기능 (`auto_fix`)
+#### 1. ReACT Agent API 연동
+- `/api/auto-validate/react` 엔드포인트 추가
+- Think → Act → Observe 루프 기반 자율적 의사결정
+- 신뢰도 기반 자동 재시도 및 에스컬레이션
+- 추론 과정 투명하게 기록 (`agent_reasoning`)
 
-#### 2. Error Check 규칙 학습
-- `WIKISOFT1/error check.xlsx` 기반 규칙 추출
-- `knowledge_base.py`에 퇴직급여채무 검증 규칙 통합
-- AI가 프롬프트에서 규칙 참고하여 분석
+#### 2. 재시도 전략 모듈 (`retry_strategies.py`)
+- **지수 백오프**: API 에러, Rate Limit 대응
+- **대안 전략 체인**: 실패 시 다른 방법 자동 시도
+  - `STRICT_MATCHING` → `LENIENT_MATCHING` → `ASK_HUMAN`
+- **비동기 지원**: `AsyncRetryStrategy` 클래스
 
-#### 3. 학습 데이터셋 구조 구축
-- `training_data/` 폴더 생성
-- AI 응답 + 사람 수정 저장 구조
-- Few-shot 예시 생성 함수
-- 나중에 커스텀 파인튜닝용 데이터 축적 준비
+#### 3. 동적 질문 생성 (`dynamic_questions.py`)
+- 이상치 감지 시 추가 질문 자동 생성
+- Unmapped 헤더에 대한 확인 질문
+- AI 기반 맥락적 질문 생성
 
-#### 4. FloatingChat AI 위젯
-- 모든 화면에서 AI와 대화 가능
-- 우하단 초록색 버튼
-- 검증 결과에서 "AI와 대화로 답변" 버튼 연동
+#### 4. 검증 결과 화면 UI 개선
+- `ValidationResults.tsx` 신규 컴포넌트
+- SVG 게이지 차트로 신뢰도 시각화
+- 통계 카드 (분석 행, 컬럼 매핑, 오류, 경고)
+- AI 에이전트 추론 과정 타임라인
 
-#### 5. 진단 질문 개선
-- 13개 질문으로 정리
-- 자동 스크롤 (질문 이동 시)
-- 완료 화면 추가 (13번 질문 후)
+#### 5. 통합 로깅 시스템 (`logging.py`)
+- JSON 형식 구조화된 로깅
+- 성능 메트릭 자동 수집
+- `@log_function` 데코레이터
 
-#### 6. UI/UX 개선
-- AI 분석 결과 섹션 (🔴오류, 🟠경고, ℹ️정보, ❓질문)
-- 수정 제안 표시
-- 질문 항목 보라색 스타일
+#### 6. 테스트 코드 보강
+- `test_react_agent.py` - 25+ 테스트 케이스
+- ReACT Agent 통합 테스트
+- 재시도 전략 단위 테스트
+
+---
+
+### 📊 현재 완성도: **80%** (B+ → A등급 진입)
+
+| 영역 | 완성도 | 주요 구현 |
+|------|--------|----------|
+| 핵심 기능 | 85% | 파싱, 매칭, 검증, 리포트 |
+| 에이전트 자율성 | 75% | ReACT 루프, 재시도 전략 |
+| 학습 능력 | 80% | Case Store, Few-shot |
+| 안정성 | 80% | 에러 핸들링, 타임아웃 |
+| UX | 70% | 검증 결과 UI, 신뢰도 시각화 |
 
 ---
 
@@ -83,13 +96,25 @@ http://localhost:3003
 
 ---
 
+## 🔌 API 엔드포인트
+
+| 엔드포인트 | 메서드 | 설명 |
+|------------|--------|------|
+| `/api/health` | GET | 서버 상태 확인 |
+| `/api/diagnostic-questions` | GET | 13개 진단 질문 조회 |
+| `/api/diagnostic-questions/dynamic` | POST | 동적 질문 생성 |
+| `/api/auto-validate` | POST | 파일 검증 (파이프라인) |
+| `/api/auto-validate/react` | POST | 파일 검증 (ReACT Agent) |
+| `/api/auto-validate/download-excel` | GET | Excel 다운로드 |
+
+---
 
 | Phase | 상태 | 설명 |
 |-------|------|------|
 | **Phase A** | ✅ 완료 | API Layer (health, questions, validate, batch) |
 | **Phase B** | ✅ 완료 | Agent Layer (Tool Registry, Confidence, Worker) |
 | **Phase C** | ✅ 완료 | AI Agent 자유 분석, FloatingChat, 학습 데이터셋 |
-| **Phase D** | 🔶 진행중 | 실제 데이터 테스트, 파인튜닝, 배포 준비 |
+| **Phase D** | 🔶 진행중 | ReACT Agent, 재시도 전략, 동적 질문, UI 고도화 |
 
 ---
 
