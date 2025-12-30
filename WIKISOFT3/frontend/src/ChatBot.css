@@ -1,10 +1,10 @@
 /* 챗봇 레이아웃: 사이드바 + 메인 */
 .chatbot-layout {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 600px;
+  min-height: 450px;
 }
 
 /* 왼쪽 사이드바 */
@@ -204,10 +204,10 @@
 
 .question-text {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: #fff;
-  line-height: 1.5;
+  line-height: 1.4;
 }
 
 .answered-badge {
@@ -221,15 +221,14 @@
 
 /* 답변 영역 */
 .answer-area {
-  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 1rem;
   background: #16213e;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  min-height: 150px;
+  min-height: 100px;
 }
 
 /* 선택지 버튼 */
@@ -240,12 +239,12 @@
 }
 
 .choice-button {
-  padding: 1.2rem;
+  padding: 0.9rem;
   background: rgba(255, 255, 255, 0.08);
   border: 2px solid rgba(255, 255, 255, 0.15);
   color: #fff;
   border-radius: 8px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
