@@ -105,79 +105,70 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
         )}
 
         {/* 매핑 테이블 */}
-        <div className="mapping-container">
-          {/* 왼쪽: 고객 헤더 */}
-          <div className="column-list">
-            <h3>고객 헤더</h3>
-            <div className="header-list">
+        <div className="mapping-table-container">
+          <table className="mapping-table">
+            <thead>
+              <tr>
+                <th>소스 헤더</th>
+                <th></th>
+                <th>타겟 필드</th>
+                <th>신뢰도</th>
+              </tr>
+            </thead>
+            <tbody>
               {localMatches.map((match, index) => (
-                <div 
-                  key={index}
-                  className={`header-item ${match.target ? 'mapped' : 'unmapped'} ${draggedIndex === index ? 'dragging' : ''}`}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                >
-                  <div className="header-source">
-                    <span className="drag-handle">⋮⋮</span>
-                    <span className="header-name">{match.source}</span>
-                  </div>
-                  {match.target && (
-                    <div className="header-target">
-                      → {match.target}
-                      <button 
-                        className="remove-btn"
-                        onClick={() => handleMappingChange(index, null)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-                  {!match.target && (
+                <tr key={index} className={!match.target ? 'unmapped' : ''}>
+                  <td className="source-cell">{match.source}</td>
+                  <td className="arrow-cell">→</td>
+                  <td className="target-cell">
                     <select 
-                      className="field-select"
-                      value=""
+                      className="target-select"
+                      value={match.target || ''}
                       onChange={(e) => handleMappingChange(index, e.target.value || null)}
                     >
-                      <option value="">선택하세요...</option>
-                      {availableFields.map(field => (
-                        <option key={field.name} value={field.name}>
+                      <option value="">[선택]</option>
+                      {STANDARD_FIELDS.map(field => (
+                        <option 
+                          key={field.name} 
+                          value={field.name}
+                          disabled={usedTargets.has(field.name) && match.target !== field.name}
+                        >
                           {field.name} {field.required ? '(필수)' : ''}
                         </option>
                       ))}
                     </select>
-                  )}
-                  {match.confidence > 0 && match.confidence < 1 && (
-                    <span className="confidence-badge">
-                      {Math.round(match.confidence * 100)}%
-                    </span>
-                  )}
-                </div>
+                  </td>
+                  <td className="confidence-cell">
+                    {match.target ? (
+                      <>
+                        <span className="confidence-badge">{Math.round(match.confidence * 100)}%</span>
+                      </>
+                    ) : (
+                      <span className="unmapped-badge">--</span>
+                    )}
+                  </td>
+                </tr>
               ))}
-            </div>
-          </div>
+            </tbody>
+          </table>
+        </div>
 
-          {/* 오른쪽: 표준 필드 */}
-          <div className="field-list">
-            <h3>표준 필드</h3>
-            <div className="field-grid">
-              {STANDARD_FIELDS.map(field => {
-                const isMapped = usedTargets.has(field.name)
-                return (
-                  <div 
-                    key={field.name}
-                    className={`field-item ${field.required ? 'required' : ''} ${isMapped ? 'mapped' : 'available'}`}
-                    onDragOver={handleDragOver}
-                    onDrop={() => !isMapped && handleDrop(field.name)}
-                  >
-                    <span className="field-name">
-                      {field.name}
-                      {field.required && <span className="required-mark">*</span>}
-                    </span>
-                    <span className="field-desc">{field.description}</span>
-                    {isMapped && <span className="mapped-mark">✓</span>}
-                  </div>
-                )
-              })}
+        {/* AI 매핑 도우미 */}
+        <div className="mapping-assistant">
+          <div className="assistant-header">
+            <span className="assistant-icon">🤖</span>
+            AI 매핑 도우미
+          </div>
+          <div className="assistant-content">
+            <p className="assistant-message">
+              6개 컬럼 중 5개가 자동 매핑되었습니다. '근속년수' 필드를 확인해주세요.
+            </p>
+            <div className="assistant-suggestions">
+              {['자동 매핑 적용', '전체 초기화'].map((action) => (
+                <button key={action} className="suggestion-btn">
+                  {action}
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -192,10 +183,11 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
             onClick={() => onConfirm(localMatches)}
             disabled={missingRequired.length > 0}
           >
-            매핑 확인 ({mappedCount}개)
+            확인
           </button>
         </div>
       </div>
     </div>
   )
 }
+

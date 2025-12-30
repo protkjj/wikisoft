@@ -1,0 +1,117 @@
+/* 🎨 테마 시스템 - 다크/라이트 모드 */
+
+:root {
+  /* 라이트 모드 (기본) */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F7FAFC;
+  --bg-card: #FFFFFF;
+  --bg-hover: #EDF2F7;
+  
+  --text-primary: #1A202C;
+  --text-secondary: #718096;
+  --text-muted: #A0AEC0;
+  
+  --border-color: #E2E8F0;
+  --border-focus: #2C5282;
+  
+  --accent-primary: #2C5282;
+  --accent-hover: #2A4365;
+  --accent-light: #BEE3F8;
+  
+  --success: #38A169;
+  --success-light: #C6F6D5;
+  --warning: #D69E2E;
+  --warning-light: #FEFCBF;
+  --error: #E53E3E;
+  --error-light: #FED7D7;
+  --info: #3182CE;
+  --info-light: #BEE3F8;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  --transition: all 0.2s ease;
+}
+
+/* 다크 모드 */
+[data-theme="dark"] {
+  --bg-primary: #1A1A2E;
+  --bg-secondary: #16213E;
+  --bg-card: #252540;
+  --bg-hover: #2D2D50;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0AEC0;
+  --text-muted: #718096;
+  
+  --border-color: #3D3D5C;
+  --border-focus: #319795;
+  
+  --accent-primary: #319795;
+  --accent-hover: #2C7A7B;
+  --accent-light: #234E52;
+  
+  --success: #38A169;
+  --success-light: #22543D;
+  --warning: #D69E2E;
+  --warning-light: #744210;
+  --error: #E53E3E;
+  --error-light: #742A2A;
+  --info: #3182CE;
+  --info-light: #2C5282;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+/* 자동 다크 모드 (시스템 설정 따라가기) */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-primary: #1A1A2E;
+    --bg-secondary: #16213E;
+    --bg-card: #252540;
+    --bg-hover: #2D2D50;
+    
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0AEC0;
+    --text-muted: #718096;
+    
+    --border-color: #3D3D5C;
+    --border-focus: #319795;
+    
+    --accent-primary: #319795;
+    --accent-hover: #2C7A7B;
+    --accent-light: #234E52;
+    
+    --success: #38A169;
+    --success-light: #22543D;
+    --warning: #D69E2E;
+    --warning-light: #744210;
+    --error: #E53E3E;
+    --error-light: #742A2A;
+    --info: #3182CE;
+    --info-light: #2C5282;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* 테마 전환 애니메이션 */
+* {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
