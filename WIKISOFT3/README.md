@@ -6,6 +6,30 @@
 
 ---
 
+## 🚀 빠른 시작
+
+### 1. 백엔드 실행 (포트 8003)
+```bash
+cd /Users/kj/Desktop/wiki/WIKISOFT3
+source ../.venv/bin/activate  # 또는 python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+uvicorn external.api.main:app --reload --port 8003
+```
+
+### 2. 프론트엔드 실행 (포트 3003)
+```bash
+cd frontend
+npm install
+npm run dev -- --port 3003
+```
+
+### 3. 브라우저 접속
+```
+http://localhost:3003
+```
+
+---
+
 ## 📊 현재 상태
 
 | Phase | 상태 | 설명 |
