@@ -1,72 +1,190 @@
-# WIKISOFT3 Overview & Guidelines
+# 🚀 WIKISOFT3
 
-## 목적
-- WIKISOFT2의 에이전트/자동화 자산을 내부/제한적 사용자용 앱 수준으로 안정화한다.
-- 다중 클라이언트·초대규모·온프레 전천후까지는 목표로 하지 않고, "회사 앱"처럼 제한된 사용자 풀에서 확실히 동작하는 신뢰도와 UX를 우선한다.
+**HR/재무 엑셀 자동 검증 시스템 v3**
 
-## 스코프 (v3 초기 가설)
-- 파일 검증/교정: HR/재무 엑셀 파싱, 헤더 매칭, 규칙 검증, 자동 수정.
-- 에이전트 자동화: ReACT 기반 결정, 신뢰도 계산, 사람 개입 최소화.
-- 배치/비동기 처리: 100개+ 파일 동시 처리, 진행률/웹훅 제공.
-- 배포 유연성: SaaS + 온프레미스(로컬 LLM 옵션), 네트워크 제약 대응.
+> WIKISOFT2의 설계를 완성하여 자동화율 85%, 처리 시간 5분/파일 달성
 
-## 아키텍처 상위 설계
-- API Layer: FastAPI, 라우트 모듈화(`/health`, `/diagnostic-questions`, `/auto-validate`, `/batch-validate`).
-- Agent Layer: Tool Registry + ReACT Loop + Decision/Confidence + Memory(옵션: Redis/Chroma/DB).
-- Core Processing: 파서·검증·집계·리포트 생성 도구로 세분화, 순차/병렬 조합 가능.
-- Frontend: 수동 매핑 UI, 경고/신뢰도 대시보드, 진행률 표시, 다국어/접근성.
-- Infra: 기능 플래그, 텔레메트리, 감사 로그, 보안(토큰 인증, DLP), 워커 큐.
+---
 
-## 제품 원칙
-- 정확도: 별칭/회사 프로필 + AI/룰 하이브리드 매칭, 근거/신뢰도 노출.
-- 속도: 스트리밍/청크 파싱, 비동기 워커, 대용량(100k+ 행) 중 UI 멈춤 금지.
-- UX: 자동 저장·되돌리기, 수동 매핑 지원, 경고는 차단보다 안내 위주.
-- 다국어: 한국어/영어 2개 언어만 지원(기본 한/영 전환), 추가 언어는 범위 밖.
-- 보안/프라이버시: 최소 수집, 마스킹 로그, HTTPS/TLS, 온프레미스 모드 제공.
+## 📊 현재 상태
 
-## 질문/에이전트 정책 (v3)
-- 핵심 24개 질문은 하드코딩으로 유지해 기준선 일관성 확보(버전 2와 동일 세트)
-- 하드코딩 외 영역은 에이전트가 자동 생성/조정(파일 특성·프로필 기반) 가능
-- 에이전트는 의심되는 값이나 오류 추정 시 사용자에게 추가 질문(clarification) 수행
-- 자동화 가능 영역은 즉시 실행, 위험/모호 구간은 질문 후 진행(휴리스틱+신뢰도 기반)
-- 수동 매핑/재실행 경로를 항상 노출해 빠른 복구/수정 가능하게 유지
-- v3 이후 목표: 기존 반복 업무 외에 10배 폭의 추가 업무(비정형 대응, 교차 파일 비교, 정책·감사 질의 등)도 에이전트가 처리하도록 확장 예정
+| Phase | 상태 | 설명 |
+|-------|------|------|
+| **Phase A** | ✅ 완료 | API Layer (health, questions, validate, batch) |
+| **Phase B** | ✅ 완료 | Agent Layer (Tool Registry, Confidence, Worker) |
+| **Phase C** | 🔶 진행중 | Memory & UX (Excel 출력, 수동 매핑) |
+| **Phase D** | ❌ 미시작 | 배포 준비 (텔레메트리, 한/영, 오프라인) |
 
-## v2 대비 AI/에이전트 진화 포인트
-- 질문 정책: v2와 동일한 24개 고정 질문을 유지하되, v3는 에이전트가 의심 구간에만 추가 질문(clarification)·동적 질문을 보강
-- 에이전트 기본값: v2는 ReACT/agent 모듈이 실험·부분 통합 수준, v3는 Tool Registry + Planner/Router + Decision/Confidence를 기본 경로로 포함
-- 회복력/폴백: v2는 AI/룰 하이브리드 매칭 위주, v3는 신뢰도 기반 재시도·질문·룰 폴백을 합쳐 자동 복구 경로 강화
-- 배치/비동기: v2는 단일 요청 중심, v3는 스트리밍 파서 + 큐 기반 배치(중간 규모) + 진행률/경고 노출을 전제
-- 메모리/학습: v2는 세션별 일회성 처리가 기본, v3는 메모리(옵션)·케이스 유사도·재실행 경로를 통해 반복 업무 최적화 전제
+---
 
-## 단계별 목표 (제안)
-- Phase A (기초): Tool Registry 정식화, /auto-validate 베타, 수동 매핑 UI 1차.
-- Phase B (성능): 스트리밍 파서, 워커 기반 배치, 신뢰도/경고 대시보드.
-- Phase C (자율화): 메모리/벡터 DB, 케이스 유사도, 인간 개입 <10% 달성.
-- Phase D (제품화): 텔레메트리·기능 플래그·역할기반 권한, 배포 템플릿(Docker/온프레미스).
+## 🎯 핵심 철학
 
-## 최소 문서/산출물 체크리스트
-- PROJECT_SPEC: 범위/요구사항/성능 목표.
-- ARCHITECTURE: 레이어/모듈/의존성/데이터 흐름.
-- API_DOCS: 엔드포인트, 스키마, 예제.
-- FRONTEND_GUIDE: UX 원칙, 핵심 화면(업로드/매핑/검증결과/대시보드).
-- OPERATIONS: 배포, 설정, 보안, 모니터링, 백업/로그 정책.
-- TEST_STRATEGY: 유닛/통합/E2E/성능/회귀, 골든 데이터셋 정의.
+WIKISOFT2에서 배운 것:
 
-## 우선 실행 제안 (착수용)
-1) WIKISOFT2 아티팩트 재사용 범위 명세 (코드/테스트/프롬프트).
-2) Tool Registry/Agent 모듈을 기본 골격으로 가져와 빈 인터페이스만 채워 실행 통과 확인.
-3) 수동 매핑 UI 와이어프레임 + API 계약 확정 → 프런트/백엔드 병렬 개발.
-4) 스트리밍 파서 PoC로 100k 행 파일 처리 시간/메모리 프로파일 측정.
+1. **"자연스러운 매칭"이 핵심** - AI는 가속기, 폴백이 기본
+2. **UX가 기술보다 중요** - 질문 최소화, 뒤로가기, 버튼 위치 고정
+3. **경고는 차단이 아니라 안내** - 투명성 확보 목적
+4. **신뢰도 기반 의사결정** - 95% 이상만 자동, 나머지는 확인 요청
+5. **케이스 학습이 미래** - 100개 파일 처리 후 새 파일은 거의 자동
 
-## 이름 규칙/관례 (제안)
-- 모듈: snake_case, 공개 API는 명사형 함수명(`register_parser_tool`).
-- 경로: `internal/tools/*`, `internal/agent/*`, `external/api/routes/*`, `frontend/src/*`.
-- 설정: `.env`로 비밀, `config/*.py`로 기본값, 기능 플래그는 `config/flags.py`.
-- 로깅: 구조화 JSON, PII 마스킹, 요청 단위 trace_id.
+---
 
-## 오픈 질문 (정리 필요)
-- 온프레미스 LLM/임베딩 스택 선정 (필수 vs 옵션).
-- 배치 처리의 SLA/큐 선택(사내 인프라 vs 클라우드).
-- 감사 로그 스키마와 보관 기간.
-- 다국어 지원 우선순위와 기본 언어 세트.
+## 🏗️ 아키텍처
+
+```
+┌──────────────────────────────────────────────┐
+│  Frontend (React + Vite, Port 3003)          │
+├──────────────────────────────────────────────┤
+│  API Layer (FastAPI, Port 8003)              │
+│  /api/health, /api/validate, /api/batch-*    │
+├──────────────────────────────────────────────┤
+│  Agent Layer                                 │
+│  Tool Registry → Confidence → Decision       │
+├──────────────────────────────────────────────┤
+│  Core Tools                                  │
+│  Parser | AI Matcher | Validator | Report    │
+├──────────────────────────────────────────────┤
+│  Queue Layer (Redis/RQ + in-memory fallback) │
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## ⚡ 빠른 시작
+
+### 1. 백엔드 실행
+```bash
+cd /Users/kj/Desktop/wiki/WIKISOFT3
+source ../.venv/bin/activate
+uvicorn external.api.main:app --host 0.0.0.0 --port 8003 --reload
+```
+
+### 2. 프론트엔드 실행
+```bash
+cd /Users/kj/Desktop/wiki/WIKISOFT3/frontend
+npm install
+npm run dev
+```
+
+### 3. 접속
+- Frontend: http://localhost:3003
+- API Docs: http://localhost:8003/docs
+
+---
+
+## 📋 API 엔드포인트
+
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | /api/health | 시스템 상태 |
+| GET | /api/diagnostic-questions | 24개 질문 조회 |
+| POST | /api/validate | 파일 검증 (auto-validate) |
+| POST | /api/batch-validate | 배치 검증 |
+| GET | /api/batch-status/{job_id} | 배치 진행률 |
+
+---
+
+## ✅ 구현 완료
+
+### Phase A: API Layer
+- [x] /api/health - 시스템 상태 확인
+- [x] /api/diagnostic-questions - 24개 고정 질문
+- [x] /api/validate - Tool Registry 연동 검증
+- [x] /api/batch-validate - Redis/in-memory 큐
+- [x] /api/batch-status - 진행률 조회
+
+### Phase B: Agent & Batch
+- [x] Tool Registry - 11개 도구 등록
+- [x] Confidence Scorer - 4가지 지표 계산
+- [x] AI Matcher - GPT-4o + 폴백
+- [x] Layer 1/2 Validator
+- [x] 스트리밍 파서 - XLS/XLSX 지원
+- [x] Worker 배치 - Redis 폴백 포함
+- [x] 프론트엔드 사이드바 레이아웃
+
+---
+
+## �� TODO (Phase C)
+
+### 높은 우선순위 🔴
+- [ ] **Excel 출력** - openpyxl, 빨강/노랑 셀 강조
+- [ ] **Memory 유사도 검색** - 케이스 매칭
+- [ ] **수동 매핑 UI** - 드래그앤드롭
+- [ ] **Few-shot Learning** - 성공 패턴 저장
+
+### 중간 우선순위 🟡
+- [ ] 동적 질문 생성 - 이상치 감지 시 추가 질문
+- [ ] Cross-file Learning - 여러 파일 학습
+- [ ] 자동 재시도 로직 - 실패 시 대안 전략
+
+### 낮은 우선순위 🟢 (Phase D)
+- [ ] 텔레메트리
+- [ ] 감사 로그
+- [ ] 한/영 UI 전환
+- [ ] 오프라인/온프레 모드
+
+---
+
+## 📈 성능 목표
+
+| 지표 | 현재 | 목표 |
+|------|------|------|
+| 자동화율 | ~30% | **85%+** |
+| 처리 시간 | 30분/파일 | **5분/파일** |
+| 신뢰도 | 75% | **90%+** |
+| 사람 개입 | 70% | **15%** |
+
+---
+
+## 🔐 환경 설정
+
+`.env` 파일 (선택):
+```bash
+OPENAI_API_KEY=sk-...  # AI 매칭용 (없으면 폴백 사용)
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+WIKISOFT3/
+├── external/api/          # FastAPI 서버
+│   ├── main.py
+│   └── routes/
+├── internal/              # 핵심 로직
+│   ├── agent/             # Tool Registry, Confidence
+│   ├── ai/                # AI 매칭
+│   ├── memory/            # 케이스 저장
+│   ├── parsers/           # Excel 파싱
+│   ├── queue/             # 배치 작업
+│   ├── validators/        # L1/L2 검증
+│   └── generators/        # 리포트
+├── frontend/              # React UI
+├── PROJECT_SPEC.md        # 상세 기술 스펙
+├── ARCHITECTURE.md        # 아키텍처 문서
+└── README.md              # 이 파일
+```
+
+---
+
+## 🔗 관련 문서
+
+- [PROJECT_SPEC.md](PROJECT_SPEC.md) - 상세 기술 스펙, API 명세
+- [ARCHITECTURE.md](ARCHITECTURE.md) - 시스템 아키텍처
+
+---
+
+## 📝 Git 정보
+
+**Repository**: https://github.com/protkjj/wikisoft
+
+| Branch | 내용 |
+|--------|------|
+| main | WIKISOFT3 (현재) |
+| wikisoft1 | WIKISOFT1 (레거시) |
+| wikisoft2 | WIKISOFT2 (참조용) |
+
+---
+
+**최종 목표**: WIKISOFT2의 설계를 완성하여 **자동화율 85%, 처리 시간 5분/파일** 달성 🎯

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import { api } from './api'
 import ChatBot from './ChatBot'
-import ManualMapping from './ManualMapping'
-import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch } from './types'
+import type { DiagnosticQuestion, ValidationResult, CompanyInfo } from './types'
 
 type Step = 'questions' | 'upload' | 'results' | 'download'
 
@@ -12,7 +11,7 @@ function App() {
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([])
   const [answers, setAnswers] = useState<Record<string, string | number>>({})
   const [file, setFile] = useState<File | null>(null)
-  const [validationResult, setValidationResult] = useState<AutoValidateResult | null>(null)
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     company_name: '',
     phone: '',
@@ -21,8 +20,6 @@ function App() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
-  const [showManualMapping, setShowManualMapping] = useState(false)
-  const [currentMatches, setCurrentMatches] = useState<HeaderMatch[]>([])
 
   // 초기 로드: 진단 질문 조회
   useEffect(() => {
@@ -75,15 +72,9 @@ function App() {
       setLoading(true)
       setError('')
       console.log('📤 API 호출 중...')
-      const result = await api.autoValidate(file)
+      const result = await api.validateWithRoster(file, answers)
       console.log('✅ API 응답:', result)
       setValidationResult(result)
-      
-      // 매칭 결과 저장 (수동 매핑용)
-      if (result.steps?.matches?.matches) {
-        setCurrentMatches(result.steps.matches.matches)
-      }
-      
       setCurrentStep('results')
       console.log('✅ Step 변경 완료: results')
     } catch (err: any) {
@@ -99,14 +90,21 @@ function App() {
   const handleDownload = async () => {
     if (!validationResult) return
 
+    // 회사 정보 입력 체크
+    if (!companyInfo.company_name || !companyInfo.phone || !companyInfo.email) {
+      alert('회사 정보를 모두 입력해주세요')
+      return
+    }
+
     try {
       setLoading(true)
-      // Excel 파일 다운로드
-      const blob = await api.downloadExcel()
+      const blob = await api.generateWithValidation(validationResult.session_id, companyInfo)
+      
+      // 파일 다운로드
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `검증결과_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `퇴직급여채무_${companyInfo.company_name}_${companyInfo.작성기준일}.xlsx`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -114,20 +112,8 @@ function App() {
       
       setCurrentStep('download')
     } catch (err: any) {
-      console.error('Excel 다운로드 오류:', err)
-      // 실패시 JSON 다운로드로 폴백
-      const dataStr = JSON.stringify(validationResult, null, 2)
-      const blob = new Blob([dataStr], { type: 'application/json' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `검증결과_${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      
-      setCurrentStep('download')
+      setError(err.response?.data?.detail || 'Excel 파일 생성 중 오류가 발생했습니다.')
+      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -154,8 +140,8 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>🏢 WIKISOFT3</h1>
-        <p>퇴직급여채무 명부 AI 자동검증 시스템</p>
+        <h1>🏢 WIKISOFT2</h1>
+        <p>퇴직급여채무 명부 교차검증 시스템</p>
       </header>
 
       {/* 진행 단계 표시 */}
@@ -163,7 +149,7 @@ function App() {
         <div className={`step ${getStepStatus('questions')}`}>
           <div className="step-number">1</div>
           <h3>진단 질문</h3>
-          <p>24개 질문에 답변</p>
+          <p>28개 질문에 답변</p>
         </div>
         <div className={`step ${getStepStatus('upload')}`}>
           <div className="step-number">2</div>
@@ -277,97 +263,103 @@ function App() {
         <div className="content-section">
           <h2>✅ 검증 결과</h2>
 
-          {/* 신뢰도 및 상태 요약 */}
           <div className="result-summary">
-            <div className={`result-stat ${validationResult.status === 'ok' ? 'success' : 'error'}`}>
+            <div className={`result-stat ${validationResult.validation.status === 'passed' ? 'success' : 'error'}`}>
               <div className="result-stat-value">
-                {validationResult.status === 'ok' ? '완료' : '오류'}
+                {validationResult.validation.status === 'passed' ? '통과' : '실패'}
               </div>
               <div className="result-stat-label">검증 상태</div>
             </div>
             <div className="result-stat success">
-              <div className="result-stat-value">
-                {(validationResult.confidence?.score * 100).toFixed(0)}%
-              </div>
-              <div className="result-stat-label">신뢰도</div>
+              <div className="result-stat-value">{validationResult.validation.passed}</div>
+              <div className="result-stat-label">통과한 항목</div>
             </div>
             <div className="result-stat warning">
-              <div className="result-stat-value">
-                {validationResult.anomalies?.anomalies?.length ?? 0}
-              </div>
-              <div className="result-stat-label">이상 탐지</div>
+              <div className="result-stat-value">{validationResult.validation.warnings.length}</div>
+              <div className="result-stat-label">경고 항목</div>
             </div>
             <div className="result-stat">
-              <div className="result-stat-value">
-                {validationResult.steps?.parsed_summary?.row_count ?? 0}
-              </div>
-              <div className="result-stat-label">분석 행 수</div>
+              <div className="result-stat-value">{validationResult.validation.total_checks}</div>
+              <div className="result-stat-label">총 검증 항목</div>
             </div>
           </div>
 
-          {/* 헤더 매칭 정보 */}
-          {validationResult.steps?.matches && (
-            <div style={{ marginTop: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ margin: 0 }}>🔗 컬럼 매칭 결과</h3>
-                <button
-                  className="btn-secondary"
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                  onClick={() => setShowManualMapping(true)}
-                >
-                  ✏️ 수동 매핑
-                </button>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', maxHeight: '200px', overflow: 'auto' }}>
-                {(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || []).map((match: HeaderMatch, idx: number) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ color: '#888' }}>{match.source}</span>
-                    <span style={{ color: match.target ? '#4ade80' : '#ef4444' }}>
-                      {match.target ? `→ ${match.target}` : '매칭 안됨'}
-                      {match.confidence > 0 && match.confidence < 1 && (
-                        <span style={{ marginLeft: '0.5rem', color: '#888', fontSize: '0.85rem' }}>
-                          ({Math.round(match.confidence * 100)}%)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 이상 탐지 정보 */}
-          {validationResult.anomalies?.detected && validationResult.anomalies.anomalies.length > 0 && (
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>⚠️ 이상 탐지</h3>
+          {validationResult.validation.warnings.length > 0 && (
+            <div>
+              <h3 style={{ marginBottom: '1rem' }}>⚠️ 경고 사항</h3>
               <ul className="warnings-list">
-                {validationResult.anomalies.anomalies.map((anomaly, idx) => (
-                  <li key={idx} className={`warning-item severity-${anomaly.severity}`}>
-                    <div className="warning-message">{anomaly.message}</div>
+                {validationResult.validation.warnings.map((warning, idx) => (
+                  <li key={idx} className={`warning-item severity-${warning.severity}`}>
+                    <div className="warning-message">{warning.message}</div>
                     <div className="warning-details">
-                      <span>유형: {anomaly.type}</span>
+                      <span>📝 입력값: {warning.user_input ?? 'N/A'}</span>
+                      <span>📊 계산값: {warning.calculated ?? 'N/A'}</span>
+                      <span>📈 차이: {warning.diff_percent ? `${warning.diff_percent.toFixed(1)}%` : 'N/A'}</span>
                     </div>
                   </li>
                 ))}
               </ul>
-              {validationResult.anomalies.recommendation && (
-                <p style={{ marginTop: '1rem', color: '#4ade80' }}>
-                  💡 추천: {validationResult.anomalies.recommendation}
-                </p>
-              )}
             </div>
           )}
 
-          {/* 파싱 요약 */}
-          {validationResult.steps?.parsed_summary && (
+          {validationResult.parsing_warnings.length > 0 && (
             <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>📊 파싱 정보</h3>
-              <p style={{ color: '#888' }}>
-                인식된 헤더: {validationResult.steps.parsed_summary.headers.slice(0, 5).join(', ')}
-                {validationResult.steps.parsed_summary.headers.length > 5 && ` 외 ${validationResult.steps.parsed_summary.headers.length - 5}개`}
-              </p>
+              <h3 style={{ marginBottom: '1rem' }}>ℹ️ 파싱 정보</h3>
+              <ul className="warnings-list">
+                {validationResult.parsing_warnings.map((warning, idx) => (
+                  <li key={idx} className="warning-item severity-low">
+                    <div className="warning-message">{warning.message}</div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+
+          <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px' }}>
+            <h3 style={{ marginBottom: '1rem' }}>🏢 회사 정보 입력</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>회사명</label>
+                <input
+                  type="text"
+                  value={companyInfo.company_name}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, company_name: e.target.value })}
+                  placeholder="예: 세라젬"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>전화번호</label>
+                <input
+                  type="text"
+                  value={companyInfo.phone}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, phone: e.target.value })}
+                  placeholder="예: 02-1234-5678"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>이메일</label>
+                <input
+                  type="email"
+                  value={companyInfo.email}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, email: e.target.value })}
+                  placeholder="예: hr@example.com"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#888' }}>작성기준일</label>
+                <input
+                  type="text"
+                  value={companyInfo.작성기준일}
+                  onChange={(e) => setCompanyInfo({ ...companyInfo, 작성기준일: e.target.value })}
+                  placeholder="YYYYMMDD"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
 
           <div className="actions">
             <button
@@ -384,7 +376,7 @@ function App() {
               onClick={handleDownload}
               disabled={loading}
             >
-              📥 Excel 다운로드 →
+              Excel 다운로드 →
             </button>
           </div>
         </div>
@@ -396,7 +388,7 @@ function App() {
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
           <h2>파일 다운로드 완료!</h2>
           <p style={{ marginTop: '1rem', color: '#888' }}>
-            검증 결과 JSON 파일이 생성되었습니다.
+            퇴직급여채무 Excel 파일이 생성되었습니다.
           </p>
           <p style={{ marginTop: '0.5rem', color: '#888' }}>
             경고가 표시된 셀을 확인하고 필요시 수정해주세요.
@@ -410,7 +402,6 @@ function App() {
                 setAnswers({})
                 setFile(null)
                 setValidationResult(null)
-                setCurrentMatches([])
                 setCompanyInfo({
                   company_name: '',
                   phone: '',
@@ -423,19 +414,6 @@ function App() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* 수동 매핑 모달 */}
-      {showManualMapping && currentMatches.length > 0 && (
-        <ManualMapping
-          matches={currentMatches}
-          onConfirm={(updatedMatches) => {
-            setCurrentMatches(updatedMatches)
-            setShowManualMapping(false)
-            // TODO: 업데이트된 매핑으로 재검증 가능
-          }}
-          onCancel={() => setShowManualMapping(false)}
-        />
       )}
     </div>
   )

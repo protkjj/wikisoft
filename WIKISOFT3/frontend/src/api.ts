@@ -50,5 +50,13 @@ export const api = {
   async health(): Promise<{ status: string; version: string }> {
     const response = await axios.get(`${API_BASE}/health`)
     return response.data
+  },
+
+  // Excel 파일 다운로드
+  async downloadExcel(): Promise<Blob> {
+    const response = await axios.get(`${API_BASE}/auto-validate/download-excel`, {
+      responseType: 'blob'
+    })
+    return response.data
   }
 }

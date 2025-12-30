@@ -76,3 +76,29 @@ export interface CompanyInfo {
   email: string
   작성기준일: string
 }
+
+// 수동 매핑 관련 타입
+export interface HeaderMatch {
+  source: string           // 고객 헤더
+  target: string | null    // 표준 필드
+  confidence: number       // 0.0~1.0
+  unmapped?: boolean       // 매핑 안 됨
+  fallback?: boolean       // 폴백 사용
+  used_ai?: boolean        // AI 사용
+  reason?: string          // AI 매칭 이유
+}
+
+export interface MappingResult {
+  columns: string[]
+  matches: HeaderMatch[]
+  warnings: string[]
+  used_ai: boolean
+}
+
+export interface StandardField {
+  name: string
+  description: string
+  required: boolean
+  aliases: string[]
+  sheet: string
+}
