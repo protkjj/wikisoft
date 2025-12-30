@@ -6,6 +6,21 @@
 
 ---
 
+## ⚡ 빠른 실행 (한 번에 실행)
+
+### 백엔드 + 프론트엔드 동시 실행
+```bash
+# 터미널 1 - 백엔드 (포트 8003)
+cd /Users/kj/Desktop/wiki/WIKISOFT3 && source ../.venv/bin/activate && uvicorn external.api.main:app --reload --port 8003
+
+# 터미널 2 - 프론트엔드 (포트 3003)
+cd /Users/kj/Desktop/wiki/WIKISOFT3/frontend && npm run dev -- --port 3003
+```
+
+그 다음 브라우저에서 `http://localhost:3003` 접속
+
+---
+
 ## 🚀 빠른 시작
 
 ### 1. 백엔드 실행 (포트 8003)
