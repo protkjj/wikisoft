@@ -11,9 +11,11 @@ ReACT (Reasoning and Acting) 패턴:
 - 자율적 재시도 (신뢰도 < 임계값이면 다른 전략 시도)
 - 사람 개입 요청 (해결 불가능하면 에스컬레이션)
 - 추론 과정 투명하게 기록
+- LLM 기반 추론 (선택적)
 """
 
 import json
+import os
 from typing import Any, Callable, Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -102,13 +104,20 @@ class ReactAgent:
         tool_registry,
         llm_client: Optional[Callable] = None,
         max_iterations: int = 5,
-        verbose: bool = True
+        verbose: bool = True,
+        use_llm_reasoning: bool = True  # LLM 추론 활성화 여부
     ):
         self.registry = tool_registry
         self.llm = llm_client
         self.max_iterations = max_iterations
         self.verbose = verbose
+        self.use_llm_reasoning = use_llm_reasoning and self._has_openai_key()
         self.state = AgentState()
+        self.retry_count = 0  # 재시도 횟수 추적
+    
+    def _has_openai_key(self) -> bool:
+        """OpenAI API 키 존재 여부 확인."""
+        return bool(os.getenv("OPENAI_API_KEY"))
     
     def run(
         self,
@@ -180,7 +189,7 @@ class ReactAgent:
         """
         현재 상황 분석 및 다음 액션 결정.
         
-        규칙 기반 + (선택적) LLM 추론.
+        규칙 기반 + LLM 추론 (API 키 있을 때).
         """
         # 상태에 따른 규칙 기반 결정
         if context["parsed"] is None:
@@ -202,12 +211,34 @@ class ReactAgent:
                 },
             )
         
-        # 매칭 신뢰도 체크
+        # 매칭 신뢰도 체크 + LLM 추론
         match_confidence = self._calculate_match_confidence(context["matches"])
-        if match_confidence < self.CONFIDENCE_NEEDS_REVIEW:
+        
+        # 신뢰도가 낮고 재시도 가능하면 재시도
+        if match_confidence < self.CONFIDENCE_AUTO_CORRECT and self.retry_count < 2:
+            self.retry_count += 1
+            reasoning = self._get_llm_reasoning(context, match_confidence) if self.use_llm_reasoning else \
+                f"매칭 신뢰도가 낮습니다 ({match_confidence:.2f}). 재시도합니다. (시도 {self.retry_count}/2)"
+            
             return Thought(
                 step=step,
-                reasoning=f"매칭 신뢰도가 낮습니다 ({match_confidence:.2f}). 사람의 검토가 필요합니다.",
+                reasoning=reasoning,
+                action=AgentAction.MATCH,
+                action_params={
+                    "parsed": context["parsed"],
+                    "sheet_type": context["sheet_type"],
+                    "retry": True,  # 재시도 플래그
+                },
+                confidence=match_confidence,
+            )
+        
+        if match_confidence < self.CONFIDENCE_NEEDS_REVIEW:
+            reasoning = self._get_llm_reasoning(context, match_confidence) if self.use_llm_reasoning else \
+                f"매칭 신뢰도가 낮습니다 ({match_confidence:.2f}). 사람의 검토가 필요합니다."
+            
+            return Thought(
+                step=step,
+                reasoning=reasoning,
                 action=AgentAction.ASK_HUMAN,
                 action_params={"reason": "low_match_confidence", "confidence": match_confidence},
                 confidence=match_confidence,
@@ -232,6 +263,47 @@ class ReactAgent:
             action=AgentAction.COMPLETE,
             confidence=self._calculate_overall_confidence(context),
         )
+    
+    def _get_llm_reasoning(self, context: Dict[str, Any], confidence: float) -> str:
+        """LLM을 사용해 현재 상황 분석 및 추론."""
+        if not self.use_llm_reasoning:
+            return f"신뢰도: {confidence:.2f}"
+        
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            
+            # 현재 상황 요약
+            matches = context.get("matches", {}).get("matches", [])
+            unmapped = [m["source"] for m in matches if m.get("unmapped")]
+            low_conf = [m["source"] for m in matches if m.get("confidence", 1) < 0.7 and not m.get("unmapped")]
+            
+            prompt = f"""당신은 HR 데이터 검증 AI 에이전트입니다. 현재 상황을 분석하세요.
+
+현재 상황:
+- 매칭 신뢰도: {confidence:.2f}
+- 미매핑 헤더: {unmapped[:5]}
+- 낮은 신뢰도 헤더: {low_conf[:5]}
+- 재시도 횟수: {self.retry_count}/2
+
+다음 중 하나를 선택하고 이유를 1-2문장으로 설명하세요:
+1. 재시도 (다른 전략으로 매칭 시도)
+2. 사람에게 질문 (어떤 헤더가 어떤 필드인지 확인)
+3. 진행 (현재 상태로 계속)
+
+응답 형식: [선택번호] 이유"""
+
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",  # 빠르고 저렴한 모델
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=100,
+                temperature=0.3,
+            )
+            
+            return response.choices[0].message.content.strip()
+        
+        except Exception as e:
+            return f"LLM 추론 실패: {e}. 규칙 기반 결정 사용."
     
     def _act(self, thought: Thought, context: Dict[str, Any]) -> Observation:
         """도구 실행."""
@@ -296,6 +368,9 @@ class ReactAgent:
     
     def _calculate_match_confidence(self, matches: Dict[str, Any]) -> float:
         """매칭 신뢰도 계산."""
+        if matches is None:
+            return 0.0
+        
         match_list = matches.get("matches", [])
         if not match_list:
             return 0.0
@@ -311,6 +386,9 @@ class ReactAgent:
     
     def _calculate_validation_confidence(self, validation: Dict[str, Any]) -> float:
         """검증 신뢰도 계산."""
+        if validation is None:
+            return 0.0
+        
         if validation.get("passed"):
             return 1.0
         
@@ -355,8 +433,8 @@ class ReactAgent:
             },
             "steps": {
                 "parsed_summary": {
-                    "headers": context.get("parsed", {}).get("headers", []),
-                    "row_count": len(context.get("parsed", {}).get("rows", [])),
+                    "headers": (context.get("parsed") or {}).get("headers", []),
+                    "row_count": len((context.get("parsed") or {}).get("rows", [])),
                 },
                 "matches": context.get("matches"),
                 "validation": context.get("validation"),

@@ -1,6 +1,6 @@
 {
   "case_id": "115f8b331f13",
-  "timestamp": "2025-12-30T17:17:06.703649",
+  "timestamp": "2025-12-31T03:28:36.593057",
   "headers": [
     "사원번호",
     "이름",
@@ -21,41 +21,41 @@
     {
       "source": "사원번호",
       "target": "사원번호",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     },
     {
       "source": "이름",
       "target": "이름",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     },
     {
       "source": "생년월일",
       "target": "생년월일",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     },
     {
       "source": "입사일",
       "target": "입사일자",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     },
     {
       "source": "기준급여",
       "target": "기준급여",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     },
     {
       "source": "종업원구분",
       "target": "종업원구분",
-      "confidence": 1.0,
-      "fallback": true
+      "confidence": 0.95,
+      "from_fewshot": true
     }
   ],
-  "confidence": 1.0,
+  "confidence": 0.9499999999999998,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {

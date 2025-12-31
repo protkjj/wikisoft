@@ -196,6 +196,29 @@ class CaseStore:
                 return json.load(f)
         return None
     
+    def find_by_header(self, header: str) -> List[Dict[str, Any]]:
+        """
+        특정 헤더를 포함하는 케이스 검색.
+        
+        Args:
+            header: 검색할 헤더 (정규화 전)
+        
+        Returns:
+            해당 헤더가 있는 케이스 리스트
+        """
+        normalized = self._normalize_header(header)
+        case_ids = self.index["header_patterns"].get(normalized, [])
+        
+        cases = []
+        for case_id in case_ids:
+            case_data = self.get_case(case_id)
+            if case_data:
+                cases.append(case_data)
+        
+        # 최신 케이스 우선
+        cases.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        return cases
+    
     def get_few_shot_examples(
         self,
         headers: List[str],

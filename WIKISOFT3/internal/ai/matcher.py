@@ -139,16 +139,102 @@ def ai_match_columns(headers: List[str], sheet_type: str = "재직자", api_key:
     }
 
 
-def match_headers(parsed: Dict[str, Any], sheet_type: str = "재직자") -> Dict[str, Any]:
+def match_headers(parsed: Dict[str, Any], sheet_type: str = "재직자", retry: bool = False) -> Dict[str, Any]:
+    """
+    헤더 매칭 (Few-shot 자동 조회 포함).
+    
+    Args:
+        parsed: 파싱된 데이터
+        sheet_type: 시트 타입
+        retry: 재시도 여부 (True면 Few-shot 강화)
+    """
     headers = parsed.get("headers", [])
     use_ai = os.getenv("OPENAI_API_KEY") is not None
-    result = ai_match_columns(headers, sheet_type=sheet_type) if use_ai else _rule_match(headers, sheet_type)
+    
+    # Few-shot 예제 먼저 적용 (학습된 케이스에서 직접 매핑)
+    few_shot_mappings = _apply_few_shot_mappings(headers)
+    
+    if few_shot_mappings:
+        # Few-shot으로 이미 매핑된 것들 우선 사용
+        remaining_headers = [h for h in headers if h not in few_shot_mappings]
+        
+        if not remaining_headers:
+            # 모든 헤더가 Few-shot으로 매핑됨
+            matches = [
+                {"source": h, "target": few_shot_mappings[h], "confidence": 0.95, "from_fewshot": True}
+                for h in headers
+            ]
+            return {
+                "columns": headers,
+                "matches": matches,
+                "warnings": [],
+                "used_ai": False,
+                "used_fewshot": True,
+            }
+    else:
+        remaining_headers = headers
+        few_shot_mappings = {}
+    
+    # 나머지는 AI 또는 규칙 기반 매칭
+    if use_ai and remaining_headers:
+        result = ai_match_columns(remaining_headers, sheet_type=sheet_type)
+    else:
+        result = _rule_match(remaining_headers, sheet_type)
+    
+    # Few-shot 결과와 병합
+    final_matches = []
+    for h in headers:
+        if h in few_shot_mappings:
+            final_matches.append({
+                "source": h, 
+                "target": few_shot_mappings[h], 
+                "confidence": 0.95, 
+                "from_fewshot": True
+            })
+        else:
+            # AI/규칙 매칭 결과에서 찾기
+            for m in result.get("matches", []):
+                if m.get("source") == h:
+                    final_matches.append(m)
+                    break
+    
     return {
         "columns": headers,
-        "matches": result.get("matches", []),
+        "matches": final_matches,
         "warnings": result.get("warnings", []),
         "used_ai": result.get("used_ai", use_ai),
+        "used_fewshot": bool(few_shot_mappings),
     }
+
+
+def _apply_few_shot_mappings(headers: List[str]) -> Dict[str, str]:
+    """
+    Few-shot 케이스에서 학습된 매핑 적용.
+    
+    저장된 케이스를 조회해서 동일 헤더가 있으면 그 매핑을 사용.
+    """
+    from internal.memory.case_store import CaseStore
+    
+    try:
+        store = CaseStore()
+        mappings = {}
+        
+        for header in headers:
+            # 헤더와 일치하는 케이스 찾기
+            similar_cases = store.find_by_header(header)
+            if similar_cases:
+                # 가장 최근 케이스의 매핑 사용
+                for case in similar_cases:
+                    for match in case.get("matches", []):
+                        if match.get("source") == header and match.get("target"):
+                            mappings[header] = match["target"]
+                            break
+                    if header in mappings:
+                        break
+        
+        return mappings
+    except Exception:
+        return {}
 
 
 def ask_dynamic_questions(context: Dict[str, Any]) -> List[Dict[str, Any]]:
