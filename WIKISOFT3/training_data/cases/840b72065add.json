@@ -1,0 +1,293 @@
+{
+  "case_id": "840b72065add",
+  "timestamp": "2025-12-31T14:36:37.158721",
+  "headers": [
+    "사원번호",
+    "성명",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "직종구분 (1,2:직원, 3:임원, 4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "적용제도번호",
+    "직급",
+    "추가CODE1",
+    "추가CODE2",
+    "추가CODE3",
+    "추가CODE4",
+    "추가CODE5",
+    "추가CODE6",
+    "추가CODE7",
+    "추가CODE8",
+    "추가CODE9",
+    "추가CODE10",
+    "추가CHAR1 (가입여부 Y/N)",
+    "추가CHAR2 (1:축소, 2:청산, 3:사업결합, 4:청산_중간정산)",
+    "추가CHAR3",
+    "추가CHAR4",
+    "추가CHAR5",
+    "추가CHAR6",
+    "추가CHAR7",
+    "추가CHAR8",
+    "추가CHAR9",
+    "추가CHAR10",
+    "추가NUMBER1 추가지급률"
+  ],
+  "normalized_headers": [
+    "사원번호",
+    "성명",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "직종구분 (1,2:직원, 3:임원, 4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "적용제도번호",
+    "직급",
+    "추가code1",
+    "추가code2",
+    "추가code3",
+    "추가code4",
+    "추가code5",
+    "추가code6",
+    "추가code7",
+    "추가code8",
+    "추가code9",
+    "추가code10",
+    "추가char1 (가입여부 y/n)",
+    "추가char2 (1:축소, 2:청산, 3:사업결합, 4:청산_중간정산)",
+    "추가char3",
+    "추가char4",
+    "추가char5",
+    "추가char6",
+    "추가char7",
+    "추가char8",
+    "추가char9",
+    "추가char10",
+    "추가number1 추가지급률"
+  ],
+  "matches": [
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "성명",
+      "target": "이름",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "성별 (1:남자, 2:여자)",
+      "target": "성별",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "기준급여",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "당년도 퇴직금추계액",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "차년도 퇴직금추계액",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "직종구분 (1,2:직원, 3:임원, 4:계약직)",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "중간정산기준일",
+      "target": "중간정산기준일",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "중간정산액",
+      "target": "중간정산액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "적용제도번호",
+      "target": "적용제도번호",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "직급",
+      "target": "직급",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE1",
+      "target": "추가CODE1",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE2",
+      "target": "추가CODE2",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE3",
+      "target": "추가CODE3",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE4",
+      "target": "추가CODE4",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE5",
+      "target": "추가CODE5",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE6",
+      "target": "추가CODE6",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE7",
+      "target": "추가CODE7",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE8",
+      "target": "추가CODE8",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE9",
+      "target": "추가CODE9",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CODE10",
+      "target": "추가CODE10",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR1 (가입여부 Y/N)",
+      "target": "추가CHAR1",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR2 (1:축소, 2:청산, 3:사업결합, 4:청산_중간정산)",
+      "target": "추가CHAR2",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR3",
+      "target": "추가CHAR3",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR4",
+      "target": "추가CHAR4",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR5",
+      "target": "추가CHAR5",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR6",
+      "target": "추가CHAR6",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR7",
+      "target": "추가CHAR7",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR8",
+      "target": "추가CHAR8",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR9",
+      "target": "추가CHAR9",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가CHAR10",
+      "target": "추가CHAR10",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "추가NUMBER1 추가지급률",
+      "target": "추가NUMBER1",
+      "confidence": 0.95,
+      "from_fewshot": true
+    }
+  ],
+  "confidence": 0.75,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls",
+    "company_name": "에이치자산운용",
+    "row_count": 2483,
+    "error_count": 2,
+    "warning_count": 0,
+    "anomaly_count": 0
+  }
+}

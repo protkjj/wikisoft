@@ -15,7 +15,7 @@ def _normalize(header: str) -> str:
     return h.lower().strip()
 
 
-def _rule_match(headers: List[str], sheet_type: str = "재직자") -> Dict[str, Any]:
+def _rule_match(headers: List[str], sheet_type: str = "all") -> Dict[str, Any]:
     schema = {
         name: meta
         for name, meta in STANDARD_SCHEMA.items()
@@ -50,7 +50,7 @@ def _rule_match(headers: List[str], sheet_type: str = "재직자") -> Dict[str, 
     return {"matches": matches, "warnings": warnings}
 
 
-def ai_match_columns(headers: List[str], sheet_type: str = "재직자", api_key: Optional[str] = None) -> Dict[str, Any]:
+def ai_match_columns(headers: List[str], sheet_type: str = "all", api_key: Optional[str] = None) -> Dict[str, Any]:
     """AI 매칭 호출 (OpenAI) + Few-shot Learning. 키 없으면 폴백 사용."""
     api_key_to_use = api_key or os.getenv("OPENAI_API_KEY")
     schema = {
@@ -139,13 +139,13 @@ def ai_match_columns(headers: List[str], sheet_type: str = "재직자", api_key:
     }
 
 
-def match_headers(parsed: Dict[str, Any], sheet_type: str = "재직자", retry: bool = False) -> Dict[str, Any]:
+def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool = False) -> Dict[str, Any]:
     """
     헤더 매칭 (Few-shot 자동 조회 포함).
     
     Args:
         parsed: 파싱된 데이터
-        sheet_type: 시트 타입
+        sheet_type: 시트 타입 (기본 "all"로 모든 필드 포함)
         retry: 재시도 여부 (True면 Few-shot 강화)
     """
     headers = parsed.get("headers", [])
