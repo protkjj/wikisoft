@@ -1,23 +1,23 @@
 {
-  "case_id": "35163ea8ce3d",
-  "timestamp": "2025-12-31T03:42:47.918875",
+  "case_id": "bf9a2b8efec5",
+  "timestamp": "2025-12-31T03:42:47.924627",
   "headers": [
     "사번",
-    "생일",
-    "성별코드",
-    "입사",
-    "직원구분",
-    "급여",
-    "퇴직금"
+    "이름",
+    "휴대폰",
+    "회사메일",
+    "개인메일",
+    "주소",
+    "입사일"
   ],
   "normalized_headers": [
     "사번",
-    "생일",
-    "성별코드",
-    "입사",
-    "직원구분",
-    "급여",
-    "퇴직금"
+    "이름",
+    "휴대폰",
+    "회사메일",
+    "개인메일",
+    "주소",
+    "입사일"
   ],
   "matches": [
     {
@@ -27,38 +27,38 @@
       "fallback": false
     },
     {
-      "source": "생일",
-      "target": "생년월일",
+      "source": "이름",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "성별코드",
-      "target": "성별",
+      "source": "휴대폰",
+      "target": "전화번호",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "입사",
+      "source": "회사메일",
+      "target": "이메일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "개인메일",
+      "target": "이메일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "주소",
+      "target": "주소",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "입사일",
       "target": "입사일자",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "직원구분",
-      "target": "종업원구분",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "급여",
-      "target": "기준급여",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "퇴직금",
-      "target": "당년도퇴직금추계액",
       "confidence": 0.95,
       "fallback": false
     }
@@ -68,7 +68,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "약어형",
+    "pattern_name": "연락처확장형",
     "generated": true
   }
 }

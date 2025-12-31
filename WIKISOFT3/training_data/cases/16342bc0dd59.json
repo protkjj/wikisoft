@@ -1,56 +1,64 @@
 {
-  "case_id": "fd2ff7a4f811",
-  "timestamp": "2025-12-31T03:42:47.920091",
+  "case_id": "16342bc0dd59",
+  "timestamp": "2025-12-31T03:42:47.923724",
   "headers": [
-    "사원 번호",
-    "생년 월일",
-    "성 별",
-    "입사 일자",
-    "종업원 구분",
-    "기준 급여"
+    "emp_id",
+    "name",
+    "birthday",
+    "gender",
+    "join_date",
+    "department",
+    "position"
   ],
   "normalized_headers": [
-    "사원 번호",
-    "생년 월일",
-    "성 별",
-    "입사 일자",
-    "종업원 구분",
-    "기준 급여"
+    "emp_id",
+    "name",
+    "birthday",
+    "gender",
+    "join_date",
+    "department",
+    "position"
   ],
   "matches": [
     {
-      "source": "사원 번호",
+      "source": "emp_id",
       "target": "사원번호",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "생년 월일",
+      "source": "name",
+      "target": "이름",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "birthday",
       "target": "생년월일",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "성 별",
+      "source": "gender",
       "target": "성별",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "입사 일자",
+      "source": "join_date",
       "target": "입사일자",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "종업원 구분",
-      "target": "종업원구분",
+      "source": "department",
+      "target": "부서",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "기준 급여",
-      "target": "기준급여",
+      "source": "position",
+      "target": "직급",
       "confidence": 0.95,
       "fallback": false
     }
@@ -60,7 +68,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "공백포함형",
+    "pattern_name": "영문인사형",
     "generated": true
   }
 }

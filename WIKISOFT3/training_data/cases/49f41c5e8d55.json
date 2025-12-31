@@ -1,28 +1,38 @@
 {
-  "case_id": "1103f2567f3c",
-  "timestamp": "2025-12-31T03:42:47.918123",
+  "case_id": "49f41c5e8d55",
+  "timestamp": "2025-12-31T03:42:47.929263",
   "headers": [
     "사원번호",
+    "성명",
     "생년월일",
-    "성별",
-    "입사일자",
-    "종업원구분",
+    "입사일",
     "기준급여",
-    "퇴직금추계액"
+    "근속월수",
+    "퇴직급여",
+    "DC적립금",
+    "DB적립금"
   ],
   "normalized_headers": [
     "사원번호",
+    "성명",
     "생년월일",
-    "성별",
-    "입사일자",
-    "종업원구분",
+    "입사일",
     "기준급여",
-    "퇴직금추계액"
+    "근속월수",
+    "퇴직급여",
+    "dc적립금",
+    "db적립금"
   ],
   "matches": [
     {
       "source": "사원번호",
       "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "성명",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
@@ -33,20 +43,8 @@
       "fallback": false
     },
     {
-      "source": "성별",
-      "target": "성별",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "입사일자",
+      "source": "입사일",
       "target": "입사일자",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "종업원구분",
-      "target": "종업원구분",
       "confidence": 0.95,
       "fallback": false
     },
@@ -57,8 +55,26 @@
       "fallback": false
     },
     {
-      "source": "퇴직금추계액",
+      "source": "근속월수",
+      "target": "근속월수",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "퇴직급여",
       "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "DC적립금",
+      "target": "DC적립금",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "DB적립금",
+      "target": "DB적립금",
       "confidence": 0.95,
       "fallback": false
     }
@@ -68,7 +84,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "표준형",
+    "pattern_name": "상세퇴직형",
     "generated": true
   }
 }

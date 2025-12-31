@@ -1,0 +1,66 @@
+{
+  "case_id": "b139dec43cfa",
+  "timestamp": "2025-12-31T03:42:47.925398",
+  "headers": [
+    "사원_번호",
+    "성_명",
+    "생년_월일",
+    "성_별",
+    "입사_일자",
+    "기준_급여"
+  ],
+  "normalized_headers": [
+    "사원_번호",
+    "성_명",
+    "생년_월일",
+    "성_별",
+    "입사_일자",
+    "기준_급여"
+  ],
+  "matches": [
+    {
+      "source": "사원_번호",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "성_명",
+      "target": "이름",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "생년_월일",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "성_별",
+      "target": "성별",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "입사_일자",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "기준_급여",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "언더스코어형",
+    "generated": true
+  }
+}

@@ -1,40 +1,32 @@
 {
-  "case_id": "756914578379",
-  "timestamp": "2025-12-31T03:42:47.919713",
+  "case_id": "6db820d2bf9d",
+  "timestamp": "2025-12-31T03:42:47.925776",
   "headers": [
-    "직원번호",
-    "DOB",
-    "M/F",
+    "사원번호",
+    "성명",
     "입사일",
-    "구분",
-    "월급여",
-    "예상퇴직금"
+    "퇴직금",
+    "당년도퇴직금",
+    "차년도퇴직금"
   ],
   "normalized_headers": [
-    "직원번호",
-    "dob",
-    "m/f",
+    "사원번호",
+    "성명",
     "입사일",
-    "구분",
-    "월급여",
-    "예상퇴직금"
+    "퇴직금",
+    "당년도퇴직금",
+    "차년도퇴직금"
   ],
   "matches": [
     {
-      "source": "직원번호",
+      "source": "사원번호",
       "target": "사원번호",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "DOB",
-      "target": "생년월일",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "M/F",
-      "target": "성별",
+      "source": "성명",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
@@ -45,20 +37,20 @@
       "fallback": false
     },
     {
-      "source": "구분",
-      "target": "종업원구분",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "월급여",
-      "target": "기준급여",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "예상퇴직금",
+      "source": "퇴직금",
       "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "당년도퇴직금",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "차년도퇴직금",
+      "target": "차년도퇴직금추계액",
       "confidence": 0.95,
       "fallback": false
     }
@@ -68,7 +60,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "혼합형",
+    "pattern_name": "퇴직금기본형",
     "generated": true
   }
 }

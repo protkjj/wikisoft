@@ -1,23 +1,23 @@
 {
-  "case_id": "228b5772e674",
-  "timestamp": "2025-12-31T03:42:47.919367",
+  "case_id": "66f6201af26e",
+  "timestamp": "2025-12-31T03:42:47.926843",
   "headers": [
     "emp_no",
-    "birth_date",
-    "gender",
+    "name",
     "hire_date",
-    "emp_type",
     "salary",
-    "severance"
+    "service_years",
+    "db_reserve",
+    "multiplier"
   ],
   "normalized_headers": [
     "emp_no",
-    "birth_date",
-    "gender",
+    "name",
     "hire_date",
-    "emp_type",
     "salary",
-    "severance"
+    "service_years",
+    "db_reserve",
+    "multiplier"
   ],
   "matches": [
     {
@@ -27,14 +27,8 @@
       "fallback": false
     },
     {
-      "source": "birth_date",
-      "target": "생년월일",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "gender",
-      "target": "성별",
+      "source": "name",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
@@ -45,20 +39,26 @@
       "fallback": false
     },
     {
-      "source": "emp_type",
-      "target": "종업원구분",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
       "source": "salary",
       "target": "기준급여",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "severance",
-      "target": "당년도퇴직금추계액",
+      "source": "service_years",
+      "target": "근속년수",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "db_reserve",
+      "target": "DB적립금",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "multiplier",
+      "target": "적용배수",
       "confidence": 0.95,
       "fallback": false
     }
@@ -68,7 +68,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "영문형",
+    "pattern_name": "DB형",
     "generated": true
   }
 }

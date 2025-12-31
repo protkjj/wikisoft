@@ -1,33 +1,27 @@
 {
-  "case_id": "50faa12b4c99",
-  "timestamp": "2025-12-31T03:42:47.921289",
+  "case_id": "5ed37ddd2fbc",
+  "timestamp": "2025-12-31T03:42:47.928253",
   "headers": [
     "사원번호",
-    "생년월일",
-    "성별",
+    "성명",
     "입사일자",
-    "부서",
-    "직급",
-    "종업원구분",
     "기준급여",
     "당년도퇴직금추계액",
     "차년도퇴직금추계액",
     "적용배수",
-    "제도구분"
+    "제도구분",
+    "종업원구분"
   ],
   "normalized_headers": [
     "사원번호",
-    "생년월일",
-    "성별",
+    "성명",
     "입사일자",
-    "부서",
-    "직급",
-    "종업원구분",
     "기준급여",
     "당년도퇴직금추계액",
     "차년도퇴직금추계액",
     "적용배수",
-    "제도구분"
+    "제도구분",
+    "종업원구분"
   ],
   "matches": [
     {
@@ -37,38 +31,14 @@
       "fallback": false
     },
     {
-      "source": "생년월일",
-      "target": "생년월일",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "성별",
-      "target": "성별",
+      "source": "성명",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
     {
       "source": "입사일자",
       "target": "입사일자",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "부서",
-      "target": "부서",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "직급",
-      "target": "직급",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "종업원구분",
-      "target": "종업원구분",
       "confidence": 0.95,
       "fallback": false
     },
@@ -101,6 +71,12 @@
       "target": "제도구분",
       "confidence": 0.95,
       "fallback": false
+    },
+    {
+      "source": "종업원구분",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "fallback": false
     }
   ],
   "confidence": 1.0,
@@ -108,7 +84,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "확장형",
+    "pattern_name": "종합퇴직형",
     "generated": true
   }
 }

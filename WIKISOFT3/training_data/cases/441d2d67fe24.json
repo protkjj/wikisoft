@@ -1,0 +1,74 @@
+{
+  "case_id": "441d2d67fe24",
+  "timestamp": "2025-12-31T03:42:47.928731",
+  "headers": [
+    "empId",
+    "name",
+    "hireDate",
+    "baseSalary",
+    "severancePay",
+    "serviceYears",
+    "multiplier"
+  ],
+  "normalized_headers": [
+    "empid",
+    "name",
+    "hiredate",
+    "basesalary",
+    "severancepay",
+    "serviceyears",
+    "multiplier"
+  ],
+  "matches": [
+    {
+      "source": "empId",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "name",
+      "target": "이름",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "hireDate",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "baseSalary",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "severancePay",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "serviceYears",
+      "target": "근속년수",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "multiplier",
+      "target": "적용배수",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "외국어혼합퇴직형",
+    "generated": true
+  }
+}

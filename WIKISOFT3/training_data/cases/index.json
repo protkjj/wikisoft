@@ -59,6 +59,116 @@
       "case_id": "30ac8c087501",
       "header_count": 4,
       "was_auto_approved": true
+    },
+    {
+      "case_id": "26d4962cdf91",
+      "header_count": 6,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "f604891c37c5",
+      "header_count": 6,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "fb9bc5c66b40",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "c8edef00396b",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "25cba5167988",
+      "header_count": 8,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "f86ee45e4040",
+      "header_count": 6,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "16342bc0dd59",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "97412c48ecf5",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "7bfd2890023d",
+      "header_count": 9,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "bf9a2b8efec5",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "0a251cfe2de4",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "b139dec43cfa",
+      "header_count": 6,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "6db820d2bf9d",
+      "header_count": 6,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "e8937fc2d072",
+      "header_count": 8,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "ef543917694e",
+      "header_count": 8,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "66f6201af26e",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "0acc425eb57b",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "93cef255a875",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "5ed37ddd2fbc",
+      "header_count": 9,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "441d2d67fe24",
+      "header_count": 7,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "49f41c5e8d55",
+      "header_count": 9,
+      "was_auto_approved": true
+    },
+    {
+      "case_id": "49f61cb00dcc",
+      "header_count": 8,
+      "was_auto_approved": true
     }
   ],
   "header_patterns": {
@@ -68,10 +178,24 @@
       "58e4261ab028",
       "5c8673bdba4c",
       "1103f2567f3c",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "fb9bc5c66b40",
+      "f86ee45e4040",
+      "7bfd2890023d",
+      "6db820d2bf9d",
+      "ef543917694e",
+      "5ed37ddd2fbc",
+      "49f41c5e8d55"
     ],
     "이름": [
-      "115f8b331f13"
+      "115f8b331f13",
+      "fb9bc5c66b40",
+      "f86ee45e4040",
+      "97412c48ecf5",
+      "bf9a2b8efec5",
+      "e8937fc2d072",
+      "93cef255a875",
+      "49f61cb00dcc"
     ],
     "생년월일": [
       "115f8b331f13",
@@ -80,24 +204,44 @@
       "5c8673bdba4c",
       "1103f2567f3c",
       "50faa12b4c99",
-      "30ac8c087501"
+      "30ac8c087501",
+      "fb9bc5c66b40",
+      "c8edef00396b",
+      "7bfd2890023d",
+      "ef543917694e",
+      "49f41c5e8d55"
     ],
     "입사일": [
       "115f8b331f13",
       "756914578379",
-      "30ac8c087501"
+      "30ac8c087501",
+      "c8edef00396b",
+      "97412c48ecf5",
+      "bf9a2b8efec5",
+      "6db820d2bf9d",
+      "ef543917694e",
+      "0acc425eb57b",
+      "49f41c5e8d55",
+      "49f61cb00dcc"
     ],
     "기준급여": [
       "115f8b331f13",
       "9473b4b50e35",
       "58e4261ab028",
       "1103f2567f3c",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "25cba5167988",
+      "f86ee45e4040",
+      "e8937fc2d072",
+      "5ed37ddd2fbc",
+      "49f41c5e8d55"
     ],
     "종업원구분": [
       "115f8b331f13",
       "1103f2567f3c",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "ef543917694e",
+      "5ed37ddd2fbc"
     ],
     "참고사항": [
       "9473b4b50e35",
@@ -113,7 +257,12 @@
       "58e4261ab028",
       "5c8673bdba4c",
       "1103f2567f3c",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "fb9bc5c66b40",
+      "25cba5167988",
+      "7bfd2890023d",
+      "e8937fc2d072",
+      "5ed37ddd2fbc"
     ],
     "당년도 퇴직금추계액": [
       "9473b4b50e35",
@@ -132,7 +281,9 @@
     ],
     "중간정산액": [
       "9473b4b50e35",
-      "58e4261ab028"
+      "58e4261ab028",
+      "e8937fc2d072",
+      "0acc425eb57b"
     ],
     "제도구분 (1,2,3)": [
       "9473b4b50e35",
@@ -140,10 +291,21 @@
     ],
     "적용배수": [
       "9473b4b50e35",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "f86ee45e4040",
+      "ef543917694e",
+      "5ed37ddd2fbc"
     ],
     "성명": [
-      "58e4261ab028"
+      "58e4261ab028",
+      "c8edef00396b",
+      "25cba5167988",
+      "7bfd2890023d",
+      "6db820d2bf9d",
+      "ef543917694e",
+      "0acc425eb57b",
+      "5ed37ddd2fbc",
+      "49f41c5e8d55"
     ],
     "차년도 퇴직금추계액": [
       "58e4261ab028"
@@ -208,14 +370,23 @@
     ],
     "성별": [
       "1103f2567f3c",
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "fb9bc5c66b40",
+      "25cba5167988",
+      "7bfd2890023d"
     ],
     "퇴직금추계액": [
-      "1103f2567f3c"
+      "1103f2567f3c",
+      "e8937fc2d072"
     ],
     "사번": [
       "35163ea8ce3d",
-      "30ac8c087501"
+      "30ac8c087501",
+      "c8edef00396b",
+      "bf9a2b8efec5",
+      "e8937fc2d072",
+      "93cef255a875",
+      "49f61cb00dcc"
     ],
     "생일": [
       "35163ea8ce3d"
@@ -234,34 +405,44 @@
       "30ac8c087501"
     ],
     "퇴직금": [
-      "35163ea8ce3d"
+      "35163ea8ce3d",
+      "6db820d2bf9d"
     ],
     "emp_no": [
-      "228b5772e674"
+      "228b5772e674",
+      "66f6201af26e"
     ],
     "birth_date": [
       "228b5772e674"
     ],
     "gender": [
-      "228b5772e674"
+      "228b5772e674",
+      "16342bc0dd59",
+      "97412c48ecf5"
     ],
     "hire_date": [
-      "228b5772e674"
+      "228b5772e674",
+      "f604891c37c5",
+      "66f6201af26e"
     ],
     "emp_type": [
       "228b5772e674"
     ],
     "salary": [
-      "228b5772e674"
+      "228b5772e674",
+      "66f6201af26e"
     ],
     "severance": [
       "228b5772e674"
     ],
     "직원번호": [
-      "756914578379"
+      "756914578379",
+      "25cba5167988",
+      "0acc425eb57b"
     ],
     "dob": [
-      "756914578379"
+      "756914578379",
+      "97412c48ecf5"
     ],
     "m/f": [
       "756914578379"
@@ -312,24 +493,258 @@
       "bcb6924790f2"
     ],
     "부서": [
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "fb9bc5c66b40",
+      "25cba5167988"
     ],
     "직급": [
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "fb9bc5c66b40",
+      "25cba5167988"
     ],
     "당년도퇴직금추계액": [
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "f86ee45e4040",
+      "5ed37ddd2fbc"
     ],
     "차년도퇴직금추계액": [
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "f86ee45e4040",
+      "5ed37ddd2fbc"
     ],
     "제도구분": [
-      "50faa12b4c99"
+      "50faa12b4c99",
+      "ef543917694e",
+      "5ed37ddd2fbc"
+    ],
+    "empno": [
+      "26d4962cdf91",
+      "97412c48ecf5"
+    ],
+    "birthdate": [
+      "26d4962cdf91"
+    ],
+    "sex": [
+      "26d4962cdf91"
+    ],
+    "joindate": [
+      "26d4962cdf91"
+    ],
+    "emptype": [
+      "26d4962cdf91"
+    ],
+    "basesalary": [
+      "26d4962cdf91",
+      "441d2d67fe24"
+    ],
+    "employee_id": [
+      "f604891c37c5"
+    ],
+    "date_of_birth": [
+      "f604891c37c5"
+    ],
+    "gender_code": [
+      "f604891c37c5"
+    ],
+    "employee_type": [
+      "f604891c37c5"
+    ],
+    "base_salary": [
+      "f604891c37c5"
+    ],
+    "전화번호": [
+      "c8edef00396b"
+    ],
+    "이메일": [
+      "c8edef00396b"
+    ],
+    "부서코드": [
+      "c8edef00396b"
+    ],
+    "주민등록번호": [
+      "25cba5167988"
+    ],
+    "emp_id": [
+      "16342bc0dd59"
+    ],
+    "name": [
+      "16342bc0dd59",
+      "66f6201af26e",
+      "441d2d67fe24"
+    ],
+    "birthday": [
+      "16342bc0dd59"
+    ],
+    "join_date": [
+      "16342bc0dd59"
+    ],
+    "department": [
+      "16342bc0dd59"
+    ],
+    "position": [
+      "16342bc0dd59"
+    ],
+    "dept": [
+      "97412c48ecf5"
+    ],
+    "grade": [
+      "97412c48ecf5"
+    ],
+    "부서명": [
+      "7bfd2890023d"
+    ],
+    "직급명": [
+      "7bfd2890023d"
+    ],
+    "직책": [
+      "7bfd2890023d"
+    ],
+    "호봉": [
+      "7bfd2890023d"
+    ],
+    "휴대폰": [
+      "bf9a2b8efec5"
+    ],
+    "회사메일": [
+      "bf9a2b8efec5"
+    ],
+    "개인메일": [
+      "bf9a2b8efec5"
+    ],
+    "주소": [
+      "bf9a2b8efec5"
+    ],
+    "emp_code": [
+      "0a251cfe2de4"
+    ],
+    "emp_name": [
+      "0a251cfe2de4"
+    ],
+    "birth_dt": [
+      "0a251cfe2de4"
+    ],
+    "gender_cd": [
+      "0a251cfe2de4"
+    ],
+    "hire_dt": [
+      "0a251cfe2de4"
+    ],
+    "dept_cd": [
+      "0a251cfe2de4"
+    ],
+    "job_cd": [
+      "0a251cfe2de4"
+    ],
+    "사원_번호": [
+      "b139dec43cfa"
+    ],
+    "성_명": [
+      "b139dec43cfa"
+    ],
+    "생년_월일": [
+      "b139dec43cfa"
+    ],
+    "성_별": [
+      "b139dec43cfa"
+    ],
+    "입사_일자": [
+      "b139dec43cfa"
+    ],
+    "기준_급여": [
+      "b139dec43cfa"
+    ],
+    "당년도퇴직금": [
+      "6db820d2bf9d"
+    ],
+    "차년도퇴직금": [
+      "6db820d2bf9d"
+    ],
+    "근속년수": [
+      "e8937fc2d072"
+    ],
+    "잔여퇴직금": [
+      "e8937fc2d072"
+    ],
+    "dc부담금": [
+      "ef543917694e"
+    ],
+    "service_years": [
+      "66f6201af26e"
+    ],
+    "db_reserve": [
+      "66f6201af26e"
+    ],
+    "multiplier": [
+      "66f6201af26e",
+      "441d2d67fe24"
+    ],
+    "퇴직금누계": [
+      "0acc425eb57b"
+    ],
+    "중간정산일": [
+      "0acc425eb57b"
+    ],
+    "현재적립금": [
+      "0acc425eb57b"
+    ],
+    "가입일": [
+      "93cef255a875"
+    ],
+    "월납입액": [
+      "93cef255a875"
+    ],
+    "적립금": [
+      "93cef255a875"
+    ],
+    "수익률": [
+      "93cef255a875"
+    ],
+    "예상연금": [
+      "93cef255a875"
+    ],
+    "empid": [
+      "441d2d67fe24"
+    ],
+    "hiredate": [
+      "441d2d67fe24"
+    ],
+    "severancepay": [
+      "441d2d67fe24"
+    ],
+    "serviceyears": [
+      "441d2d67fe24"
+    ],
+    "근속월수": [
+      "49f41c5e8d55"
+    ],
+    "퇴직급여": [
+      "49f41c5e8d55"
+    ],
+    "dc적립금": [
+      "49f41c5e8d55"
+    ],
+    "db적립금": [
+      "49f41c5e8d55"
+    ],
+    "1차정산일": [
+      "49f61cb00dcc"
+    ],
+    "1차정산액": [
+      "49f61cb00dcc"
+    ],
+    "2차정산일": [
+      "49f61cb00dcc"
+    ],
+    "2차정산액": [
+      "49f61cb00dcc"
+    ],
+    "현재퇴직금": [
+      "49f61cb00dcc"
     ]
   },
   "stats": {
-    "total_cases": 12,
-    "auto_approved": 12,
+    "total_cases": 34,
+    "auto_approved": 34,
     "manual_corrected": 0
   }
 }

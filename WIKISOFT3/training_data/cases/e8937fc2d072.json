@@ -1,40 +1,36 @@
 {
-  "case_id": "1103f2567f3c",
-  "timestamp": "2025-12-31T03:42:47.918123",
+  "case_id": "e8937fc2d072",
+  "timestamp": "2025-12-31T03:42:47.926115",
   "headers": [
-    "사원번호",
-    "생년월일",
-    "성별",
+    "사번",
+    "이름",
     "입사일자",
-    "종업원구분",
     "기준급여",
-    "퇴직금추계액"
+    "근속년수",
+    "퇴직금추계액",
+    "중간정산액",
+    "잔여퇴직금"
   ],
   "normalized_headers": [
-    "사원번호",
-    "생년월일",
-    "성별",
+    "사번",
+    "이름",
     "입사일자",
-    "종업원구분",
     "기준급여",
-    "퇴직금추계액"
+    "근속년수",
+    "퇴직금추계액",
+    "중간정산액",
+    "잔여퇴직금"
   ],
   "matches": [
     {
-      "source": "사원번호",
+      "source": "사번",
       "target": "사원번호",
       "confidence": 0.95,
       "fallback": false
     },
     {
-      "source": "생년월일",
-      "target": "생년월일",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
-      "source": "성별",
-      "target": "성별",
+      "source": "이름",
+      "target": "이름",
       "confidence": 0.95,
       "fallback": false
     },
@@ -45,20 +41,32 @@
       "fallback": false
     },
     {
-      "source": "종업원구분",
-      "target": "종업원구분",
-      "confidence": 0.95,
-      "fallback": false
-    },
-    {
       "source": "기준급여",
       "target": "기준급여",
       "confidence": 0.95,
       "fallback": false
     },
     {
+      "source": "근속년수",
+      "target": "근속년수",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
       "source": "퇴직금추계액",
       "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "중간정산액",
+      "target": "중간정산액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "잔여퇴직금",
+      "target": "잔여퇴직금",
       "confidence": 0.95,
       "fallback": false
     }
@@ -68,7 +76,7 @@
   "human_corrections": {},
   "metadata": {
     "source": "synthetic",
-    "pattern_name": "표준형",
+    "pattern_name": "퇴직금상세형",
     "generated": true
   }
 }
