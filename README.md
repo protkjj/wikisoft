@@ -1,216 +1,139 @@
-# 🚀 WIKISOFT3
+# 🏢 WIKISOFT 프로젝트
 
-**HR/재무 엑셀 자동 검증 시스템 v3**
+**퇴직연금 컨설팅을 위한 HR/재무 데이터 자동 검증 시스템**
 
-> WIKISOFT2의 설계를 완성하여 자동화율 85%, 처리 시간 5분/파일 달성
-
----
-
-## ⚡ 빠른 실행 (한 번에 실행)
-
-### 백엔드 + 프론트엔드 동시 실행
-```bash
-# 터미널 1 - 백엔드 (포트 8003)
-cd /Users/kj/Desktop/wiki/WIKISOFT3 && source ../.venv/bin/activate && uvicorn external.api.main:app --reload --port 8003
-
-# 터미널 2 - 프론트엔드 (포트 3003)
-cd /Users/kj/Desktop/wiki/WIKISOFT3/frontend && npm run dev -- --port 3003
-```
-
-그 다음 브라우저에서 `http://localhost:3003` 접속
+> 사람이 30분 걸리던 엑셀 검증 작업을 AI가 5분 안에 처리합니다.
 
 ---
 
-## 🚀 빠른 시작
+## 📌 이 프로젝트가 하는 일
 
-### 1. 백엔드 실행 (포트 8003)
-```bash
-cd /Users/kj/Desktop/wiki/WIKISOFT3
-source ../.venv/bin/activate  # 또는 python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-uvicorn external.api.main:app --reload --port 8003
-```
+퇴직연금 컨설팅 업무에서 고객사로부터 받은 **재직자명부, 급여대장** 같은 엑셀 파일을 검증합니다:
 
-### 2. 프론트엔드 실행 (포트 3003)
-```bash
-cd frontend
-npm install
-npm run dev -- --port 3003
-```
+1. **파일 업로드** → 엑셀 파일을 드래그앤드롭
+2. **자동 분석** → AI가 컬럼 헤더를 인식하고 표준 필드에 매핑
+3. **데이터 검증** → 주민번호 형식, 입사일 논리, 급여 이상치 등 체크
+4. **결과 리포트** → 오류/경고를 정리해서 보여줌
 
-### 3. 브라우저 접속
-```
-http://localhost:3003
-```
+**핵심 가치**: 수작업을 줄이고, 실수를 방지하며, 검증 기준을 자동으로 학습합니다.
 
 ---
 
-## 📊 현재 상태
-
-| Phase | 상태 | 설명 |
-|-------|------|------|
-| **Phase A** | ✅ 완료 | API Layer (health, questions, validate, batch) |
-| **Phase B** | ✅ 완료 | Agent Layer (Tool Registry, Confidence, Worker) |
-| **Phase C** | 🔶 진행중 | Memory & UX (Excel 출력, 수동 매핑) |
-| **Phase D** | ❌ 미시작 | 배포 준비 (텔레메트리, 한/영, 오프라인) |
-
----
-
-## 🎯 핵심 철학
-
-WIKISOFT2에서 배운 것:
-
-1. **"자연스러운 매칭"이 핵심** - AI는 가속기, 폴백이 기본
-2. **UX가 기술보다 중요** - 질문 최소화, 뒤로가기, 버튼 위치 고정
-3. **경고는 차단이 아니라 안내** - 투명성 확보 목적
-4. **신뢰도 기반 의사결정** - 95% 이상만 자동, 나머지는 확인 요청
-5. **케이스 학습이 미래** - 100개 파일 처리 후 새 파일은 거의 자동
-
----
-
-## 🏗️ 아키텍처
+## 📂 폴더 구조
 
 ```
-┌──────────────────────────────────────────────┐
-│  Frontend (React + Vite, Port 3003)          │
-├──────────────────────────────────────────────┤
-│  API Layer (FastAPI, Port 8003)              │
-│  /api/health, /api/validate, /api/batch-*    │
-├──────────────────────────────────────────────┤
-│  Agent Layer                                 │
-│  Tool Registry → Confidence → Decision       │
-├──────────────────────────────────────────────┤
-│  Core Tools                                  │
-│  Parser | AI Matcher | Validator | Report    │
-├──────────────────────────────────────────────┤
-│  Queue Layer (Redis/RQ + in-memory fallback) │
-└──────────────────────────────────────────────┘
+wiki/
+├── WIKISOFT1/          # v1 - 초기 프로토타입 (레거시)
+├── WIKISOFT2/          # v2 - 참조용 아키텍처
+├── WIKISOFT3/          # v3 - 현재 개발 중 ⭐
+│   ├── external/       #   API 서버 (FastAPI)
+│   ├── internal/       #   핵심 로직 (AI, 검증, 파서)
+│   ├── frontend/       #   웹 UI (React + Vite)
+│   └── training_data/  #   학습 데이터
+└── data/               # 테스트용 샘플 데이터
 ```
 
----
-
-## ⚡ 빠른 시작
-
-### 1. 백엔드 실행
-```bash
-cd /Users/kj/Desktop/wiki/WIKISOFT3
-source ../.venv/bin/activate
-uvicorn external.api.main:app --host 0.0.0.0 --port 8003 --reload
-```
-
-### 2. 프론트엔드 실행
-```bash
-cd /Users/kj/Desktop/wiki/WIKISOFT3/frontend
-npm install
-npm run dev
-```
-
-### 3. 접속
-- Frontend: http://localhost:3003
-- API Docs: http://localhost:8003/docs
+**현재 작업 중인 버전은 `WIKISOFT3`입니다.**
 
 ---
 
-## 📋 API 엔드포인트
+## 🚀 WIKISOFT3 현재 상태 (2026년 1월 기준)
 
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | /api/health | 시스템 상태 |
-| GET | /api/diagnostic-questions | 24개 질문 조회 |
-| POST | /api/validate | 파일 검증 (auto-validate) |
-| POST | /api/batch-validate | 배치 검증 |
-| GET | /api/batch-status/{job_id} | 배치 진행률 |
+### 완료된 기능 ✅
 
----
+| 기능 | 설명 |
+|------|------|
+| **엑셀 파싱** | XLS/XLSX 파일 자동 인식, 헤더 추출 |
+| **AI 헤더 매핑** | GPT-4o로 "사번" → `employee_id` 자동 매핑 |
+| **3단계 검증** | 규칙 기반 → AI 보조 → 휴리스틱 검증 |
+| **자율 학습** | 사용자 피드백으로 검증 규칙 자동 추가 |
+| **챗봇** | "이 경고 무시해줘" 같은 자연어 처리 |
+| **신뢰도 점수** | 매핑/검증 결과에 대한 확신도 표시 |
 
-## ✅ 구현 완료
+### 학습 데이터 📊
 
-### Phase A: API Layer
-- [x] /api/health - 시스템 상태 확인
-- [x] /api/diagnostic-questions - 24개 고정 질문
-- [x] /api/validate - Tool Registry 연동 검증
-- [x] /api/batch-validate - Redis/in-memory 큐
-- [x] /api/batch-status - 진행률 조회
+- **40개** 검증 케이스 축적
+- **182개** 헤더 패턴 학습
+- **19개** 검증 규칙 + **9개** 자율 학습 패턴
+- **5개 고객사** 실제 데이터로 학습 완료
 
-### Phase B: Agent & Batch
-- [x] Tool Registry - 11개 도구 등록
-- [x] Confidence Scorer - 4가지 지표 계산
-- [x] AI Matcher - GPT-4o + 폴백
-- [x] Layer 1/2 Validator
-- [x] 스트리밍 파서 - XLS/XLSX 지원
-- [x] Worker 배치 - Redis 폴백 포함
-- [x] 프론트엔드 사이드바 레이아웃
-
----
-
-## �� TODO (Phase C)
-
-### 높은 우선순위 🔴
-- [ ] **Excel 출력** - openpyxl, 빨강/노랑 셀 강조
-- [ ] **Memory 유사도 검색** - 케이스 매칭
-- [ ] **수동 매핑 UI** - 드래그앤드롭
-- [ ] **Few-shot Learning** - 성공 패턴 저장
-
-### 중간 우선순위 🟡
-- [ ] 동적 질문 생성 - 이상치 감지 시 추가 질문
-- [ ] Cross-file Learning - 여러 파일 학습
-- [ ] 자동 재시도 로직 - 실패 시 대안 전략
-
-### 낮은 우선순위 🟢 (Phase D)
-- [ ] 텔레메트리
-- [ ] 감사 로그
-- [ ] 한/영 UI 전환
-- [ ] 오프라인/온프레 모드
-
----
-
-## 📈 성능 목표
+### 성능 지표 📈
 
 | 지표 | 현재 | 목표 |
 |------|------|------|
-| 자동화율 | ~30% | **85%+** |
-| 처리 시간 | 30분/파일 | **5분/파일** |
-| 신뢰도 | 75% | **90%+** |
-| 사람 개입 | 70% | **15%** |
+| 자동화율 | 80% | 90% |
+| 매핑 정확도 | 95% | 98% |
+| 처리 시간 | ~3분/파일 | <2분/파일 |
 
 ---
 
-## 🔐 환경 설정
+## ⚡ 빠른 실행
 
-`.env` 파일 (선택):
+### 1. 백엔드 (포트 8003)
 ```bash
-OPENAI_API_KEY=sk-...  # AI 매칭용 (없으면 폴백 사용)
+cd WIKISOFT3
+source ../.venv/bin/activate
+uvicorn external.api.main:app --reload --port 8003
 ```
+
+### 2. 프론트엔드 (포트 3004)
+```bash
+cd WIKISOFT3/frontend
+npm install && npm run dev -- --port 3004
+```
+
+### 3. 접속
+- **웹 UI**: http://localhost:3004
+- **API 문서**: http://localhost:8003/docs
 
 ---
 
-## 📁 프로젝트 구조
+## 🔮 향후 고려사항
+
+### 1. 워크플로우 자동화 (Windmill 통합)
+
+현재는 API를 직접 호출하는 구조지만, 향후 **Windmill** 같은 워크플로우 엔진과 통합을 고려하고 있습니다:
 
 ```
-WIKISOFT3/
-├── external/api/          # FastAPI 서버
-│   ├── main.py
-│   └── routes/
-├── internal/              # 핵심 로직
-│   ├── agent/             # Tool Registry, Confidence
-│   ├── ai/                # AI 매칭
-│   ├── memory/            # 케이스 저장
-│   ├── parsers/           # Excel 파싱
-│   ├── queue/             # 배치 작업
-│   ├── validators/        # L1/L2 검증
-│   └── generators/        # 리포트
-├── frontend/              # React UI
-├── PROJECT_SPEC.md        # 상세 기술 스펙
-├── ARCHITECTURE.md        # 아키텍처 문서
-└── README.md              # 이 파일
+현재:   고객 → 파일 업로드 → WIKISOFT3 API → 결과
+
+향후:   고객 → Windmill 워크플로우 → WIKISOFT3 (MCP 서버) → 결과
+              ├── 고객 온보딩
+              ├── 서류 수집 자동화
+              ├── AI 검증 (WIKISOFT3)
+              ├── 계리계산
+              └── 리포트 생성
 ```
+
+**기대 효과:**
+- 🔐 **보안 강화** - API가 직접 노출되지 않고 Windmill이 게이트웨이 역할
+- ⚡ **안정성 향상** - 큐잉, 재시도, 부분 실패 허용
+- 📊 **모니터링** - 실행 이력, 감사 로그 자동화
+- 🔄 **자동화 확대** - 파일 업로드부터 최종 리포트까지 원스톱
+
+### 2. MCP (Model Context Protocol) 서버
+
+WIKISOFT3를 **MCP 서버**로 감싸면 AI Agent가 도구로 호출 가능:
+- `validate_employee_list` - 재직자명부 검증
+- `get_validation_status` - 검증 상태 조회
+- `generate_validation_report` - 리포트 생성
+
+### 3. 추가 개선 예정
+- [ ] Excel 결과 출력 (오류 셀 하이라이트)
+- [ ] 수동 매핑 드래그앤드롭 UI
+- [ ] 다국어 지원 (한/영)
+- [ ] 오프라인 모드
 
 ---
 
 ## 🔗 관련 문서
 
-- [PROJECT_SPEC.md](PROJECT_SPEC.md) - 상세 기술 스펙, API 명세
-- [ARCHITECTURE.md](ARCHITECTURE.md) - 시스템 아키텍처
+| 문서 | 설명 |
+|------|------|
+| [WIKISOFT3/README.md](WIKISOFT3/README.md) | 상세 기술 문서 |
+| [WIKISOFT3/ARCHITECTURE.md](WIKISOFT3/ARCHITECTURE.md) | 시스템 아키텍처 |
+| [WIKISOFT3/PROJECT_SPEC.md](WIKISOFT3/PROJECT_SPEC.md) | API 명세, 기술 스펙 |
+| [WIKISOFT3/PROJECT_STRUCTURE.md](WIKISOFT3/PROJECT_STRUCTURE.md) | 파일별 역할 설명 |
 
 ---
 
@@ -218,12 +141,22 @@ WIKISOFT3/
 
 **Repository**: https://github.com/protkjj/wikisoft
 
-| Branch | 내용 |
+| Branch | 설명 |
 |--------|------|
-| main | WIKISOFT3 (현재) |
-| wikisoft1 | WIKISOFT1 (레거시) |
-| wikisoft2 | WIKISOFT2 (참조용) |
+| `kangjun` | 현재 개발 브랜치 |
+| `main` | 안정 버전 |
+| `wikisoft1` | v1 레거시 |
+| `wikisoft2` | v2 참조용 |
 
 ---
 
-**최종 목표**: WIKISOFT2의 설계를 완성하여 **자동화율 85%, 처리 시간 5분/파일** 달성 🎯
+## 💡 핵심 철학
+
+1. **AI는 가속기, 폴백이 기본** - AI 없어도 동작, 있으면 더 똑똑해짐
+2. **UX가 기술보다 중요** - 사용자가 이해하기 쉬운 결과 제공
+3. **경고는 차단이 아니라 안내** - 투명하게 보여주고 사용자가 판단
+4. **케이스 학습이 미래** - 많이 쓸수록 자동화율 상승
+
+---
+
+**최종 목표**: 퇴직연금 컨설팅 데이터 검증의 **90% 자동화** 달성 🎯
