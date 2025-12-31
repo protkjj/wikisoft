@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import type { AutoValidateResult, HeaderMatch, AnomalyItem } from './types'
+import type { AutoValidateResultExtended, HeaderMatch } from './types'
 import './ValidationResults.css'
 
 interface ValidationResultsProps {
-  result: AutoValidateResult
+  result: AutoValidateResultExtended
   onDownloadExcel: () => void
+  onDownloadFinalData: () => void
   onManualMapping: () => void
   onBack: () => void
 }
@@ -12,6 +13,7 @@ interface ValidationResultsProps {
 export default function ValidationResults({
   result,
   onDownloadExcel,
+  onDownloadFinalData,
   onManualMapping,
   onBack
 }: ValidationResultsProps) {
@@ -32,14 +34,14 @@ export default function ValidationResults({
 
   // 통계 계산
   const stats = useMemo(() => {
-    const matches = result.steps?.matches?.matches || []
+    const matches: HeaderMatch[] = result.steps?.matches?.matches || []
     const anomalies = result.anomalies?.anomalies || []
     const rowCount = result.steps?.parsed_summary?.row_count || 0
     
-    const mappedCount = matches.filter(m => m.target && !m.unmapped).length
+    const mappedCount = matches.filter((m: HeaderMatch) => m.target && !m.unmapped).length
     const totalHeaders = matches.length
-    const errorCount = anomalies.filter(a => a.severity === 'error' || a.severity === 'high').length
-    const warningCount = anomalies.filter(a => a.severity === 'warning' || a.severity === 'medium').length
+    const errorCount = anomalies.filter((a) => a.severity === 'error' || a.severity === 'high').length
+    const warningCount = anomalies.filter((a) => a.severity === 'warning' || a.severity === 'medium').length
     
     return {
       rowCount,
@@ -54,11 +56,11 @@ export default function ValidationResults({
 
   // 매칭 결과 분류
   const matchGroups = useMemo(() => {
-    const matches = result.steps?.matches?.matches || []
+    const matches: HeaderMatch[] = result.steps?.matches?.matches || []
     return {
-      mapped: matches.filter(m => m.target && !m.unmapped),
-      unmapped: matches.filter(m => !m.target || m.unmapped),
-      lowConfidence: matches.filter(m => m.target && (m.confidence || 0) < 0.7)
+      mapped: matches.filter((m: HeaderMatch) => m.target && !m.unmapped),
+      unmapped: matches.filter((m: HeaderMatch) => !m.target || m.unmapped),
+      lowConfidence: matches.filter((m: HeaderMatch) => m.target && (m.confidence || 0) < 0.7)
     }
   }, [result])
 
@@ -72,10 +74,13 @@ export default function ValidationResults({
         <h2>검증 결과</h2>
         <div className="header-actions">
           <button className="action-btn secondary" onClick={onManualMapping}>
-            수동 매핑
+            ✏️ 수동 매핑
+          </button>
+          <button className="action-btn primary" onClick={onDownloadFinalData}>
+            📄 최종 수정본
           </button>
           <button className="action-btn primary" onClick={onDownloadExcel}>
-            📥 Excel 다운로드
+            📊 검증 리포트
           </button>
         </div>
       </div>
@@ -164,7 +169,7 @@ export default function ValidationResults({
               </tr>
             </thead>
             <tbody>
-              {matchGroups.mapped.map((match, idx) => (
+              {matchGroups.mapped.map((match: HeaderMatch, idx: number) => (
                 <tr key={idx} className="mapped">
                   <td>{match.source}</td>
                   <td>{match.target}</td>
@@ -183,7 +188,7 @@ export default function ValidationResults({
                   <td><span className="status-badge success">✅ 매핑됨</span></td>
                 </tr>
               ))}
-              {matchGroups.unmapped.map((match, idx) => (
+              {matchGroups.unmapped.map((match: HeaderMatch, idx: number) => (
                 <tr key={`unmapped-${idx}`} className="unmapped">
                   <td>{match.source}</td>
                   <td className="empty">—</td>
@@ -201,7 +206,7 @@ export default function ValidationResults({
         <div className="section">
           <h3>⚠️ 이상 탐지 ({stats.anomalyCount}건)</h3>
           <div className="anomaly-list">
-            {(result.anomalies?.anomalies || []).map((anomaly: AnomalyItem, idx: number) => (
+            {(result.anomalies?.anomalies || []).map((anomaly, idx: number) => (
               <div 
                 key={idx} 
                 className={`anomaly-item ${anomaly.severity || 'info'}`}

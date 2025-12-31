@@ -1,0 +1,379 @@
+{
+  "case_id": "58e4261ab028",
+  "timestamp": "2025-12-31T02:50:05.428232",
+  "headers": [
+    "사원번호",
+    "성명",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "직종구분 (1:직원, 3:임원, 4:계약직,  6:임원(PUC), 7:계약직(PUC))",
+    "중간정산기준일",
+    "중간정산액",
+    "임원배수",
+    "20241231",
+    "연령",
+    "총근속년수'",
+    "중간정산이후 근속년수'",
+    "총근속년수",
+    "중간정산이후 근속년수",
+    "지급률",
+    "당년도 퇴직금추계액*",
+    "차년도 퇴직금추계액*",
+    "당년도 차이",
+    "차년도 차이",
+    "check",
+    "check",
+    "",
+    "",
+    "* 누진제 적용",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "normalized_headers": [
+    "사원번호",
+    "성명",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "직종구분 (1:직원, 3:임원, 4:계약직, 6:임원(puc), 7:계약직(puc))",
+    "중간정산기준일",
+    "중간정산액",
+    "임원배수",
+    "20241231",
+    "연령",
+    "총근속년수'",
+    "중간정산이후 근속년수'",
+    "총근속년수",
+    "중간정산이후 근속년수",
+    "지급률",
+    "당년도 퇴직금추계액*",
+    "차년도 퇴직금추계액*",
+    "당년도 차이",
+    "차년도 차이",
+    "check",
+    "check",
+    "",
+    "",
+    "* 누진제 적용",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "matches": [
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "성명",
+      "target": "이름",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "성별 (1:남자, 2:여자)",
+      "target": "성별",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "기준급여",
+      "target": "기준급여",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "당년도 퇴직금추계액",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.947,
+      "fallback": true
+    },
+    {
+      "source": "차년도 퇴직금추계액",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.947,
+      "fallback": true
+    },
+    {
+      "source": "직종구분 (1:직원, 3:임원, 4:계약직,  6:임원(PUC), 7:계약직(PUC))",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "중간정산기준일",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "중간정산액",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "임원배수",
+      "target": "적용배수",
+      "confidence": 0.667,
+      "fallback": true
+    },
+    {
+      "source": "20241231",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "연령",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "총근속년수'",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "중간정산이후 근속년수'",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "총근속년수",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "중간정산이후 근속년수",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "지급률",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "당년도 퇴직금추계액*",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.9,
+      "fallback": true
+    },
+    {
+      "source": "차년도 퇴직금추계액*",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.9,
+      "fallback": true
+    },
+    {
+      "source": "당년도 차이",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "차년도 차이",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "check",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "check",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "* 누진제 적용",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    }
+  ],
+  "confidence": 0.05270731707317072,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "filename": "20251203_인흥산업_2412_error check.xlsx",
+    "company_name": "인흥산업",
+    "row_count": 2999,
+    "error_count": 2,
+    "warning_count": 0,
+    "anomaly_count": 2
+  }
+}

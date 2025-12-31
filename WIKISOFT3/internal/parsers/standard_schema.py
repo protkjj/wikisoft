@@ -17,7 +17,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "직원의 성명 (한글 또는 영문)",
         "aliases": ["성명", "name", "full_name", "employee_name", "직원명"],
         "examples": ["홍길동", "김철수", "John Doe"],
-        "required": True,
+        "required": False,  # 개인정보 보호 - 명부에 이름 제외 가능
         "sheet": "재직자",
     },
     "생년월일": {

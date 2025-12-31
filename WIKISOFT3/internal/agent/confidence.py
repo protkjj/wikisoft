@@ -17,16 +17,22 @@ def estimate_confidence(parsed: Dict[str, Any], matches: Dict[str, Any], validat
     - 최소: 0.0, 최대: 1.0
     """
     confidence = 1.0
+    avg_conf = 0.0
 
+    # matches가 리스트인 경우 처리 (list object has no attribute 'get' 버그 수정)
+    if isinstance(matches, list):
+        match_list = matches
+    else:
+        match_list = matches.get("matches", [])
+    
     # 매칭 신뢰도
-    match_list = matches.get("matches", [])
     if match_list:
         avg_conf = sum(m.get("confidence", 0) for m in match_list) / len(match_list)
         confidence *= avg_conf
 
     # L1 검증 페널티
-    errors = validation_l1.get("errors", [])
-    warnings = validation_l1.get("warnings", [])
+    errors = validation_l1.get("errors", []) if isinstance(validation_l1, dict) else []
+    warnings = validation_l1.get("warnings", []) if isinstance(validation_l1, dict) else []
     confidence -= len(errors) * 0.1
     confidence -= len(warnings) * 0.05
 
@@ -52,8 +58,13 @@ def detect_anomalies(parsed: Dict[str, Any], matches: Dict[str, Any], validation
 
     anomalies = []
 
+    # matches가 리스트인 경우 처리
+    if isinstance(matches, list):
+        match_list = matches
+    else:
+        match_list = matches.get("matches", [])
+
     # unmapped 헤더 비율
-    match_list = matches.get("matches", [])
     unmapped_count = sum(1 for m in match_list if m.get("unmapped"))
     if match_list and unmapped_count / len(match_list) > 0.2:
         anomalies.append({

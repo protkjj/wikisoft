@@ -44,7 +44,7 @@ class TestReactAgent:
     def test_agent_run_with_valid_data(self, agent):
         """유효한 데이터로 에이전트 실행"""
         # 간단한 CSV 데이터
-        test_data = b"사원번호,이름,입사일\n001,홍길동,2020-01-01"
+        test_data = "사원번호,이름,입사일\n001,홍길동,2020-01-01".encode('utf-8')
         
         result = agent.run(
             file_bytes=test_data,
@@ -70,7 +70,7 @@ class TestReactAgent:
     
     def test_agent_run_with_diagnostic_answers(self, agent):
         """진단 답변과 함께 실행"""
-        test_data = b"사원번호,이름,기준급여\n001,홍길동,3000000"
+        test_data = "사원번호,이름,기준급여\n001,홍길동,3000000".encode('utf-8')
         
         result = agent.run(
             file_bytes=test_data,
@@ -82,7 +82,7 @@ class TestReactAgent:
     
     def test_agent_reasoning_history(self, agent):
         """추론 히스토리 기록"""
-        test_data = b"사원번호,이름\n001,홍길동"
+        test_data = "사원번호,이름\n001,홍길동".encode('utf-8')
         
         result = agent.run(file_bytes=test_data)
         
@@ -97,7 +97,7 @@ class TestReactAgent:
     
     def test_explain_reasoning(self, agent):
         """추론 과정 설명"""
-        test_data = b"사원번호,이름\n001,홍길동"
+        test_data = "사원번호,이름\n001,홍길동".encode('utf-8')
         agent.run(file_bytes=test_data)
         
         explanation = agent.explain_reasoning()

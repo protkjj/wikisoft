@@ -330,3 +330,87 @@ def export_validation_to_excel(
             f.write(excel_bytes)
     
     return excel_bytes
+
+
+def generate_final_data_excel(
+    original_data: Dict[str, Any],
+    validation_result: Dict[str, Any]
+) -> bytes:
+    """
+    최종 수정본 Excel 생성 (매핑 완료된 깔끔한 데이터)
+    
+    원본 헤더를 표준 필드명으로 변환하여 정리된 데이터 제공
+    
+    Args:
+        original_data: 원본 파싱 데이터 (headers, rows)
+        validation_result: 검증 결과 (매핑 정보 포함)
+    
+    Returns:
+        Excel 파일 bytes
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "최종 데이터"
+    
+    # 매핑 정보 추출
+    matches = validation_result.get("steps", {}).get("matches", {}).get("matches", [])
+    
+    # 원본 헤더 → 표준 필드명 매핑
+    header_mapping = {}
+    for match in matches:
+        source = match.get("source", "")
+        target = match.get("target")
+        if target:  # 매핑된 것만
+            header_mapping[source] = target
+    
+    original_headers = original_data.get("headers", [])
+    rows = original_data.get("rows", [])
+    
+    # 새 헤더 (표준 필드명으로 변환)
+    new_headers = []
+    included_cols = []  # 포함할 컬럼 인덱스
+    
+    for idx, header in enumerate(original_headers):
+        if header in header_mapping:
+            new_headers.append(header_mapping[header])
+            included_cols.append(idx)
+        else:
+            # 미매핑 컬럼도 포함 (원본 이름 유지)
+            new_headers.append(f"[미매핑] {header}")
+            included_cols.append(idx)
+    
+    # 헤더 작성
+    for col_idx, header in enumerate(new_headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        
+        if header.startswith("[미매핑]"):
+            cell.fill = STYLE_WARNING
+            cell.font = FONT_WARNING
+        else:
+            cell.fill = STYLE_HEADER
+            cell.font = FONT_HEADER
+        
+        cell.border = BORDER_THIN
+        cell.alignment = ALIGN_CENTER
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(15, len(str(header)) + 2)
+    
+    # 데이터 작성
+    for row_idx, row_data in enumerate(rows, 2):
+        for new_col_idx, orig_col_idx in enumerate(included_cols, 1):
+            value = row_data[orig_col_idx] if orig_col_idx < len(row_data) else ""
+            cell = ws.cell(row=row_idx, column=new_col_idx, value=value)
+            cell.border = BORDER_THIN
+            
+            # 빈 필수값 하이라이트
+            if value is None or (isinstance(value, str) and value.strip() == ""):
+                header = new_headers[new_col_idx - 1]
+                required_fields = ["사원번호", "이름", "생년월일", "입사일자", "기준급여"]
+                if header in required_fields:
+                    cell.fill = STYLE_ERROR
+                    cell.value = "(누락)"
+    
+    # 저장
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()

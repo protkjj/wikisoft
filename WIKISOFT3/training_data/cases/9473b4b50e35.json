@@ -1,0 +1,128 @@
+{
+  "case_id": "9473b4b50e35",
+  "timestamp": "2025-12-31T02:52:33.472331",
+  "headers": [
+    "참고사항",
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+    "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "제도구분 (1,2,3)",
+    "적용배수"
+  ],
+  "normalized_headers": [
+    "참고사항",
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+    "종업원 구분 (1:직원, 3:임원, 4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "제도구분 (1,2,3)",
+    "적용배수"
+  ],
+  "matches": [
+    {
+      "source": "참고사항",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "성별 (1:남자, 2:여자)",
+      "target": "성별",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "기준급여",
+      "target": "기준급여",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "당년도 퇴직금추계액",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.947,
+      "fallback": true
+    },
+    {
+      "source": "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.947,
+      "fallback": true
+    },
+    {
+      "source": "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+      "target": "종업원구분",
+      "confidence": 0.909,
+      "fallback": true
+    },
+    {
+      "source": "중간정산기준일",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "중간정산액",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "제도구분 (1,2,3)",
+      "target": "제도구분",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "적용배수",
+      "target": "적용배수",
+      "confidence": 1.0,
+      "fallback": true
+    }
+  ],
+  "confidence": 0.5540769230769231,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "filename": "20251223_세라젬_202512_확정급여채무평가_작성요청자료_기타장기 제외_메일발송.xls",
+    "company_name": "세라젬",
+    "row_count": 750,
+    "error_count": 2,
+    "warning_count": 0,
+    "anomaly_count": 1
+  }
+}

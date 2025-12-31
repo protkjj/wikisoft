@@ -1,0 +1,159 @@
+{
+  "case_id": "5c8673bdba4c",
+  "timestamp": "2025-12-31T02:50:16.256122",
+  "headers": [
+    "참고사항",
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "퇴직일 또는 DC전환일",
+    "퇴직금 또는 DC전환금",
+    "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+    "사유 (1: 퇴직, 2: DC전환)",
+    "제도구분 (1,2,3)",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "normalized_headers": [
+    "참고사항",
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "퇴직일 또는 dc전환일",
+    "퇴직금 또는 dc전환금",
+    "종업원 구분 (1:직원, 3:임원, 4:계약직)",
+    "사유 (1: 퇴직, 2: dc전환)",
+    "제도구분 (1,2,3)",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "matches": [
+    {
+      "source": "참고사항",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "성별 (1:남자, 2:여자)",
+      "target": "성별",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "퇴직일 또는 DC전환일",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "퇴직금 또는 DC전환금",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+      "target": "종업원구분",
+      "confidence": 0.909,
+      "fallback": true
+    },
+    {
+      "source": "사유 (1: 퇴직, 2: DC전환)",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "제도구분 (1,2,3)",
+      "target": "제도구분",
+      "confidence": 1.0,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "fallback": true
+    }
+  ],
+  "confidence": 0.06931249999999994,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "filename": "푸본현대생명_2212_확정급여채무평가_작성요청자료_송부용(재발송).xlsx",
+    "company_name": "2212",
+    "row_count": 159,
+    "error_count": 3,
+    "warning_count": 0,
+    "anomaly_count": 2
+  }
+}

@@ -10,7 +10,7 @@ from internal.agent.react_agent import create_react_agent
 from internal.agent.retry_strategies import (
     get_async_retry_strategy, RetryReason, StrategyType
 )
-from internal.generators.report import generate_excel_report
+from internal.generators.report import generate_excel_report, generate_final_data_excel
 from internal.memory.case_store import save_successful_case
 
 router = APIRouter(prefix="/auto-validate", tags=["auto-validate"])
@@ -336,7 +336,7 @@ def _format_answers_for_ai(answers: dict) -> str:
 
 @router.get("/download-excel")
 async def download_excel():
-    """마지막 검증 결과를 Excel 파일로 다운로드"""
+    """마지막 검증 결과를 Excel 파일로 다운로드 (검증 리포트)"""
     global _last_validation_result, _last_parsed_data
     
     if not _last_validation_result:
@@ -355,7 +355,38 @@ async def download_excel():
             BytesIO(excel_bytes),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": "attachment; filename=validation_result.xlsx"
+                "Content-Disposition": "attachment; filename=validation_report.xlsx"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Excel 생성 오류: {str(e)}"
+        )
+
+
+@router.get("/download-final-data")
+async def download_final_data():
+    """최종 수정본 다운로드 (매핑 완료된 깔끔한 데이터)"""
+    global _last_validation_result, _last_parsed_data
+    
+    if not _last_validation_result or not _last_parsed_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail="검증 결과가 없습니다. 먼저 파일을 검증해주세요."
+        )
+    
+    try:
+        excel_bytes = generate_final_data_excel(
+            original_data=_last_parsed_data,
+            validation_result=_last_validation_result
+        )
+        
+        return StreamingResponse(
+            BytesIO(excel_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=final_data.xlsx"
             }
         )
     except Exception as e:

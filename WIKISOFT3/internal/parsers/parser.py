@@ -60,7 +60,11 @@ def _parse_xlsx(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: i
     headers: List[Any] = []
     for idx, row in enumerate(ws.iter_rows(values_only=True)):
         if idx == 0:
-            headers = ["" if c is None else str(c) for c in row]
+            # 헤더 정리: 줄바꿈/공백 제거
+            headers = [
+                "" if c is None else str(c).replace('\n', ' ').replace('\r', '').strip()
+                for c in row
+            ]
             continue
         if max_rows and len(rows) >= max_rows:
             break
@@ -92,7 +96,8 @@ def _parse_xls(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: in
             break
 
     df = pd.read_excel(xls, sheet_name=target_sheet, header=0, nrows=max_rows)
-    headers = [str(c) for c in df.columns.tolist()]
+    # 헤더 정리: 줄바꿈/공백 제거
+    headers = [str(c).replace('\n', ' ').replace('\r', '').strip() for c in df.columns.tolist()]
     rows = df.values.tolist()
 
     return {

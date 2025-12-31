@@ -1,3 +1,11 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# .env 파일 로드
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(env_path)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 

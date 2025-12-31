@@ -105,12 +105,12 @@ function App() {
 
     try {
       setLoading(true)
-      // Excel 파일 다운로드
+      // Excel 파일 다운로드 (검증 리포트)
       const blob = await api.downloadExcel()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `검증결과_${new Date().toISOString().split('T')[0]}.xlsx`
+      a.download = `검증리포트_${new Date().toISOString().split('T')[0]}.xlsx`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -132,6 +132,29 @@ function App() {
       document.body.removeChild(a)
       
       setCurrentStep('download')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDownloadFinalData = async () => {
+    if (!validationResult) return
+
+    try {
+      setLoading(true)
+      // 최종 수정본 다운로드 (매핑 완료된 데이터)
+      const blob = await api.downloadFinalData()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `최종수정본_${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err: any) {
+      console.error('최종 수정본 다운로드 오류:', err)
+      setError('최종 수정본 다운로드에 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -548,11 +571,18 @@ function App() {
               ← 다시 검증
             </button>
             <button
+              className="btn-secondary"
+              onClick={handleDownloadFinalData}
+              disabled={loading}
+            >
+              📄 최종 수정본
+            </button>
+            <button
               className="btn-primary"
               onClick={handleDownload}
               disabled={loading}
             >
-              📥 Excel 다운로드 →
+              📊 검증 리포트 →
             </button>
           </div>
         </div>

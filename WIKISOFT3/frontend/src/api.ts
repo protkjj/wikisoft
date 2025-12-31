@@ -54,9 +54,17 @@ export const api = {
     return response.data
   },
 
-  // Excel 파일 다운로드
+  // Excel 파일 다운로드 (검증 리포트)
   async downloadExcel(): Promise<Blob> {
     const response = await axios.get(`${API_BASE}/auto-validate/download-excel`, {
+      responseType: 'blob'
+    })
+    return response.data
+  },
+
+  // 최종 수정본 다운로드 (매핑 완료된 데이터)
+  async downloadFinalData(): Promise<Blob> {
+    const response = await axios.get(`${API_BASE}/auto-validate/download-final-data`, {
       responseType: 'blob'
     })
     return response.data
