@@ -12,6 +12,7 @@ from internal.agent.retry_strategies import (
 )
 from internal.generators.report import generate_excel_report, generate_final_data_excel
 from internal.memory.case_store import save_successful_case
+from internal.utils.security import validate_upload_file, secure_logger
 
 router = APIRouter(prefix="/auto-validate", tags=["auto-validate"])
 
@@ -33,8 +34,9 @@ async def auto_validate(
     """
     global _last_validation_result, _last_parsed_data, _last_diagnostic_answers
     
-    if not file:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is required")
+    # 파일 검증 (타입, 크기, 매직바이트)
+    file_bytes, filename = await validate_upload_file(file)
+    secure_logger.info(f"파일 업로드: {filename}, 크기: {len(file_bytes)} bytes")
 
     # 진단 답변 파싱
     diagnostic_answers = {}
@@ -45,7 +47,6 @@ async def auto_validate(
         except json.JSONDecodeError:
             pass
 
-    file_bytes = await file.read()
     registry = get_registry()
 
     # 1. 파싱
