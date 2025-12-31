@@ -2,7 +2,11 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
+from dotenv import load_dotenv
 from openai import AzureOpenAI, OpenAI
+
+# .env 파일 로드
+load_dotenv()
 
 
 class LLMClient:

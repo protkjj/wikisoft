@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import agent, batch, diagnostic_questions, health, validate, react_agent
+from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn
 
 app = FastAPI(title="WIKISOFT3 API", version="0.0.1")
 
@@ -92,7 +92,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],  # 필요한 메서드만 허용
+    allow_methods=["GET", "POST", "DELETE"],  # 학습 API용 DELETE 추가
     allow_headers=["Content-Type", "Authorization"],  # 필요한 헤더만 허용
     max_age=3600,  # preflight 캐시 1시간
 )
@@ -104,6 +104,7 @@ app.include_router(validate.router, prefix="/api")
 app.include_router(batch.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
 app.include_router(react_agent.router, prefix="/api")
+app.include_router(learn.router, prefix="/api")
 
 # 기존 경로도 유지 (하위 호환)
 app.include_router(health.router)
@@ -112,3 +113,4 @@ app.include_router(validate.router)
 app.include_router(batch.router)
 app.include_router(agent.router)
 app.include_router(react_agent.router)
+app.include_router(learn.router)

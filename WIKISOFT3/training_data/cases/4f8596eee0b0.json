@@ -1,6 +1,6 @@
 {
-  "case_id": "9473b4b50e35",
-  "timestamp": "2025-12-31T15:38:58.860146",
+  "case_id": "4f8596eee0b0",
+  "timestamp": "2025-12-31T16:15:31.125406",
   "headers": [
     "참고사항",
     "사원번호",
@@ -9,12 +9,13 @@
     "입사일자",
     "기준급여",
     "당년도 퇴직금추계액",
-    "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+    "차년도 퇴직금추계액",
     "종업원 구분 (1:직원, 3:임원,  4:계약직)",
     "중간정산기준일",
     "중간정산액",
     "제도구분 (1,2,3)",
-    "적용배수"
+    "적용배수",
+    "Unnamed: 13"
   ],
   "normalized_headers": [
     "참고사항",
@@ -24,20 +25,26 @@
     "입사일자",
     "기준급여",
     "당년도 퇴직금추계액",
-    "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+    "차년도 퇴직금추계액",
     "종업원 구분 (1:직원, 3:임원, 4:계약직)",
     "중간정산기준일",
     "중간정산액",
     "제도구분 (1,2,3)",
-    "적용배수"
+    "적용배수",
+    "unnamed: 13"
   ],
   "matches": [
     {
       "source": "참고사항",
       "target": null,
       "confidence": 0.0,
-      "unmapped": true,
-      "fallback": true
+      "ignored": true
+    },
+    {
+      "source": "Unnamed: 13",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
     },
     {
       "source": "사원번호",
@@ -76,7 +83,7 @@
       "from_fewshot": true
     },
     {
-      "source": "차년도 퇴직금추계액 (임원, 정년초과자, 계약직은 반드시 입력)",
+      "source": "차년도 퇴직금추계액",
       "target": "차년도퇴직금추계액",
       "confidence": 0.95,
       "from_fewshot": true
@@ -112,15 +119,10 @@
       "from_fewshot": true
     }
   ],
-  "confidence": 0.6769230769230767,
+  "confidence": 0.8142857142857142,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "20251223_세라젬_202512_확정급여채무평가_작성요청자료_기타장기 제외_메일발송 (1).xls",
-    "company_name": "세라젬",
-    "row_count": 750,
-    "error_count": 2,
-    "warning_count": 0,
-    "anomaly_count": 0
+    "filename": "대한싸이로. 확정급여채무평가(251224_대한싸이로).xls"
   }
 }

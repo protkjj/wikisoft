@@ -593,10 +593,10 @@
 .column-list h3,
 .field-list h3 {
   margin: 0 0 1rem 0;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* 고객 헤더 목록 */
@@ -745,7 +745,7 @@
 
 .field-name {
   display: block;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -757,7 +757,7 @@
 
 .field-desc {
   display: block;
-  color: #888;
+  color: var(--text-secondary);
   font-size: 0.75rem;
   margin-top: 0.2rem;
 }
@@ -781,9 +781,9 @@
 
 .cancel-btn {
   padding: 0.8rem 1.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
@@ -791,7 +791,8 @@
 }
 
 .cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--bg-card);
+  border-color: var(--accent-primary);
 }
 
 .confirm-btn {

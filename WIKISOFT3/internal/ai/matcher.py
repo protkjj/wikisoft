@@ -8,6 +8,27 @@ from internal.parsers.standard_schema import STANDARD_SCHEMA, get_required_field
 from internal.memory.case_store import get_few_shot_examples, save_successful_case
 
 
+# 매핑 불필요한 컬럼 (무시할 헤더 키워드)
+IGNORE_HEADERS = [
+    "참고사항", "비고란", "메모", "note", "remark", "comment",
+    "unnamed", "column", "컬럼"
+]
+
+
+def _should_ignore(header: str) -> bool:
+    """매핑 불필요한 컬럼인지 확인."""
+    h_lower = header.lower().strip()
+    if not h_lower:
+        return True
+    for ignore_kw in IGNORE_HEADERS:
+        if h_lower == ignore_kw or h_lower.startswith(ignore_kw):
+            return True
+        # "unnamed"는 부분 일치도 허용
+        if ignore_kw == "unnamed" and "unnamed" in h_lower:
+            return True
+    return False
+
+
 def _normalize(header: str) -> str:
     h = header.replace("\n", " ")
     h = re.sub(r"\([^)]*\)", "", h)
@@ -26,6 +47,11 @@ def _rule_match(headers: List[str], sheet_type: str = "all") -> Dict[str, Any]:
     warnings = []
 
     for h in headers:
+        # 무시할 컬럼은 스킵
+        if _should_ignore(h):
+            matches.append({"source": h, "target": None, "confidence": 0.0, "ignored": True})
+            continue
+            
         h_norm = _normalize(h)
         best = None
         best_score = 0.0
@@ -151,19 +177,29 @@ def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool =
     headers = parsed.get("headers", [])
     use_ai = os.getenv("OPENAI_API_KEY") is not None
     
+    # 무시할 컬럼 먼저 분리
+    ignored_headers = [h for h in headers if _should_ignore(h)]
+    active_headers = [h for h in headers if not _should_ignore(h)]
+    
     # Few-shot 예제 먼저 적용 (학습된 케이스에서 직접 매핑)
-    few_shot_mappings = _apply_few_shot_mappings(headers)
+    few_shot_mappings = _apply_few_shot_mappings(active_headers)
     
     if few_shot_mappings:
         # Few-shot으로 이미 매핑된 것들 우선 사용
-        remaining_headers = [h for h in headers if h not in few_shot_mappings]
+        remaining_headers = [h for h in active_headers if h not in few_shot_mappings]
         
         if not remaining_headers:
-            # 모든 헤더가 Few-shot으로 매핑됨
-            matches = [
-                {"source": h, "target": few_shot_mappings[h], "confidence": 0.95, "from_fewshot": True}
-                for h in headers
-            ]
+            # 모든 활성 헤더가 Few-shot으로 매핑됨
+            matches = []
+            # 무시 컬럼 먼저 추가
+            for h in ignored_headers:
+                matches.append({"source": h, "target": None, "confidence": 0.0, "ignored": True})
+            # Few-shot 매핑 추가
+            for h in active_headers:
+                matches.append({
+                    "source": h, "target": few_shot_mappings[h], 
+                    "confidence": 0.95, "from_fewshot": True
+                })
             return {
                 "columns": headers,
                 "matches": matches,
@@ -172,7 +208,7 @@ def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool =
                 "used_fewshot": True,
             }
     else:
-        remaining_headers = headers
+        remaining_headers = active_headers
         few_shot_mappings = {}
     
     # 나머지는 AI 또는 규칙 기반 매칭
@@ -181,9 +217,15 @@ def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool =
     else:
         result = _rule_match(remaining_headers, sheet_type)
     
-    # Few-shot 결과와 병합
+    # Few-shot 결과와 병합, 무시 컬럼 포함
     final_matches = []
-    for h in headers:
+    
+    # 무시 컬럼 먼저 추가
+    for h in ignored_headers:
+        final_matches.append({"source": h, "target": None, "confidence": 0.0, "ignored": True})
+    
+    # 활성 헤더들 처리
+    for h in active_headers:
         if h in few_shot_mappings:
             final_matches.append({
                 "source": h, 
@@ -193,10 +235,14 @@ def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool =
             })
         else:
             # AI/규칙 매칭 결과에서 찾기
+            found = False
             for m in result.get("matches", []):
                 if m.get("source") == h:
                     final_matches.append(m)
+                    found = True
                     break
+            if not found:
+                final_matches.append({"source": h, "target": None, "confidence": 0.0, "unmapped": True})
     
     return {
         "columns": headers,

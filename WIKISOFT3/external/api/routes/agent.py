@@ -8,6 +8,7 @@ from internal.agent.tool_registry import get_registry
 from internal.ai.diagnostic_questions import ALL_QUESTIONS
 from internal.ai.knowledge_base import get_system_context
 from internal.ai.llm_client import get_llm_client
+from internal.ai.autonomous_learning import analyze_chat_for_learning
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -127,6 +128,14 @@ async def ask_agent(req: AgentAskRequest) -> Dict[str, Any]:
             answer = final_response.get("content", "")
         else:
             answer = response.get("content", "")
+
+        # 자율 학습: 대화 내용 분석하여 학습 기회 감지
+        try:
+            validation_context = req.context.get("validation_results") if req.context else None
+            analyze_chat_for_learning(req.message, answer, validation_context)
+        except Exception as learn_err:
+            # 학습 실패해도 응답은 정상적으로 반환
+            print(f"[Autonomous Learning] Analysis failed: {learn_err}")
 
         return {
             "answer": answer,

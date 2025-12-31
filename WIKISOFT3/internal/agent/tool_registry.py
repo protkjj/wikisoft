@@ -4,6 +4,7 @@ Tool Registry: 파서/매칭/검증/리포트 도구를 중앙에서 관리
 from typing import Any, Callable, Dict, List
 
 from internal.ai.matcher import match_headers
+from internal.ai.knowledge_base import add_error_rule, learn_from_correction
 from internal.generators.report import generate_report
 from internal.parsers.parser import parse_roster
 from internal.validators.validator import validate
@@ -39,6 +40,16 @@ class ToolRegistry:
                 "func": detect_duplicates,
                 "description": "중복 행 탐지 (완전/유사/의심)",
                 "params": ["df", "headers", "matches"],
+            },
+            "add_error_rule": {
+                "func": add_error_rule,
+                "description": "새로운 오류 검증 규칙 학습",
+                "params": ["field", "condition", "message", "severity", "category"],
+            },
+            "learn_from_correction": {
+                "func": learn_from_correction,
+                "description": "사용자 수정에서 패턴 학습",
+                "params": ["field", "original_value", "was_error", "correct_interpretation", "diagnostic_context"],
             },
         }
 

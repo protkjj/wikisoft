@@ -1,298 +1,387 @@
-# 📝 WIKISOFT3 기술 스펙
+# 📋 WIKISOFT3 프로젝트 스펙
 
-**작성일**: 2025-12-30  
-**버전**: v3 (내부/제한 사용자용, AI 에이전트 친화)  
-**상태**: Phase A/B 완료, Phase C 진행 중
+> HR 데이터 자동 검증 시스템 상세 기능 명세
 
 ---
 
-## 1. 개요
+## 🎯 프로젝트 개요
 
-WIKISOFT2의 설계를 **완성**하는 것이 목표. 새로운 것을 추가하기보다 **미완성된 핵심 기능**을 먼저 완성하고, 그 다음 에이전트 고도화로 넘어감.
-
-### 핵심 철학 (WIKISOFT2에서 배운 것)
-- **"자연스러운 매칭"이 핵심** - AI는 가속기, 폴백이 기본
-- **UX가 기술보다 중요** - 질문 최소화, 뒤로가기, 버튼 위치 고정
-- **경고는 차단이 아니라 안내** - 투명성 확보 목적
-- **신뢰도 기반 의사결정** - 95% 이상만 자동, 나머지는 확인 요청
-- **케이스 학습이 미래** - 100개 파일 처리 후 새 파일은 거의 자동
-
----
-
-## 2. 범위
-
-### In Scope
-- HR/재무 엑셀 파싱, 헤더 매칭, 규칙 검증, 자동 수정/리포트
-- 에이전트 자동화(ReACT 루프): 신뢰도 기반 재시도/질문/교차검증
-- 배치/비동기 처리: 중간 규모(≤100개 파일 동시, 100k 행급 파일)
-- 배포: SaaS 기본 + 온프레/로컬 LLM은 옵션
-
-### Out of Scope
-- 다중 대기업 테넌트 동시 운영
-- 초대규모 데이터 레이크 통합
-- 다국어 확장(한/영 외 언어)
+| 항목 | 내용 |
+|------|------|
+| **프로젝트명** | WIKISOFT3 (HR 데이터 자동 검증 시스템) |
+| **목적** | 고객사 인사 데이터(Excel)를 표준 스키마에 맞게 자동 매핑하고 검증 |
+| **상태** | 개발 중 (85% 완료) |
+| **버전** | 0.3.0 |
+| **최종 업데이트** | 2026.01.01 |
 
 ---
 
-## 3. 시스템 아키텍처
+## 📌 핵심 요구사항
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│   Frontend (React + Vite, Port 3003)                        │
-│   - 24개 질문 UI (사이드바 + 메인)                            │
-│   - 수동 매핑 UI (TODO)                                      │
-│   - 신뢰도/경고 대시보드 (TODO)                               │
-├─────────────────────────────────────────────────────────────┤
-│   API Layer (FastAPI, Port 8003)                            │
-│   - /api/health, /api/diagnostic-questions                  │
-│   - /api/validate (auto-validate)                           │
-│   - /api/batch-validate, /api/batch-status                  │
-├─────────────────────────────────────────────────────────────┤
-│   Agent Layer                                               │
-│   ├─ Tool Registry (도구 중앙 관리)               ✅ 구현됨    │
-│   ├─ Confidence Scorer (신뢰도 계산)              ✅ 구현됨    │
-│   ├─ Decision Engine (의사결정)                   🔶 기본만    │
-│   └─ Memory/Persistence (케이스 저장)             🔶 기본만    │
-├─────────────────────────────────────────────────────────────┤
-│   Core Tools                                                │
-│   ├─ Parser (Excel/XLS/XLSX)                      ✅ 구현됨    │
-│   ├─ AI Matcher (GPT-4o + 폴백)                   ✅ 구현됨    │
-│   ├─ Validator (L1 + L2)                          ✅ 구현됨    │
-│   └─ Report Generator                             ❌ JSON만    │
-├─────────────────────────────────────────────────────────────┤
-│   Queue Layer (Redis/RQ with in-memory fallback)            │
-│   - 배치 작업 관리                                           │
-│   - 진행률 추적                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+### 기능적 요구사항
 
----
+#### F1. 파일 처리
+| ID | 요구사항 | 우선순위 | 상태 |
+|----|----------|----------|------|
+| F1.1 | XLS/XLSX 파일 업로드 | P0 | ✅ |
+| F1.2 | 드래그 앤 드롭 업로드 | P1 | ✅ |
+| F1.3 | 멀티 시트 지원 | P0 | ✅ |
+| F1.4 | 시트 자동 선택 ("재직자명부" 우선) | P1 | ✅ |
+| F1.5 | 빈 행 자동 필터링 | P0 | ✅ |
+| F1.6 | Excel 직렬번호 → 날짜 변환 | P0 | ✅ |
+| F1.7 | CSV 지원 | P2 | 🔶 |
 
-## 4. 현재 진행 상황
+#### F2. 헤더 매핑
+| ID | 요구사항 | 우선순위 | 상태 |
+|----|----------|----------|------|
+| F2.1 | 표준 스키마 헤더 정의 | P0 | ✅ |
+| F2.2 | Few-shot 학습 기반 매핑 | P0 | ✅ |
+| F2.3 | AI (GPT-4o) 매핑 | P1 | ✅ |
+| F2.4 | 규칙 기반 폴백 매핑 | P1 | ✅ |
+| F2.5 | 불필요 컬럼 무시 (참고사항, 비고) | P1 | ✅ |
+| F2.6 | 수동 매핑 UI | P1 | ✅ |
+| F2.7 | 매핑 결과 저장 및 학습 | P0 | ✅ |
 
-### ✅ Phase A 완료: API Layer
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| /api/health | ✅ | 시스템 상태 확인 |
-| /api/diagnostic-questions | ✅ | 24개 고정 질문 |
-| /api/validate (auto-validate) | ✅ | Tool Registry 연동 |
-| /api/batch-validate | ✅ | Redis/in-memory 큐 |
-| /api/batch-status/{job_id} | ✅ | 진행률 조회 |
+#### F3. 데이터 검증
+| ID | 요구사항 | 우선순위 | 상태 |
+|----|----------|----------|------|
+| F3.1 | L1: 형식 검증 (날짜, 전화번호 등) | P0 | ✅ |
+| F3.2 | L2: 교차 검증 (입사일 < 현재) | P1 | ✅ |
+| F3.3 | 중복 탐지 (완전/유사/의심) | P0 | ✅ |
+| F3.4 | 필수 필드 누락 검사 | P0 | ✅ |
+| F3.5 | 이상치 탐지 | P2 | 🔶 |
 
-### ✅ Phase B 완료: Agent & Batch
-| 항목 | 상태 | 비고 |
-|------|------|------|
-| Tool Registry | ✅ | 11개 도구 등록 |
-| Confidence Scorer | ✅ | 4가지 지표 계산 |
-| 스트리밍 파서 | ✅ | XLS/XLSX 지원 |
-| Worker 배치 | ✅ | Redis 폴백 포함 |
-| 진행률 대시보드 | ✅ | 기본 UI |
+#### F4. 결과 출력
+| ID | 요구사항 | 우선순위 | 상태 |
+|----|----------|----------|------|
+| F4.1 | JSON 결과 반환 | P0 | ✅ |
+| F4.2 | 웹 UI 결과 표시 | P0 | ✅ |
+| F4.3 | 오류/경고 시각화 | P1 | ✅ |
+| F4.4 | Excel 리포트 (컬러 셀) | P1 | 🔶 |
+| F4.5 | 결과 다운로드 | P2 | 🔶 |
 
-### 🔶 Phase C 진행 중: Memory & UX
-| 항목 | 상태 | 우선순위 |
-|------|------|----------|
-| Memory 유사도 검색 | ❌ | 🔴 높음 |
-| Excel 출력 (빨강/노랑 셀) | ❌ | 🔴 높음 |
-| 수동 매핑 UI | ❌ | 🔴 높음 |
-| Few-shot Learning | ❌ | 🔴 높음 |
-| 동적 질문 생성 | ❌ | 🟡 중간 |
-| Cross-file Learning | ❌ | 🟡 중간 |
+#### F5. AI Agent
+| ID | 요구사항 | 우선순위 | 상태 |
+|----|----------|----------|------|
+| F5.1 | ReACT 패턴 구현 | P0 | ✅ |
+| F5.2 | Tool Registry | P0 | ✅ |
+| F5.3 | 신뢰도 점수 계산 | P1 | ✅ |
+| F5.4 | 재시도 전략 | P1 | ✅ |
+| F5.5 | 진단 질문 생성 | P2 | 🔶 |
 
-### ❌ Phase D 미시작: 배포 준비
-| 항목 | 상태 | 우선순위 |
-|------|------|----------|
-| 텔레메트리 | ❌ | 🟢 낮음 |
-| 감사 로그 | ❌ | 🟢 낮음 |
-| 한/영 UI 전환 | ❌ | 🟢 낮음 |
-| 오프라인/온프레 모드 | ❌ | 🟢 낮음 |
+### 비기능적 요구사항
 
----
+#### NF1. 성능
+| ID | 요구사항 | 목표 | 상태 |
+|----|----------|------|------|
+| NF1.1 | 파일 파싱 시간 | <1초 | ✅ |
+| NF1.2 | 전체 검증 시간 | <5초 | ✅ |
+| NF1.3 | 최대 파일 크기 | 10MB | ✅ |
+| NF1.4 | 최대 행 수 | 5,000행 | ✅ |
+| NF1.5 | 동시 요청 | 10개 | 🔶 |
 
-## 5. WIKISOFT2 → WIKISOFT3 비교
+#### NF2. 보안
+| ID | 요구사항 | 상태 |
+|----|----------|------|
+| NF2.1 | CORS 제한 (localhost만) | ✅ |
+| NF2.2 | Rate Limiting (20/분) | ✅ |
+| NF2.3 | 파일 검증 (크기, 확장자) | ✅ |
+| NF2.4 | PII 마스킹 (오류 메시지) | ✅ |
+| NF2.5 | API Key 보호 (.env) | ✅ |
 
-### 가져온 것 (성공 요소)
-| 항목 | WIKISOFT2 | WIKISOFT3 |
-|------|-----------|-----------|
-| Tool Registry | 11개 도구 | ✅ 동일 |
-| 24개 고정 질문 | 유지 | ✅ 동일 |
-| AI 헤더 매칭 | GPT-4o + 폴백 | ✅ 동일 |
-| Layer 2 검증 | 8개 체크 | ✅ 동일 |
-| Confidence Score | 4가지 지표 | ✅ 동일 |
-
-### 완성할 것 (WIKISOFT2 미완성)
-| 항목 | WIKISOFT2 상태 | WIKISOFT3 목표 |
-|------|---------------|----------------|
-| Memory 시스템 | 설계만 | 구현 예정 |
-| Few-shot Learning | 미구현 | 구현 예정 |
-| Excel 출력 | 빨강/노랑 셀 | 복원 예정 |
-| 수동 매핑 UI | 설계만 | 구현 예정 |
-| 자동 재시도 | 미구현 | 구현 예정 |
+#### NF3. 신뢰성
+| ID | 요구사항 | 상태 |
+|----|----------|------|
+| NF3.1 | API 키 없이도 동작 (폴백) | ✅ |
+| NF3.2 | 에러 복구 (graceful degradation) | ✅ |
+| NF3.3 | 로깅 | ✅ |
 
 ---
 
-## 6. API 명세
+## 📊 표준 스키마
 
-### 6.1 Health Check
-```http
-GET /api/health
+### 필수 필드 (Required)
+| 필드명 | 타입 | 형식 | 설명 |
+|--------|------|------|------|
+| `employee_id` | string | - | 사원번호 |
+| `name` | string | - | 성명 |
 
-Response 200:
+### 선택 필드 (Optional)
+| 필드명 | 타입 | 형식 | 설명 |
+|--------|------|------|------|
+| `birth_date` | string | YYYY-MM-DD | 생년월일 |
+| `hire_date` | string | YYYY-MM-DD | 입사일 |
+| `resignation_date` | string | YYYY-MM-DD | 퇴사일 |
+| `department` | string | - | 부서명 |
+| `position` | string | - | 직위 |
+| `job_title` | string | - | 직책 |
+| `phone` | string | 010-XXXX-XXXX | 연락처 |
+| `email` | string | email format | 이메일 |
+| `address` | string | - | 주소 |
+| `salary` | number | - | 급여 |
+| `gender` | string | 남/여 | 성별 |
+| `employment_type` | string | - | 근무형태 |
+| `branch` | string | - | 지점/사업장 |
+| `id_number` | string | - | 주민등록번호 |
+
+### 헤더 별칭 예시
+```python
 {
-  "status": "healthy",
-  "version": "3.0",
-  "timestamp": "2025-12-30T00:00:00"
+    "employee_id": ["사원번호", "사번", "직원번호", "EmpNo", "ID"],
+    "name": ["성명", "이름", "직원명", "사원명", "Name"],
+    "birth_date": ["생년월일", "생일", "BirthDate"],
+    "hire_date": ["입사일", "입사일자", "HireDate"],
+    ...
 }
 ```
 
-### 6.2 Diagnostic Questions
-```http
-GET /api/diagnostic-questions
-
-Response 200:
-{
-  "total": 24,
-  "questions": [...],
-  "note": "24개 고정 질문 (v2 동일)"
-}
+### 무시 컬럼
+```python
+IGNORE_HEADERS = [
+    "참고", "비고", "구분", "메모", 
+    "note", "remark", "comment", 
+    "unnamed", "column", "컬럼"
+]
 ```
 
-### 6.3 Auto Validate
-```http
-POST /api/validate
+---
+
+## 🔌 API 명세
+
+### POST /api/auto-validate
+자동 검증 (매핑 + 검증 + 리포트)
+
+**Request:**
+```
 Content-Type: multipart/form-data
 
-Body:
-- file: manifest.xlsx
-- answers: {"q1": "예", "q21": 17, ...}
+file: <Excel file>
+sheet_type: string (optional, default: "재직자")
+```
 
-Response 200:
+**Response:**
+```json
 {
   "success": true,
-  "file_name": "manifest.xlsx",
-  "row_count": 750,
-  "overall_confidence": 0.75,
-  "header_mapping": {...},
-  "validation_warnings": [...],
-  "decision": {
-    "type": "ask_human",
-    "reason": "confidence below threshold"
-  }
+  "company_name": "회사명",
+  "file_name": "파일명.xlsx",
+  "mapped_headers": [
+    {
+      "original": "사번",
+      "mapped_to": "employee_id",
+      "confidence": 0.95,
+      "method": "few_shot"
+    }
+  ],
+  "unmapped_headers": [],
+  "ignored_headers": ["참고사항", "비고"],
+  "validation_errors": [
+    {
+      "row": 5,
+      "column": "birth_date",
+      "value": "invalid",
+      "message": "올바른 날짜 형식이 아닙니다"
+    }
+  ],
+  "validation_warnings": [],
+  "duplicates": {
+    "exact": [],
+    "similar": [],
+    "suspect": []
+  },
+  "statistics": {
+    "total_rows": 100,
+    "valid_rows": 95,
+    "error_rows": 5
+  },
+  "overall_confidence": 0.87,
+  "data_preview": [...]
 }
 ```
 
-### 6.4 Batch Validate
-```http
-POST /api/batch-validate
+### POST /api/react-agent/validate
+Agent 기반 검증 (Think-Act-Observe 루프)
 
-Response 202:
+**Request/Response:** `/api/auto-validate`와 동일
+
+### GET /api/diagnostic-questions
+진단 질문 목록 조회
+
+**Response:**
+```json
 {
-  "job_id": "job-abc-123",
-  "status": "processing",
-  "total_files": 5
+  "questions": [
+    {
+      "id": 1,
+      "text": "이 파일은 재직자 명부입니까?",
+      "type": "boolean"
+    }
+  ]
 }
 ```
 
-### 6.5 Batch Status
-```http
-GET /api/batch-status/{job_id}
+### GET /api/health
+서버 상태 확인
 
-Response 200:
+**Response:**
+```json
 {
-  "job_id": "job-abc-123",
-  "status": "completed",
-  "progress": 100,
-  "results": [...]
+  "status": "healthy",
+  "version": "0.3.0"
 }
 ```
 
 ---
 
-## 7. 성능 목표
+## 🧠 검증 규칙
 
-| 지표 | 현재 (v3 alpha) | 목표 (v3 stable) |
-|------|----------------|------------------|
-| **자동화율** | ~30% | 85%+ |
-| **처리 시간** | 30분/파일 | 5분/파일 |
-| **신뢰도** | 75% | 90%+ |
-| **사람 개입** | 70% | 15% |
-| **헤더 매칭** | AI 100%, 폴백 77% | 유지 |
-| **대용량 처리** | 100k 행 | 유지 |
+### L1: 형식 검증
+| 필드 | 규칙 | 예시 |
+|------|------|------|
+| `birth_date` | YYYY-MM-DD 또는 YYYYMMDD | 1990-01-15 |
+| `hire_date` | YYYY-MM-DD 또는 YYYYMMDD | 2020-03-01 |
+| `phone` | 010-XXXX-XXXX | 010-1234-5678 |
+| `email` | RFC 5322 형식 | user@company.com |
+| `id_number` | YYMMDD-X****** (마스킹) | 900115-1****** |
 
----
+### L2: 교차 검증
+| 규칙 | 설명 |
+|------|------|
+| `hire_date < today` | 입사일은 미래일 수 없음 |
+| `birth_date < hire_date` | 생년월일이 입사일보다 먼저 |
+| `resignation_date > hire_date` | 퇴사일이 입사일 이후 |
 
-## 8. 신뢰도 기반 의사결정
-
-### 신뢰도 계산 공식
-```
-Overall = (0.30 × 데이터품질) + (0.25 × 규칙매칭) + 
-          (0.20 × 수정안정성) + (0.15 × 케이스유사도) + 
-          (0.10 × 모델신뢰도)
-```
-
-### 의사결정 테이블
-| 신뢰도 | 액션 | 사람 개입 |
-|--------|------|----------|
-| ≥ 95% | AUTO_COMPLETE | 0% |
-| 80-95% | AUTO_CORRECT + 알림 | ~5% |
-| 70-80% | AUTO_WITH_REVIEW | ~15% |
-| 50-70% | ASK_HUMAN | ~80% |
-| < 50% | MANUAL_REVIEW | 100% |
+### 중복 탐지
+| 유형 | 조건 | 레벨 |
+|------|------|------|
+| 완전 중복 | 모든 필드 동일 | Error |
+| 유사 중복 | 핵심 필드(사번, 이름) 동일 | Warning |
+| 의심 중복 | 이름 + 부서 동일 | Info |
 
 ---
 
-## 9. 즉시 실행 TODO
+## 📁 학습 데이터
 
-### 이번 주 (Phase C)
-1. **Excel 출력 구현** - openpyxl 기반, 빨강/노랑 셀 강조
-2. **Memory 유사도 검색** - 키워드 기반 케이스 매칭
-3. **수동 매핑 UI 기초** - 드래그앤드롭 또는 select box
-
-### 다음 주
-4. **Few-shot 저장소** - 성공 케이스 JSON 저장
-5. **동적 질문 생성** - 이상치 감지 시 추가 질문
-6. **자동 재시도 로직** - 실패 시 대안 전략
-
----
-
-## 10. 파일 구조
-
+### Case Store 구조
 ```
-WIKISOFT3/
-├── external/api/
-│   ├── main.py              # FastAPI 앱
-│   └── routes/              # 라우트 모듈
-├── internal/
-│   ├── agent/               # Tool Registry, Confidence
-│   ├── ai/                  # AI 매칭, 질문
-│   ├── memory/              # 케이스 저장
-│   ├── parsers/             # Excel 파싱
-│   ├── queue/               # 배치 작업
-│   ├── validators/          # L1/L2 검증
-│   └── generators/          # 리포트 생성
-├── frontend/src/            # React UI
-├── PROJECT_SPEC.md          # 이 문서
-├── ARCHITECTURE.md
-└── README.md
+training_data/cases/
+├── index.json           # 헤더 패턴 인덱스
+├── {case_id}.json       # 개별 케이스
+└── ...
 ```
 
----
+### 현재 학습 현황
+| 항목 | 수량 |
+|------|------|
+| 총 케이스 | 42개 |
+| 실제 파일 | 6개 |
+| 합성 케이스 | 36개 |
+| 헤더 패턴 | 182개 |
 
-## 11. 릴리스 노트
-
-### v3-alpha (현재)
-- Tool Registry + Confidence 기본 구현
-- 24개 고정 질문 유지
-- AI 헤더 매칭 (GPT-4o + 폴백)
-- 배치 처리 (Redis/in-memory)
-- 프론트엔드 사이드바 레이아웃
-
-### v3-stable (목표)
-- Memory 시스템 완성
-- Excel 출력 복원
-- 수동 매핑 UI
-- Few-shot Learning
-- 자동화율 85%+ 달성
+### 학습된 실제 파일
+1. ✅ 대한싸이로 (86행)
+2. ✅ 세라젬 (750행)
+3. ✅ 자강산업 (115행)
+4. ✅ 에이치자산운용 (15행)
+5. ✅ 푸본현대생명 (398행)
+6. ✅ 제이스전장 (기존)
 
 ---
 
-**최종 목표**: WIKISOFT2의 설계를 완성하여 **자동화율 85%, 처리 시간 5분/파일** 달성
+## 🔧 개발 환경
+
+### 필수 요구사항
+| 항목 | 버전 |
+|------|------|
+| Python | 3.13+ |
+| Node.js | 18+ |
+| npm | 8+ |
+
+### 패키지 (Python)
+```
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pandas>=2.1.0
+openpyxl>=3.1.0
+xlrd>=2.0.0
+python-multipart>=0.0.6
+httpx>=0.25.0
+openai>=1.3.0
+python-dotenv>=1.0.0
+slowapi>=0.1.9
+```
+
+### 패키지 (Frontend)
+```
+react ^18
+react-dom ^18
+typescript ^5
+vite ^5
+axios ^1
+```
+
+---
+
+## 🚀 배포 가이드
+
+### 로컬 개발
+```bash
+# 백엔드
+cd WIKISOFT3
+source .venv/bin/activate  # 또는 상위 .venv 사용
+PYTHONPATH=$PWD uvicorn external.api.main:app --reload --port 8003
+
+# 프론트엔드 (별도 터미널)
+cd frontend
+npm install
+npm run dev
+```
+
+### 프로덕션 (향후)
+```bash
+# Docker
+docker build -t wikisoft3 .
+docker run -p 8003:8003 -e OPENAI_API_KEY=sk-... wikisoft3
+```
+
+---
+
+## 📊 성공 지표
+
+| 지표 | 목표 | 현재 |
+|------|------|------|
+| 매핑 정확도 | >95% | ~92% |
+| 처리 시간 | <5초 | ~2초 |
+| False Positive | <5% | ~3% |
+| 학습 케이스 | 50+ | 42 |
+| 헤더 패턴 | 200+ | 182 |
+
+---
+
+## 🗓️ 로드맵
+
+### 완료 (v0.3.0 - 2026.01.01)
+- ✅ 파서 빈 행/날짜 변환 개선
+- ✅ 매칭 무시 컬럼 처리
+- ✅ 보안 하드닝 (CORS, Rate Limit)
+- ✅ 5개 실제 파일 학습
+
+### 진행 중 (v0.4.0)
+- 🔶 Excel 리포트 출력 (컬러 셀)
+- 🔶 수동 매핑 UI 개선
+- 🔶 Frontend UX 개선
+
+### 계획 (v0.5.0)
+- ⬜ Docker 배포
+- ⬜ 모니터링/로깅 강화
+- ⬜ n8n 통합 (외부 시스템 연동 시)
+
+---
+
+## 📝 변경 이력
+
+| 날짜 | 버전 | 변경 내용 |
+|------|------|-----------|
+| 2026.01.01 | 0.3.0 | 파서 개선, 매칭 개선, 보안 하드닝 |
+| 2025.12.30 | 0.2.0 | Few-shot 학습, Agent 구현 |
+| 2025.12.25 | 0.1.0 | 초기 버전 |

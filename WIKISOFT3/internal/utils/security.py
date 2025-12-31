@@ -177,6 +177,84 @@ def mask_sensitive_data(text: str, mask_char: str = '*') -> str:
     return result
 
 
+def mask_pii_in_message(message: str, mask_char: str = '*') -> str:
+    """
+    에러/경고 메시지에서 개인정보 마스킹.
+    사원번호, 생년월일, 기준급여 등을 마스킹.
+    
+    Args:
+        message: 원본 메시지
+        mask_char: 마스킹 문자
+    
+    Returns:
+        마스킹된 메시지
+    """
+    if not message or not isinstance(message, str):
+        return message
+    
+    result = message
+    
+    # 사원번호 패턴 (숫자 6자리 이상)
+    result = re.sub(
+        r'(사원번호[:\s]*)[0-9]{6,}',
+        lambda m: m.group(1) + mask_char * 6 + '...',
+        result
+    )
+    
+    # 생년월일 패턴 (YYYYMMDD 또는 YYYY-MM-DD)
+    result = re.sub(
+        r'(생년월일[:\s]*)(\d{4}[-/]?\d{2}[-/]?\d{2}|\d{8}\.?\d*)',
+        lambda m: m.group(1) + '****-**-**',
+        result
+    )
+    
+    # 입사일 패턴
+    result = re.sub(
+        r'(입사일[자]?[:\s]*)(\d{4}[-/]?\d{2}[-/]?\d{2}|\d+\.?\d*)',
+        lambda m: m.group(1) + '****-**-**',
+        result
+    )
+    
+    # 급여 금액 (큰 숫자)
+    result = re.sub(
+        r'(기준급여[:\s]*)[\d,]+\.?\d*',
+        lambda m: m.group(1) + '*,***,***',
+        result
+    )
+    
+    # 퇴직금추계액
+    result = re.sub(
+        r'(퇴직금추계액[:\s]*)[\d,]+\.?\d*',
+        lambda m: m.group(1) + '*,***,***',
+        result
+    )
+    
+    return result
+
+
+def mask_anomaly_messages(anomalies: dict) -> dict:
+    """
+    anomalies 딕셔너리의 모든 메시지 마스킹.
+    """
+    if not anomalies:
+        return anomalies
+    
+    result = anomalies.copy()
+    
+    if 'anomalies' in result:
+        masked_anomalies = []
+        for a in result['anomalies']:
+            masked = a.copy()
+            if 'message' in masked:
+                masked['message'] = mask_pii_in_message(masked['message'])
+            if 'auto_fix' in masked:
+                masked['auto_fix'] = mask_pii_in_message(masked['auto_fix'])
+            masked_anomalies.append(masked)
+        result['anomalies'] = masked_anomalies
+    
+    return result
+
+
 def mask_dict_values(data: dict, fields_to_mask: set = None) -> dict:
     """
     딕셔너리의 특정 필드 값 마스킹.

@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-01-01",
+  "rules": [
+    {
+      "id": "R001",
+      "category": "value_validation",
+      "field": "퇴직금추계액",
+      "condition": "value < 0",
+      "severity": "error",
+      "message": "퇴직금추계액은 음수일 수 없습니다",
+      "context_override": null
+    },
+    {
+      "id": "R002",
+      "category": "value_validation",
+      "field": "기준급여",
+      "condition": "value < 1900000",
+      "severity": "warning",
+      "message": "기준급여가 최저임금 미달 가능성",
+      "context_override": {
+        "계약직": "skip",
+        "파트타임": "skip"
+      }
+    },
+    {
+      "id": "R003",
+      "category": "value_validation",
+      "field": "기준급여",
+      "condition": "value <= 0",
+      "severity": "error",
+      "message": "기준급여가 음수 또는 0입니다",
+      "context_override": null
+    },
+    {
+      "id": "R004",
+      "category": "required_field",
+      "field": "사원번호",
+      "condition": "blank_or_null",
+      "severity": "error",
+      "message": "사원번호는 필수 값입니다",
+      "context_override": null
+    },
+    {
+      "id": "R005",
+      "category": "date_validation",
+      "field": "생년월일",
+      "condition": "month > 12 or day > 31",
+      "severity": "error",
+      "message": "생년월일 형식 오류 (월>12 또는 일>31)",
+      "context_override": null
+    },
+    {
+      "id": "R006",
+      "category": "date_validation",
+      "field": "입사일자",
+      "condition": "month > 12 or day > 31",
+      "severity": "error",
+      "message": "입사일자 형식 오류 (월>12 또는 일>31)",
+      "context_override": null
+    },
+    {
+      "id": "R007",
+      "category": "age_validation",
+      "field": "입사연령",
+      "condition": "age < 17",
+      "severity": "error",
+      "message": "입사 시 연령이 17세 미만 (근로기준법 위반 가능)",
+      "context_override": null
+    },
+    {
+      "id": "R008",
+      "category": "age_validation",
+      "field": "입사연령",
+      "condition": "age > 70",
+      "severity": "warning",
+      "message": "입사 시 연령이 70세 초과 (이례적)",
+      "context_override": {
+        "임원": "skip",
+        "종업원구분=3": "skip"
+      }
+    },
+    {
+      "id": "R009",
+      "category": "cross_validation",
+      "field": [
+        "입사일자",
+        "생년월일"
+      ],
+      "condition": "입사일자 < 생년월일",
+      "severity": "error",
+      "message": "입사일이 생년월일보다 앞섬 (불가능)",
+      "context_override": null
+    },
+    {
+      "id": "R010",
+      "category": "value_validation",
+      "field": "성별",
+      "condition": "value not in [1, 2, '1', '2', '남', '여', 'M', 'F']",
+      "severity": "error",
+      "message": "성별 값 오류 (1:남, 2:여 형식 필요)",
+      "context_override": null
+    },
+    {
+      "id": "R011",
+      "category": "year_validation",
+      "field": "생년월일",
+      "condition": "year < 1940",
+      "severity": "warning",
+      "message": "생년이 1940년 이전 (85세 이상)",
+      "context_override": {
+        "임원": "skip",
+        "종업원구분=3": "skip"
+      }
+    },
+    {
+      "id": "R012",
+      "category": "year_validation",
+      "field": "생년월일",
+      "condition": "year > current_year - 18",
+      "severity": "error",
+      "message": "생년이 18세 미만에 해당",
+      "context_override": null
+    },
+    {
+      "id": "R013",
+      "category": "cross_validation",
+      "field": "duplicate",
+      "condition": "same_employee_id",
+      "severity": "error",
+      "message": "중복된 사원번호",
+      "context_override": null
+    },
+    {
+      "id": "R014",
+      "category": "cross_validation",
+      "field": "duplicate",
+      "condition": "same_name_and_birthdate",
+      "severity": "warning",
+      "message": "동명이인 또는 중복 가능성",
+      "context_override": null
+    },
+    {
+      "id": "R015",
+      "category": "yoy_validation",
+      "field": "생년월일",
+      "condition": "changed_from_previous_year",
+      "severity": "error",
+      "message": "생년월일이 전년도와 다름 (변경 불가)",
+      "context_override": null
+    },
+    {
+      "id": "R016",
+      "category": "yoy_validation",
+      "field": "입사일자",
+      "condition": "changed_from_previous_year",
+      "severity": "warning",
+      "message": "입사일이 전년도와 다름 (변경 이례적)",
+      "context_override": null
+    },
+    {
+      "id": "R017",
+      "category": "yoy_validation",
+      "field": "성별",
+      "condition": "changed_from_previous_year",
+      "severity": "error",
+      "message": "성별이 전년도와 다름",
+      "context_override": null
+    },
+    {
+      "id": "L001",
+      "category": "learned",
+      "field": "근속년수",
+      "condition": "value > 50",
+      "severity": "warning",
+      "message": "근속년수 50년 초과 (이례적)",
+      "context_override": null,
+      "learned_at": "2026-01-01T01:42:35.937506",
+      "source": "user_feedback"
+    },
+    {
+      "id": "L002",
+      "category": "learned",
+      "field": "근속년수",
+      "condition": "value > 50",
+      "severity": "warning",
+      "message": "근속년수 50년 초과 (이례적)",
+      "context_override": null,
+      "learned_at": "2026-01-01T01:42:51.399409",
+      "source": "user_feedback"
+    }
+  ],
+  "learned_patterns": [
+    {
+      "field": "입사연령",
+      "original_value": "65",
+      "ai_said_error": true,
+      "correct_interpretation": "임원이라 65세 입사도 정상",
+      "context": {
+        "종업원구분": "임원"
+      },
+      "learned_at": "2026-01-01T01:47:08.263650"
+    },
+    {
+      "field": "기준급여",
+      "original_value": "932640",
+      "ai_said_error": true,
+      "correct_interpretation": "실제 데이터에 932,640원 급여 존재 - 계약직/파트타임 가능성",
+      "context": {
+        "실제_최저급여": 932640.0
+      },
+      "learned_at": "2026-01-01T01:52:25.635024"
+    },
+    {
+      "field": "생년월일",
+      "original_value": "1947",
+      "ai_said_error": true,
+      "correct_interpretation": "실제 데이터에 79세 직원 존재 - 임원/고문 가능성",
+      "context": {
+        "실제_최고령": 79
+      },
+      "learned_at": "2026-01-01T01:52:25.635363"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.152968"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.154720"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.155551"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.156253"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.156901"
+    },
+    {
+      "field": "입사",
+      "original_value": "auto_learned",
+      "ai_said_error": true,
+      "correct_interpretation": "임원은 65세 이상 입사도 정상으로 간주됨",
+      "context": {
+        "employee_type": "임원"
+      },
+      "learned_at": "2026-01-01T02:13:46.157472"
+    }
+  ]
+}

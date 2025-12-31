@@ -1,6 +1,6 @@
 {
   "case_id": "840b72065add",
-  "timestamp": "2025-12-31T14:36:37.158721",
+  "timestamp": "2025-12-31T16:19:06.903347",
   "headers": [
     "사원번호",
     "성명",
@@ -279,15 +279,10 @@
       "from_fewshot": true
     }
   ],
-  "confidence": 0.75,
+  "confidence": 0.85,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls",
-    "company_name": "에이치자산운용",
-    "row_count": 2483,
-    "error_count": 2,
-    "warning_count": 0,
-    "anomaly_count": 0
+    "filename": "대한싸이로_테스트_오류포함.xlsx"
   }
 }

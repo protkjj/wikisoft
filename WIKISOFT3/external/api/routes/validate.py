@@ -275,7 +275,6 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
     - 확인 필요하면 고객에게 질문 생성
     """
     from internal.ai.llm_client import chat
-    from internal.ai.knowledge_base import get_error_check_rules
     
     # 샘플 데이터 (처음 10행)
     sample_rows = rows[:10] if rows else []
@@ -286,11 +285,15 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
         elif isinstance(row, (list, tuple)):
             sample_data.append([str(v)[:50] for v in row[:8]])
     
-    analysis_prompt = f"""당신은 퇴직급여채무 검증 AI 에이전트입니다.
-아래 데이터를 자유롭게 분석하고, 문제가 있으면 지적하세요.
+        analysis_prompt = f"""당신은 재직자 명부 '구조 검증' 전용 AI입니다. 금액/추계액/퇴직금 계산은 다루지 마세요.
 
-## 참고 규칙 (이미 알고 있는 것 + 추가 참고):
-{get_error_check_rules()}
+## 체크 범위 (이것만 확인)
+- 필수 필드 누락: 사원번호, 생년월일, 입사일자, 종업원구분, 기준급여
+- 날짜 문제: 형식 오류(YYYYMMDD/날짜 형태), 엑셀 시리얼 넘버, 생년월일 이후 입사일
+- 중복: 동일 사원번호, 이름+생년월일 유사 중복
+- 인원수 불일치: 진단 답변 인원 합계 vs 실제 행 수
+- 빈 행: 필수값이 전부 비어있는 행
+- 개인정보 노출: 응답 메시지에 사원번호/생년월일 등은 마스킹 지향
 
 ## 고객 진단 답변:
 {_format_answers_for_ai(answers)}
@@ -301,19 +304,19 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
 - 샘플 데이터 (처음 10행): {sample_data}
 
 ## 당신의 역할:
-1. **자유롭게 분석**: 위 규칙뿐 아니라, 데이터에서 이상한 점을 발견하면 지적
-2. **자동 수정 제안**: 명확한 오류는 수정 방법 제안
-3. **고객 질문 생성**: 확인이 필요한 것은 질문으로 만들어서 고객에게 물어봄
+1) 위 체크 범위만 검토 (금액·퇴직금·추계액 관련 판단 금지)
+2) 문제 있으면 간결히 지적하고 자동 수정 제안
+3) 고객에게 추가로 물어볼 내용이 있으면 질문 생성
 
 ## 응답 형식 (JSON만):
 {{
-  "issues": [
-    {{"severity": "error|warning|info", "message": "발견한 문제", "auto_fix": "수정 제안 (있으면)"}}
-  ],
-  "questions_for_customer": [
-    "고객에게 확인이 필요한 질문 (있으면)"
-  ],
-  "summary": "전체 분석 요약 한 줄"
+    "issues": [
+        {{"severity": "error|warning|info", "message": "발견한 문제", "auto_fix": "수정 제안 (있으면)"}}
+    ],
+    "questions_for_customer": [
+        "고객에게 확인이 필요한 질문 (있으면)"
+    ],
+    "summary": "전체 분석 요약 한 줄"
 }}
 
 JSON만 출력하세요."""
@@ -321,13 +324,35 @@ JSON만 출력하세요."""
     response = chat(analysis_prompt)
     
     import json
-    response_text = response.strip()
-    if response_text.startswith("```"):
-        response_text = response_text.split("```")[1]
-        if response_text.startswith("json"):
-            response_text = response_text[4:]
+    import re
     
-    result = json.loads(response_text)
+    response_text = response.strip()
+    
+    # 코드블록 제거
+    if response_text.startswith("```"):
+        lines = response_text.split("\n")
+        # 첫 번째 ``` 라인과 마지막 ``` 라인 제거
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        response_text = "\n".join(lines)
+    
+    # JSON 객체 추출 시도
+    try:
+        result = json.loads(response_text)
+    except json.JSONDecodeError:
+        # JSON 객체 패턴 찾기
+        json_match = re.search(r'\{[\s\S]*\}', response_text)
+        if json_match:
+            try:
+                result = json.loads(json_match.group())
+            except json.JSONDecodeError:
+                # 실패 시 빈 결과 반환
+                result = {"issues": [], "questions_for_customer": [], "summary": "AI 분석 결과 파싱 실패"}
+        else:
+            result = {"issues": [], "questions_for_customer": [], "summary": "AI 분석 결과 없음"}
+    
     return result if isinstance(result, dict) else {"issues": [], "questions_for_customer": []}
 
 
