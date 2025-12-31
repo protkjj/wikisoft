@@ -1,0 +1,50 @@
+{
+  "case_id": "30ac8c087501",
+  "timestamp": "2025-12-31T03:00:30.398987",
+  "headers": [
+    "사번",
+    "생년월일",
+    "입사일",
+    "급여"
+  ],
+  "normalized_headers": [
+    "사번",
+    "생년월일",
+    "입사일",
+    "급여"
+  ],
+  "matches": [
+    {
+      "source": "사번",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "입사일",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "급여",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "최소형",
+    "generated": true
+  }
+}

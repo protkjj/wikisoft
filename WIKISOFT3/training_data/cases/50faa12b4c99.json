@@ -1,0 +1,114 @@
+{
+  "case_id": "50faa12b4c99",
+  "timestamp": "2025-12-31T03:00:30.398695",
+  "headers": [
+    "사원번호",
+    "생년월일",
+    "성별",
+    "입사일자",
+    "부서",
+    "직급",
+    "종업원구분",
+    "기준급여",
+    "당년도퇴직금추계액",
+    "차년도퇴직금추계액",
+    "적용배수",
+    "제도구분"
+  ],
+  "normalized_headers": [
+    "사원번호",
+    "생년월일",
+    "성별",
+    "입사일자",
+    "부서",
+    "직급",
+    "종업원구분",
+    "기준급여",
+    "당년도퇴직금추계액",
+    "차년도퇴직금추계액",
+    "적용배수",
+    "제도구분"
+  ],
+  "matches": [
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "성별",
+      "target": "성별",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "부서",
+      "target": "부서",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "직급",
+      "target": "직급",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "종업원구분",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "기준급여",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "당년도퇴직금추계액",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "차년도퇴직금추계액",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "적용배수",
+      "target": "적용배수",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "제도구분",
+      "target": "제도구분",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "확장형",
+    "generated": true
+  }
+}

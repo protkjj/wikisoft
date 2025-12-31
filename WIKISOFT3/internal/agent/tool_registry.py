@@ -7,6 +7,7 @@ from internal.ai.matcher import match_headers
 from internal.generators.report import generate_report
 from internal.parsers.parser import parse_roster
 from internal.validators.validator import validate
+from internal.validators.duplicate_detector import detect_duplicates
 
 
 class ToolRegistry:
@@ -33,6 +34,11 @@ class ToolRegistry:
                 "func": generate_report,
                 "description": "검증 결과 리포트 생성",
                 "params": ["validation"],
+            },
+            "detect_duplicates": {
+                "func": detect_duplicates,
+                "description": "중복 행 탐지 (완전/유사/의심)",
+                "params": ["df", "headers", "matches"],
             },
         }
 

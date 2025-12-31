@@ -1,0 +1,66 @@
+{
+  "case_id": "bcb6924790f2",
+  "timestamp": "2025-12-31T03:00:30.398443",
+  "headers": [
+    "사원번호(필수)",
+    "생년월일(YYYYMMDD)",
+    "성별(1:남,2:여)",
+    "입사일자(필수)",
+    "종업원구분(1:직원,3:임원)",
+    "기준급여(원)"
+  ],
+  "normalized_headers": [
+    "사원번호(필수)",
+    "생년월일(yyyymmdd)",
+    "성별(1:남,2:여)",
+    "입사일자(필수)",
+    "종업원구분(1:직원,3:임원)",
+    "기준급여(원)"
+  ],
+  "matches": [
+    {
+      "source": "사원번호(필수)",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "생년월일(YYYYMMDD)",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "성별(1:남,2:여)",
+      "target": "성별",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "입사일자(필수)",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "종업원구분(1:직원,3:임원)",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "기준급여(원)",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "괄호설명형",
+    "generated": true
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "case_id": "228b5772e674",
+  "timestamp": "2025-12-31T03:00:30.397549",
+  "headers": [
+    "emp_no",
+    "birth_date",
+    "gender",
+    "hire_date",
+    "emp_type",
+    "salary",
+    "severance"
+  ],
+  "normalized_headers": [
+    "emp_no",
+    "birth_date",
+    "gender",
+    "hire_date",
+    "emp_type",
+    "salary",
+    "severance"
+  ],
+  "matches": [
+    {
+      "source": "emp_no",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "birth_date",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "gender",
+      "target": "성별",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "hire_date",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "emp_type",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "salary",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "fallback": false
+    },
+    {
+      "source": "severance",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "fallback": false
+    }
+  ],
+  "confidence": 1.0,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "source": "synthetic",
+    "pattern_name": "영문형",
+    "generated": true
+  }
+}

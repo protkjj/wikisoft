@@ -61,18 +61,45 @@ async def auto_validate(
     confidence = estimate_confidence(parsed, matches, validation)
     anomalies = detect_anomalies(parsed, matches, validation)
     
-    # 5. 진단 답변 기반 추가 검증/경고
+    # 5. 중복 탐지
+    import pandas as pd
+    df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
+    duplicates = registry.call_tool(
+        "detect_duplicates",
+        df=df,
+        headers=parsed.get("headers", []),
+        matches=matches.get("matches", [])
+    )
+    
+    # 중복을 anomalies에 추가
+    if duplicates.get("has_duplicates"):
+        for dup in duplicates.get("exact_duplicates", []):
+            anomalies["anomalies"].append({
+                "type": "duplicate",
+                "severity": "error",
+                "message": dup["message"]
+            })
+        for dup in duplicates.get("similar_duplicates", []):
+            anomalies["anomalies"].append({
+                "type": "duplicate",
+                "severity": "warning",
+                "message": dup["message"]
+            })
+        anomalies["detected"] = True
+    
+    # 6. 진단 답변 기반 추가 검증/경고
     diagnostic_warnings = check_diagnostic_consistency(parsed, diagnostic_answers)
     if diagnostic_warnings:
         anomalies["anomalies"].extend(diagnostic_warnings)
 
-    # 6. 리포트 생성
+    # 7. 리포트 생성
     report = registry.call_tool("generate_report", validation=validation)
 
     result = {
         "status": "ok",
         "confidence": confidence,
         "anomalies": anomalies,
+        "duplicates": duplicates,  # 중복 상세 정보 추가
         "diagnostic_applied": bool(diagnostic_answers),
         "steps": {
             "parsed_summary": {

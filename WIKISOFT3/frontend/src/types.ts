@@ -144,4 +144,26 @@ export interface AutoValidateResultExtended extends AutoValidateResult {
   agent_explanation?: string
   iterations?: number
   needs_human_review?: boolean
+  duplicates?: DuplicateResult  // 중복 탐지 결과 추가
+}
+
+// 중복 탐지 결과
+export interface DuplicateResult {
+  has_duplicates: boolean
+  total_duplicates: number
+  exact_duplicates: DuplicateItem[]
+  similar_duplicates: DuplicateItem[]
+  suspicious_duplicates: DuplicateItem[]
+  summary: string
+}
+
+export interface DuplicateItem {
+  type: 'exact' | 'similar' | 'suspicious'
+  severity: 'error' | 'warning' | 'info'
+  key: string
+  key_field: string
+  rows: number[]
+  count: number
+  message: string
+  emp_ids?: string[]
 }
