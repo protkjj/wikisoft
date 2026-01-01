@@ -145,8 +145,13 @@ def validate(
     # errors와 warnings를 합쳐서 처리 (같은 문제가 에러/경고로 중복되는 것 방지)
     # ========================================
     def normalize_emp_info(emp_info: str) -> str:
-        """emp_info를 정규화 (공백 제거, 형식 통일)"""
-        return emp_info.strip() if emp_info else ""
+        """emp_info를 정규화 (공백/소수점 제거, 형식 통일)"""
+        if not emp_info:
+            return ""
+        result = emp_info.strip()
+        # 사원번호에서 .0 제거 (190001.0 → 190001)
+        result = result.replace('.0', '')
+        return result
     
     def deduplicate_all(error_list: List[Dict], warning_list: List[Dict]) -> tuple:
         """같은 사원번호 + 같은 필드 = 하나만 남기기

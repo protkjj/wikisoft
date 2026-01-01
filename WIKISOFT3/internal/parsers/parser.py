@@ -44,6 +44,17 @@ def _convert_excel_date(value: Any) -> Any:
     return value
 
 
+def _normalize_emp_id(value: Any) -> str:
+    """사원번호를 정규화: 소수점 제거, 문자열 반환"""
+    if value is None or value == "":
+        return ""
+    s = str(value).strip()
+    # 소수점과 그 뒤 숫자 제거 (190001.0 → 190001)
+    if '.' in s:
+        s = s.split('.')[0]
+    return s
+
+
 def _is_empty_row(row: List[Any], key_columns: List[int] = None) -> bool:
     """행이 비어있는지 확인. key_columns가 지정되면 해당 열만 검사."""
     if key_columns:
@@ -118,7 +129,30 @@ def _find_key_columns(headers: List[str]) -> List[int]:
     return key_indices if key_indices else [0]  # 없으면 첫 번째 열
 
 
-def _convert_dates_in_row(row: List[Any], date_columns: List[int]) -> List[Any]:
+def _normalize_emp_id_in_rows(headers: List[str], rows: List[List[Any]]) -> List[List[Any]]:
+    """모든 행의 사원번호를 정규화 (소수점 제거)"""
+    # 사원번호 컬럼 찾기
+    emp_col_idx = -1
+    for idx, h in enumerate(headers):
+        h_clean = str(h).strip()
+        if "사원" in h_clean or "사번" in h_clean or "직원번호" in h_clean:
+            emp_col_idx = idx
+            break
+    
+    if emp_col_idx < 0:
+        return rows
+    
+    # 모든 행의 사원번호 정규화
+    normalized_rows = []
+    for row in rows:
+        new_row = list(row)
+        if emp_col_idx < len(new_row):
+            new_row[emp_col_idx] = _normalize_emp_id(new_row[emp_col_idx])
+        normalized_rows.append(new_row)
+    
+    return normalized_rows
+
+
     """특정 컬럼들의 날짜를 변환."""
     result = list(row)
     for idx in date_columns:
@@ -218,6 +252,9 @@ def _parse_csv(text: str) -> Dict[str, Any]:
         converted_row = _convert_dates_in_row(raw_row, date_columns)
         data_rows.append(converted_row)
     
+    # 사원번호 정규화
+    data_rows = _normalize_emp_id_in_rows(headers, data_rows)
+    
     return {
         "headers": headers,
         "rows": data_rows,
@@ -272,7 +309,11 @@ def _parse_xlsx(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: i
     note_columns = _find_note_columns(headers)
     if note_columns:
         headers, rows = _remove_columns(headers, rows, note_columns)
-        return {
+    
+    # 사원번호 정규화
+    rows = _normalize_emp_id_in_rows(headers, rows)
+    
+    return {
         "headers": headers,
         "rows": rows,
         "meta": {
@@ -350,6 +391,9 @@ def _parse_xls(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: in
     note_columns = _find_note_columns(headers)
     if note_columns:
         headers, rows = _remove_columns(headers, rows, note_columns)
+
+    # 사원번호 정규화
+    rows = _normalize_emp_id_in_rows(headers, rows)
 
     return {
         "headers": headers,
