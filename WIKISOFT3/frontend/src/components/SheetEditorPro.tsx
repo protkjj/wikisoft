@@ -442,7 +442,7 @@ export default function SheetEditorPro({
       
       console.log(`📝 수정 명령 발견: row=${rowNum}, field=${fieldName}, value=${newValue}, colIdx=${colIdx}`)
       
-      if (colIdx !== -1 && rowNum > 0 && rowNum < sheetData.length) {
+      if (colIdx !== -1 && rowNum > 0 && rowNum <= sheetData.length) {
         const originalValue = sheetData[rowNum]?.[colIdx] || ''
         
         // 날짜 필드인 경우 원본 형식에 맞게 변환
