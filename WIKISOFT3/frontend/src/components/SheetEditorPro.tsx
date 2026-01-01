@@ -76,10 +76,19 @@ export default function SheetEditorPro({
   // 초기화
   useEffect(() => {
     if (initialData && initialData.length > 0) {
-      // 헤더에 열 문자 추가, 데이터에 행 번호 추가
+      // 컬럼 수 계산
+      const colCount = initialData[0].length + 1  // +1 for row number column
+      
+      // 0행: 컬럼 레이블 (빈칸, A, B, C, D...)
+      const columnLabels = ['', ...Array.from({ length: colCount - 1 }, (_, i) => getColumnLetter(i + 1))]
+      
+      // 1행: 헤더 (행번호 칸, 사원번호, 성명...)
       const headers = ['', ...initialData[0]]
-      const dataWithRowNumbers = initialData.slice(1).map((row, idx) => [String(idx + 1), ...row])
-      setSheetData([headers, ...dataWithRowNumbers])
+      
+      // 2행~: 데이터 (행번호, 데이터...)
+      const dataWithRowNumbers = initialData.slice(1).map((row, idx) => [String(idx + 2), ...row])
+      
+      setSheetData([columnLabels, headers, ...dataWithRowNumbers])
     }
   }, [initialData])
 
@@ -679,7 +688,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
                 {sheetData.slice(0, 50).map((row, rowIdx) => (
                   <tr key={rowIdx}>
                     {row.map((cell, colIdx) => {
-                      const isHeader = rowIdx === 0 || colIdx === 0
+                      const isHeader = rowIdx <= 1 || colIdx === 0  // 0행(컬럼레이블), 1행(헤더), 0열(행번호)
                       const isSelected = isCellSelected(rowIdx, colIdx)
                       const isEditing = activeCell?.row === rowIdx && activeCell?.col === colIdx
                       const isEdited = pendingEdits.some(e => e.row === rowIdx && e.col === colIdx)
@@ -701,11 +710,11 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
                           onMouseDown={(e) => handleMouseDown(rowIdx, colIdx, e)}
                           onMouseEnter={() => handleMouseEnter(rowIdx, colIdx)}
                           onDoubleClick={() => handleCellDoubleClick(rowIdx, colIdx)}
-                          title={!isHeader && colIdx > 0 && rowIdx > 0 ? `셀 ${getCellAddress(rowIdx, colIdx)}` : undefined}
+                          title={!isHeader && colIdx > 0 && rowIdx > 1 ? `셀 ${getCellAddress(rowIdx, colIdx)}` : undefined}
                         >
                           {isHeader ? (
                             <div className="cell-header">
-                              {colIdx === 0 ? cell : (rowIdx === 0 ? getColumnLetter(colIdx) : cell)}
+                              {cell}
                             </div>
                           ) : isEditing ? (
                             <input
