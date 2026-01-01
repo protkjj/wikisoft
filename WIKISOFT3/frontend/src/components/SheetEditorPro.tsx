@@ -499,7 +499,11 @@ export default function SheetEditorPro({
         }
       })
       setSheetData(newData)
-      setPendingEdits(prev => [...prev, ...edits])
+      setPendingEdits(prev => {
+        const updated = [...prev, ...edits]
+        console.log('📌 pendingEdits 업데이트:', updated)
+        return updated
+      })
       
       // 첫 번째 수정 셀 선택
       setSelection({
