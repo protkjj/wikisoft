@@ -1,6 +1,6 @@
 {
-  "case_id": "9e266a5695df",
-  "timestamp": "2026-01-01T22:27:20.987892",
+  "case_id": "c0984b9d22ee",
+  "timestamp": "2026-01-01T21:39:19.429179",
   "headers": [
     "사원번호",
     "생년월일",
@@ -13,7 +13,13 @@
     "중간정산기준일",
     "중간정산액",
     "제도구분 (1,2,3)",
-    "적용배수"
+    "적용배수",
+    "휴직기간등차감",
+    "",
+    "",
+    "",
+    "",
+    ""
   ],
   "normalized_headers": [
     "사원번호",
@@ -27,9 +33,45 @@
     "중간정산기준일",
     "중간정산액",
     "제도구분 (1,2,3)",
-    "적용배수"
+    "적용배수",
+    "휴직기간등차감",
+    "",
+    "",
+    "",
+    "",
+    ""
   ],
   "matches": [
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
+    },
+    {
+      "source": "",
+      "target": null,
+      "confidence": 0.0,
+      "ignored": true
+    },
     {
       "source": "사원번호",
       "target": "사원번호",
@@ -101,12 +143,19 @@
       "target": "적용배수",
       "confidence": 0.95,
       "from_fewshot": true
+    },
+    {
+      "source": "휴직기간등차감",
+      "target": null,
+      "confidence": 0.0,
+      "unmapped": true,
+      "used_ai": true
     }
   ],
-  "confidence": 0.8666666666666667,
+  "confidence": 1.0,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls"
+    "filename": "푸본현대생명_2212_확정급여채무평가_작성요청자료_송부용(재발송).xlsx"
   }
 }

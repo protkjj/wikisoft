@@ -885,7 +885,7 @@ function App() {
           setAllErrors([]);
         }}
         data={sheetData}
-        targetRow={editTarget?.row ? editTarget.row - 2 : undefined}
+        targetRow={editTarget?.row ? editTarget.row - 1 : undefined}
         targetField={editTarget?.field}
         errorMessage={editTarget?.message}
         allErrors={allErrors}
