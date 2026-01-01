@@ -278,7 +278,9 @@ export default function SheetEditorPro({
     if (onSave) {
       // 행 번호 열 제거
       const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
-      onSave([sheetData[0].slice(1), ...dataWithoutRowNumbers])
+      const saveData = [sheetData[0].slice(1), ...dataWithoutRowNumbers]
+      console.log('💾 저장 데이터:', saveData)
+      onSave(saveData)
     }
     onClose()
   }
@@ -427,6 +429,7 @@ export default function SheetEditorPro({
 
   // AI 수정 명령 적용
   const applyEditCommands = (response: string) => {
+    console.log('🔍 AI 응답 분석:', response)
     const editPattern = /\[(?:EDIT|수정):(\d+):([^:]+):([^\]]+)\]/gi
     const edits: Array<{row: number, col: number, value: string, field: string, cellAddress: string}> = []
     let match
@@ -436,6 +439,8 @@ export default function SheetEditorPro({
       const fieldName = match[2].trim()
       let newValue = match[3].trim()
       const colIdx = headers.indexOf(fieldName)
+      
+      console.log(`📝 수정 명령 발견: row=${rowNum}, field=${fieldName}, value=${newValue}, colIdx=${colIdx}`)
       
       if (colIdx !== -1 && rowNum > 0 && rowNum < sheetData.length) {
         const originalValue = sheetData[rowNum]?.[colIdx] || ''
@@ -457,6 +462,7 @@ export default function SheetEditorPro({
     }
     
     if (edits.length > 0) {
+      console.log('✅ 적용할 수정 사항:', edits)
       const newData = [...sheetData]
       edits.forEach(edit => {
         newData[edit.row] = [...newData[edit.row]]
@@ -471,6 +477,8 @@ export default function SheetEditorPro({
         end: { row: edits[0].row, col: edits[0].col },
         isSelecting: false
       })
+    } else {
+      console.log('⚠️ 수정 명령을 찾을 수 없음')
     }
     return edits
   }
