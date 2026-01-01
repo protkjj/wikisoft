@@ -529,11 +529,18 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
 [수정:행:필드:값] 없이 응답하면 수정이 적용되지 않습니다!
 `
 
+      // 30초 타임아웃 설정
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
       const response = await fetch('http://127.0.0.1:8004/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage, context })
+        body: JSON.stringify({ message: userMessage, context }),
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       
       if (response.ok) {
         const data = await response.json()
@@ -550,10 +557,14 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
         
         setMessages(prev => [...prev, { role: 'assistant', content: displayResponse, timestamp: new Date() }])
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: '서버 오류가 발생했습니다.', timestamp: new Date() }])
+        setMessages(prev => [...prev, { role: 'assistant', content: `서버 오류가 발생했습니다. (상태: ${response.status})`, timestamp: new Date() }])
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: '네트워크 오류가 발생했습니다.', timestamp: new Date() }])
+    } catch (error) {
+      console.error('❌ 네트워크 오류:', error)
+      const errorMessage = error instanceof Error 
+        ? (error.name === 'AbortError' ? '요청 시간이 초과되었습니다. (30초)' : error.message)
+        : '알 수 없는 오류'
+      setMessages(prev => [...prev, { role: 'assistant', content: `네트워크 오류: ${errorMessage}`, timestamp: new Date() }])
     } finally {
       setIsThinking(false)
     }
