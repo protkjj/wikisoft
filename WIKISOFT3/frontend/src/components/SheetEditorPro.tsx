@@ -239,13 +239,13 @@ export default function SheetEditorPro({
 
   // 에러/경고 셀인지 확인 (currentErrors가 있으면 그것 사용, 없으면 allErrors)
   const getCellErrorType = (rowIdx: number, colIdx: number): 'error' | 'warning' | null => {
-    if (rowIdx === 0 || colIdx === 0) return null
+    if (rowIdx <= 1 || colIdx === 0) return null  // 0행(컬럼레이블), 1행(헤더), 0열(행번호) 제외
     const fieldName = headers[colIdx]
     const errorsToCheck = currentErrors.length > 0 ? currentErrors : allErrors
     
     for (const err of errorsToCheck) {
-      const excelRow = rowIdx + 1
-      if (err.row === excelRow && err.field === fieldName) {
+      // sheetData[rowIdx]가 곧 엑셀 행 번호와 일치 (0행=컬럼레이블, 1행=헤더이므로)
+      if (err.row === rowIdx && err.field === fieldName) {
         return err.severity
       }
     }
