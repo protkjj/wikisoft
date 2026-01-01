@@ -3,6 +3,7 @@ import pandas as pd
 
 from internal.validators.validation_layer1 import validate_layer1
 from internal.validators.validation_layer_ai import validate_with_ai
+from internal.ai.knowledge_base import save_training_example
 
 
 def validate(
@@ -58,13 +59,41 @@ def validate(
                     "row": e.get("row", -1) + 2,  # 헤더 행 + 0-index 보정
                     "field": e.get("column", ""),
                     "message": e.get("error", ""),
+                    "emp_info": e.get("emp_info", ""),  # 사원번호 정보 전달
                     "severity": "error"
                 })
             
             for w in l1_result.get("warnings", []):
-                warnings.append(w.get("warning", str(w)))
+                if isinstance(w, dict):
+                    warnings.append({
+                        "row": w.get("row", -1) + 2 if w.get("row", -1) >= 0 else -1,
+                        "field": w.get("column", ""),
+                        "message": w.get("warning", ""),
+                        "emp_info": w.get("emp_info", ""),
+                        "source": "layer1"
+                    })
+                else:
+                    warnings.append(str(w))
             
             checks.append({"name": "layer1_validation", "status": "pass" if not l1_result.get("errors") else "fail"})
+            
+            # Layer1이 발견한 오류를 AI 학습 데이터로 저장 (AI가 놓친 패턴 학습)
+            if l1_result.get("errors"):
+                try:
+                    for err in l1_result.get("errors", [])[:5]:  # 최대 5개만
+                        save_training_example(
+                            input_data={
+                                "error_type": err.get("column", "unknown"),
+                                "error_message": err.get("error", ""),
+                                "row_sample": rows[err.get("row", 0)] if err.get("row", 0) < len(rows) else {},
+                            },
+                            ai_response={"detected": False, "source": "layer1"},
+                            human_correction={"should_detect": True, "rule": err.get("error", "")},
+                            is_correct=False,  # AI가 놓쳤으므로
+                            category="layer1_error"
+                        )
+                except Exception:
+                    pass  # 학습 저장 실패해도 검증은 계속
             
         except Exception as e:
             checks.append({"name": "layer1_validation", "status": "error", "error": str(e)})
@@ -78,23 +107,30 @@ def validate(
             
             ai_result = validate_with_ai(df, match_list, diagnostic_answers)
             
-            # AI 오류/경고 추가
+            # AI 오류/경고 추가 (row를 +2 보정하여 Layer1과 통일)
             for e in ai_result.get("errors", []):
+                ai_row = e.get("row", -1)
+                # AI는 0-based index로 응답, Layer1과 통일을 위해 +2
+                normalized_row = ai_row + 2 if isinstance(ai_row, int) and ai_row >= 0 else -1
                 errors.append({
-                    "row": e.get("row", -1),
+                    "row": normalized_row,
                     "field": e.get("field", ""),
                     "message": e.get("message", ""),
                     "reason": e.get("reason", ""),
+                    "emp_info": e.get("emp_info", ""),
                     "severity": "error",
                     "source": "ai"
                 })
             
             for w in ai_result.get("warnings", []):
+                ai_row = w.get("row", -1)
+                normalized_row = ai_row + 2 if isinstance(ai_row, int) and ai_row >= 0 else -1
                 warnings.append({
-                    "row": w.get("row", -1),
+                    "row": normalized_row,
                     "field": w.get("field", ""),
                     "message": w.get("message", ""),
                     "reason": w.get("reason", ""),
+                    "emp_info": w.get("emp_info", ""),
                     "source": "ai"
                 })
             
@@ -104,11 +140,99 @@ def validate(
         except Exception as e:
             checks.append({"name": "ai_validation", "status": "error", "error": str(e)})
 
+    # ========================================
+    # 중복 제거: 같은 사원번호 + 같은 필드면 하나로 통합
+    # errors와 warnings를 합쳐서 처리 (같은 문제가 에러/경고로 중복되는 것 방지)
+    # ========================================
+    def normalize_message(msg: str) -> str:
+        """메시지를 정규화해서 비교하기 쉽게
+        
+        숫자를 완전히 제거하면 다른 오류가 같은 것으로 처리될 수 있음:
+        - "입사 나이 17세 미만" vs "입사 나이 65세 초과" → 다른 오류
+        - "급여 1,500,000원 - 최저임금 미달" vs "급여 0원" → 다른 오류
+        
+        따라서 숫자는 유지하되, 불필요한 문자만 정규화
+        """
+        import re
+        msg = msg.lower().strip()
+        # 쉼표, 원 단위 표시 정규화
+        msg = re.sub(r'[,원]', '', msg)
+        # 핵심 키워드 + 조건 키워드 추출
+        type_keywords = ['미만', '초과', '미달', '음수', '누락', '중복', '형식오류', '불일치']
+        field_keywords = ['입사', '나이', '급여', '최저임금', '생년월일', '사원번호', '성별']
+        
+        found_types = [k for k in type_keywords if k in msg]
+        found_fields = [k for k in field_keywords if k in msg]
+        
+        # 조건 키워드가 있으면 필드+조건으로 구분
+        if found_types and found_fields:
+            return f"{'|'.join(sorted(found_fields))}:{'|'.join(sorted(found_types))}"
+        elif found_fields:
+            return '|'.join(sorted(found_fields))
+        else:
+            # 핵심 부분만 추출 (처음 30자)
+            return msg[:30]
+    
+    def deduplicate_all(error_list: List[Dict], warning_list: List[Dict]) -> tuple:
+        """에러와 경고를 합쳐서 중복 제거. 같은 (사원, 필드)면 더 심각한 것(에러)만 남김"""
+        seen = {}  # key: (emp_info, field, normalized_msg)
+        
+        # 에러 먼저 처리 (우선순위 높음)
+        for err in error_list:
+            emp_info = err.get("emp_info", "") or f"row_{err.get('row', -1)}"
+            field = err.get("field", "") or err.get("column", "") or "unknown"
+            norm_msg = normalize_message(err.get("message", ""))
+            key = (emp_info, field, norm_msg)
+            
+            if key not in seen:
+                seen[key] = {"item": err.copy(), "is_error": True}
+            else:
+                # 이미 있으면 메시지 합치기
+                existing = seen[key]["item"]
+                new_msg = err.get("message", "")
+                if new_msg and new_msg not in existing.get("message", ""):
+                    existing["message"] = f"{existing['message']}; {new_msg}"
+        
+        # 경고 처리 (에러에서 이미 처리된 것은 스킵)
+        for warn in warning_list:
+            if not isinstance(warn, dict):
+                continue
+            emp_info = warn.get("emp_info", "") or f"row_{warn.get('row', -1)}"
+            field = warn.get("field", "") or warn.get("column", "") or "unknown"
+            norm_msg = normalize_message(warn.get("message", warn.get("warning", "")))
+            key = (emp_info, field, norm_msg)
+            
+            if key not in seen:
+                seen[key] = {"item": warn.copy(), "is_error": False}
+            # 이미 에러로 있으면 경고는 무시 (에러가 더 심각)
+        
+        # 분리해서 반환
+        new_errors = []
+        new_warnings = []
+        for data in seen.values():
+            if data["is_error"]:
+                new_errors.append(data["item"])
+            else:
+                new_warnings.append(data["item"])
+        
+        return new_errors, new_warnings
+    
+    # dict 형태의 warnings만 중복 제거 대상
+    dict_warnings = [w for w in warnings if isinstance(w, dict)]
+    str_warnings = [w for w in warnings if isinstance(w, str)]
+    
+    errors, dict_warnings = deduplicate_all(errors, dict_warnings)
+    warnings = dict_warnings + str_warnings
+
+    # AI 사용 여부 확인
+    used_ai = any(c.get("name") == "ai_validation" and c.get("status") != "error" for c in checks)
+    
     return {
-        "passed": len([e for e in errors if isinstance(e, dict)]) == 0 and len([w for w in warnings if isinstance(w, dict)]) == 0,
+        "passed": len(errors) == 0 and len(warnings) == 0,
         "errors": errors,
         "warnings": warnings,
         "checks": checks,
         "ai_reasoning": ai_reasoning,
         "diagnostic_answers_received": bool(diagnostic_answers),
+        "used_ai": used_ai,
     }

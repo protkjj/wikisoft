@@ -491,3 +491,88 @@
 [data-theme="dark"] .anomaly-item.medium {
   background: rgba(255, 184, 77, 0.15);
 }
+
+/* 검증 상세 결과 스타일 */
+.validation-errors,
+.validation-warnings {
+  margin-bottom: 16px;
+}
+
+.validation-errors h4,
+.validation-warnings h4 {
+  font-size: 14px;
+  margin: 0 0 12px 0;
+  color: var(--text-secondary);
+}
+
+.error-list,
+.warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.validation-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  align-items: center;
+}
+
+.validation-item.error {
+  background: rgba(255, 107, 107, 0.1);
+  border-left: 3px solid #FF6B6B;
+}
+
+.validation-item.warning {
+  background: rgba(255, 184, 77, 0.1);
+  border-left: 3px solid #FFB84D;
+}
+
+.validation-item .item-row {
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.validation-item .item-field {
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 12px;
+  color: var(--accent-color);
+}
+
+.validation-item .item-message {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.validation-item .item-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.more-items {
+  text-align: center;
+  padding: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-style: italic;
+}
+
+[data-theme="dark"] .validation-item.error {
+  background: rgba(255, 107, 107, 0.15);
+}
+
+[data-theme="dark"] .validation-item.warning {
+  background: rgba(255, 184, 77, 0.15);
+}

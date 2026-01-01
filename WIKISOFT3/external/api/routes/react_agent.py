@@ -14,6 +14,7 @@ import json
 from internal.agent.tool_registry import get_registry
 from internal.agent.react_agent import create_react_agent
 from internal.memory.case_store import get_case_store, save_successful_case
+from internal.utils.security import secure_logger
 
 router = APIRouter(prefix="/react-agent", tags=["react-agent"])
 
@@ -82,7 +83,7 @@ async def react_validate(
                 metadata={"filename": file.filename, "agent": "react"}
             )
         except Exception as e:
-            print(f"케이스 저장 실패: {e}")
+            secure_logger.error(f"케이스 저장 실패: {e}")
     
     return result
 

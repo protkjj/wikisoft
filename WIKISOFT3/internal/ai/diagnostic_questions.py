@@ -75,3 +75,32 @@ QUESTION_SUMMARY = {
         "amount_aggregates": len(AMOUNT_AGGREGATES),
     },
 }
+
+
+# 재직자 명부 검증용 13개 질문 ID (퇴직자/추계액 제외)
+ROSTER_QUESTION_IDS = [
+    "q1", "q2", "q3", "q4", "q6", "q7", "q8",  # 정책/제도 7개
+    "q10", "q12", "q13",  # 데이터 품질 3개
+    "q21", "q22", "q23",  # 인원 집계 3개
+]
+
+
+def get_roster_questions() -> List[Dict[str, Any]]:
+    """재직자 명부 검증용 13개 질문만 반환 (Single Source of Truth)"""
+    return [q for q in ALL_QUESTIONS if q["id"] in ROSTER_QUESTION_IDS]
+
+
+def format_answers_for_ai(answers: Dict[str, Any]) -> str:
+    """진단 답변을 AI가 이해하기 쉬운 형태로 포맷팅 (공통 함수)"""
+    lines = []
+    for qid, value in answers.items():
+        question = get_question_by_id(qid)
+        if question:
+            # 질문 텍스트에서 앞부분(카테고리)만 추출
+            q_text = question["question"]
+            # "사외적립자산 - 회계 장부..." → "사외적립자산"
+            label = q_text.split(" - ")[0] if " - " in q_text else q_text[:20]
+        else:
+            label = qid
+        lines.append(f"- {label}: {value}")
+    return "\n".join(lines)

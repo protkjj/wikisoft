@@ -5,8 +5,12 @@ Windmill에서 Python 스크립트로 사용
 검증 완료된 데이터로 IFRS 계산 수행
 """
 
+import os
 import requests
 from typing import TypedDict, Optional, Any, List
+
+# 기본 API URL (환경변수로 오버라이드 가능)
+DEFAULT_API_URL = os.getenv("WIKISOFT_API_URL", "http://localhost:8003")
 
 
 class IFRSResult(TypedDict):
@@ -21,7 +25,7 @@ def main(
     headers: List[str],
     rows: List[List[Any]],
     matches: List[dict],
-    api_url: str = "http://localhost:8003",
+    api_url: str = None,
     discount_rate: float = 0.045,
     salary_increase_rate: float = 0.03,
     turnover_rate: float = 0.05,
@@ -59,6 +63,8 @@ def main(
                 matches=validation["matches"]["matches"]
             )
     """
+    # 환경변수 또는 기본값 사용
+    api_url = api_url or DEFAULT_API_URL
 
     try:
         response = requests.post(

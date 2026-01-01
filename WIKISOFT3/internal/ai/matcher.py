@@ -151,12 +151,7 @@ def ai_match_columns(headers: List[str], sheet_type: str = "all", api_key: Optio
     for unmapped in data.get("unmapped", []):
         mappings.append({"source": unmapped, "target": None, "confidence": 0.0, "unmapped": True, "used_ai": True})
 
-    # 필수 필드 누락 경고
-    required = set(get_required_fields(sheet_type))
-    mapped_targets = {m["target"] for m in mappings if m.get("target")}
-    missing_required = list(required - mapped_targets)
-    if missing_required:
-        warnings.append(f"필수 필드 누락: {', '.join(missing_required)}")
+    # 필수 필드 누락 경고는 match_headers에서 최종 체크 (Few-shot 병합 후)
 
     return {
         "matches": mappings,
@@ -244,10 +239,18 @@ def match_headers(parsed: Dict[str, Any], sheet_type: str = "all", retry: bool =
             if not found:
                 final_matches.append({"source": h, "target": None, "confidence": 0.0, "unmapped": True})
     
+    # 필수 필드 누락 경고 추가 (final_matches 기준으로 체크)
+    warnings = result.get("warnings", [])
+    required = set(get_required_fields(sheet_type))
+    mapped_targets = {m["target"] for m in final_matches if m.get("target")}
+    missing_required = list(required - mapped_targets)
+    if missing_required:
+        warnings.append(f"필수 필드 누락: {', '.join(missing_required)}")
+    
     return {
         "columns": headers,
         "matches": final_matches,
-        "warnings": result.get("warnings", []),
+        "warnings": warnings,
         "used_ai": result.get("used_ai", use_ai),
         "used_fewshot": bool(few_shot_mappings),
     }

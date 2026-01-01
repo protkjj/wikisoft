@@ -1,6 +1,6 @@
 {
   "case_id": "b7fe0d9d52da",
-  "timestamp": "2025-12-31T15:38:59.441397",
+  "timestamp": "2026-01-01T21:01:57.779984",
   "headers": [
     "참고사항",
     "사원번호",
@@ -36,8 +36,7 @@
       "source": "참고사항",
       "target": null,
       "confidence": 0.0,
-      "unmapped": true,
-      "fallback": true
+      "ignored": true
     },
     {
       "source": "사원번호",
@@ -112,15 +111,10 @@
       "from_fewshot": true
     }
   ],
-  "confidence": 0.6769230769230767,
+  "confidence": 0.8666666666666667,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls",
-    "company_name": "에이치자산운용",
-    "row_count": 15,
-    "error_count": 2,
-    "warning_count": 0,
-    "anomaly_count": 0
+    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls"
   }
 }

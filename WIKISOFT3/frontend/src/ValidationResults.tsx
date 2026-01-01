@@ -226,6 +226,58 @@ export default function ValidationResults({
         </div>
       )}
 
+      {/* 검증 오류/경고 상세 목록 */}
+      {(result.steps?.validation?.errors?.length > 0 || result.steps?.validation?.warnings?.length > 0) && (
+        <div className="section">
+          <h3>🔍 검증 상세 결과</h3>
+          
+          {/* 오류 목록 */}
+          {result.steps?.validation?.errors?.length > 0 && (
+            <div className="validation-errors">
+              <h4>🔴 오류 ({result.steps.validation.errors.length}건)</h4>
+              <div className="error-list">
+                {result.steps.validation.errors.slice(0, 20).map((error: any, idx: number) => (
+                  <div key={idx} className="validation-item error">
+                    <span className="item-row">행 {error.row}</span>
+                    <span className="item-field">{error.field}</span>
+                    <span className="item-message">{error.message}</span>
+                    {error.reason && <span className="item-reason">💡 {error.reason}</span>}
+                  </div>
+                ))}
+                {result.steps.validation.errors.length > 20 && (
+                  <div className="more-items">... 외 {result.steps.validation.errors.length - 20}건 더</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 경고 목록 */}
+          {result.steps?.validation?.warnings?.length > 0 && (
+            <div className="validation-warnings">
+              <h4>🟠 경고 ({result.steps.validation.warnings.length}건)</h4>
+              <div className="warning-list">
+                {result.steps.validation.warnings.slice(0, 20).map((warning: any, idx: number) => (
+                  <div key={idx} className="validation-item warning">
+                    {typeof warning === 'string' ? (
+                      <span className="item-message">{warning}</span>
+                    ) : (
+                      <>
+                        {warning.row && <span className="item-row">행 {warning.row}</span>}
+                        {warning.field && <span className="item-field">{warning.field}</span>}
+                        <span className="item-message">{warning.message || warning}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {result.steps.validation.warnings.length > 20 && (
+                  <div className="more-items">... 외 {result.steps.validation.warnings.length - 20}건 더</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* AI 에이전트 추론 과정 (있으면) */}
       {result.agent_reasoning && result.agent_reasoning.length > 0 && (
         <div className="section">

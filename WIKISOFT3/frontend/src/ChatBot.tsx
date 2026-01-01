@@ -12,17 +12,37 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | number>>({})
   const [userInput, setUserInput] = useState('')
+  const [isEditing, setIsEditing] = useState(false)  // 답변 수정 모드
   const questionRefs = useRef<(HTMLLIElement | null)[]>([])
+
+  // 질문이 없으면 빈 화면 표시
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="chatbot-layout">
+        <div className="question-main">
+          <div className="completion-screen">
+            <div className="completion-icon">⚠️</div>
+            <h2 className="completion-title">질문이 없습니다</h2>
+            <p className="completion-subtitle">진단 질문을 불러오지 못했습니다.</p>
+            <button className="completion-next-button" onClick={onBack}>
+              ← 돌아가기
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const currentQuestion = questions[currentQuestionIndex]
   const progress = ((Object.keys(answers).length) / questions.length) * 100
   const allAnswered = Object.keys(answers).length === questions.length
 
-  // 현재 질문이 변경되면 해당 항목으로 스크롤
+  // 현재 질문이 변경되면 해당 항목으로 스크롤 (사이드바만)
   useEffect(() => {
     const currentRef = questionRefs.current[currentQuestionIndex]
     if (currentRef) {
-      currentRef.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // scrollIntoView를 사이드바 컨테이너 기준으로 제한
+      currentRef.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [currentQuestionIndex])
 
@@ -129,25 +149,40 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
 
       {/* 오른쪽 메인: 현재 질문 또는 완료 화면 */}
       <div className="question-main">
-        {allAnswered ? (
+        {allAnswered && !isEditing ? (
           // 모든 질문 완료 시 완료 화면 표시
           <div className="completion-screen">
-            <div className="completion-icon">✅</div>
+            <div className="completion-icon-wrapper">
+              <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
             <h2 className="completion-title">모든 질문 완료!</h2>
-            <p className="completion-subtitle">13개 질문에 모두 답변하셨습니다.</p>
+            <p className="completion-subtitle">{questions.length}개 질문에 모두 답변하셨습니다.</p>
             
             <div className="completion-summary">
               <p>이제 검증할 Excel 명부 파일을 업로드해주세요.</p>
             </div>
 
-            <button 
-              className="completion-next-button"
-              onClick={handleComplete}
-            >
-              📁 파일 업로드로 이동 →
-            </button>
+            <div className="completion-buttons">
+              <button 
+                className="completion-edit-button"
+                onClick={() => {
+                  setIsEditing(true)
+                  setCurrentQuestionIndex(0)
+                }}
+              >
+                ✏️ 답변 수정
+              </button>
+              <button 
+                className="completion-next-button"
+                onClick={handleComplete}
+              >
+                📁 파일 업로드로 이동 →
+              </button>
+            </div>
           </div>
-        ) : (
+        ) : currentQuestion ? (
           // 질문 진행 중
           <>
             <div className="main-header">
@@ -217,16 +252,25 @@ export default function ChatBot({ questions, onComplete, onBack }: ChatBotProps)
                 ← 이전
               </button>
               <span className="nav-info">{currentQuestionIndex + 1} / {questions.length}</span>
-              <button 
-                className="nav-button"
-                onClick={() => currentQuestionIndex < questions.length - 1 && setCurrentQuestionIndex(currentQuestionIndex + 1)}
-                disabled={currentQuestionIndex === questions.length - 1}
-              >
-                다음 →
-              </button>
+              {isEditing && allAnswered ? (
+                <button 
+                  className="nav-button done-button"
+                  onClick={() => setIsEditing(false)}
+                >
+                  ✅ 수정 완료
+                </button>
+              ) : (
+                <button 
+                  className="nav-button"
+                  onClick={() => currentQuestionIndex < questions.length - 1 && setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                  disabled={currentQuestionIndex === questions.length - 1}
+                >
+                  다음 →
+                </button>
+              )}
             </div>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   )

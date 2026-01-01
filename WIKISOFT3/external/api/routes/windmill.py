@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from internal.agent.tool_registry import get_registry
 from internal.agent.confidence import detect_anomalies, estimate_confidence
-from internal.utils.security import validate_upload_file
+from internal.utils.security import validate_upload_file, secure_logger
 
 router = APIRouter(prefix="/windmill", tags=["windmill"])
 
@@ -208,7 +208,7 @@ def _decide_action(
         (action, auto_approve, message)
     """
     has_errors = len(errors) > 0
-    has_critical_duplicates = duplicates.get("exact_count", 0) > 0
+    has_critical_duplicates = len(duplicates.get("exact_duplicates", [])) > 0
     has_warnings = len(warnings) > 0
 
     # Case 1: 에러가 있으면 rejected
@@ -225,7 +225,7 @@ def _decide_action(
         return (
             "needs_review",
             False,
-            f"중복 데이터 발견: {duplicates.get('exact_count', 0)}건의 완전 중복. 수동 검토 필요."
+            f"중복 데이터 발견: {len(duplicates.get('exact_duplicates', []))}건의 완전 중복. 수동 검토 필요."
         )
 
     # Case 3: 신뢰도가 기준 이상이고 경고만 있으면 auto_approve
@@ -424,7 +424,7 @@ def _notify_slack(record: Dict[str, Any]) -> bool:
         resp = requests.post(webhook_url, json={"text": text}, timeout=5)
         return resp.status_code < 300
     except Exception as exc:
-        print(f"Slack 알림 실패: {exc}")
+        secure_logger.warning(f"Slack 알림 실패: {exc}")
         return False
 
 
@@ -466,5 +466,5 @@ def _notify_email(record: Dict[str, Any]) -> bool:
             server.send_message(msg)
         return True
     except Exception as exc:
-        print(f"Email 알림 실패: {exc}")
+        secure_logger.warning(f"Email 알림 실패: {exc}")
         return False

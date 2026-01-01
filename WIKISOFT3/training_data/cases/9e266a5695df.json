@@ -1,0 +1,112 @@
+{
+  "case_id": "9e266a5695df",
+  "timestamp": "2026-01-01T21:22:35.773958",
+  "headers": [
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "제도구분 (1,2,3)",
+    "적용배수"
+  ],
+  "normalized_headers": [
+    "사원번호",
+    "생년월일",
+    "성별 (1:남자, 2:여자)",
+    "입사일자",
+    "기준급여",
+    "당년도 퇴직금추계액",
+    "차년도 퇴직금추계액",
+    "종업원 구분 (1:직원, 3:임원, 4:계약직)",
+    "중간정산기준일",
+    "중간정산액",
+    "제도구분 (1,2,3)",
+    "적용배수"
+  ],
+  "matches": [
+    {
+      "source": "사원번호",
+      "target": "사원번호",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "생년월일",
+      "target": "생년월일",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "성별 (1:남자, 2:여자)",
+      "target": "성별",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "입사일자",
+      "target": "입사일자",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "기준급여",
+      "target": "기준급여",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "당년도 퇴직금추계액",
+      "target": "당년도퇴직금추계액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "차년도 퇴직금추계액",
+      "target": "차년도퇴직금추계액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "종업원 구분 (1:직원, 3:임원,  4:계약직)",
+      "target": "종업원구분",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "중간정산기준일",
+      "target": "중간정산기준일",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "중간정산액",
+      "target": "중간정산액",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "제도구분 (1,2,3)",
+      "target": "제도구분",
+      "confidence": 0.95,
+      "from_fewshot": true
+    },
+    {
+      "source": "적용배수",
+      "target": "적용배수",
+      "confidence": 0.95,
+      "from_fewshot": true
+    }
+  ],
+  "confidence": 0.8666666666666667,
+  "was_auto_approved": true,
+  "human_corrections": {},
+  "metadata": {
+    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls"
+  }
+}

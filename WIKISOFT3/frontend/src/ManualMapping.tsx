@@ -25,12 +25,15 @@ interface ManualMappingProps {
   onCancel: () => void
 }
 
-// 무시할 헤더 키워드
-const IGNORE_KEYWORDS = ['참고', '비고', '구분', '메모', 'note', 'remark', 'comment', 'unnamed', 'column', '컬럼']
+// 무시할 헤더 키워드 (종업원구분, 제도구분 등 의미있는 '구분'은 제외)
+const IGNORE_KEYWORDS = ['참고사항', '비고', '메모', 'note', 'remark', 'comment', 'unnamed', 'column', '컬럼']
 
 function shouldIgnoreHeader(header: string): boolean {
-  const lower = header.toLowerCase()
-  return IGNORE_KEYWORDS.some(kw => lower.includes(kw))
+  const lower = header.toLowerCase().trim()
+  // 완전히 무시할 패턴
+  if (lower.startsWith('unnamed') || lower === '') return true
+  // 키워드 매칭
+  return IGNORE_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()))
 }
 
 export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMappingProps) {

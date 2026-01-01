@@ -8,8 +8,12 @@ Windmill에서 Python 스크립트로 사용
 3. WIKISOFT3_API_URL 환경변수 설정 (예: https://your-ngrok-url.ngrok.io)
 """
 
+import os
 import requests
 from typing import TypedDict, Optional, Any
+
+# 기본 API URL (환경변수로 오버라이드 가능)
+DEFAULT_API_URL = os.getenv("WIKISOFT_API_URL", "http://localhost:8003")
 
 
 class ValidationResult(TypedDict):
@@ -28,7 +32,7 @@ class ValidationResult(TypedDict):
 def main(
     file_url: str,
     sheet_type: str = "재직자",
-    api_url: str = "http://localhost:8003",
+    api_url: str = None,
     auto_approve_threshold: float = 0.90
 ) -> ValidationResult:
     """
@@ -64,6 +68,8 @@ def main(
             # 파일 반려 → 재업로드 요청
             pass
     """
+    # 환경변수 또는 기본값 사용
+    api_url = api_url or DEFAULT_API_URL
 
     # 1. 파일 다운로드
     try:

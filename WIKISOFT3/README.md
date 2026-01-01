@@ -28,6 +28,15 @@
 
 ## 📅 최근 업데이트 (2026.01.01)
 
+### 🎨 SheetEditorPro - AI 통합 스프레드시트 에디터
+- **AI 사이드바**: 다크 모드 그라데이션 디자인, 실시간 AI 수정 명령 처리
+- **셀 하이라이트**: 에러/경고 셀 자동 하이라이트 (빨간색/주황색 테두리)
+- **재검증 기능**: 수정 후 바로 재검증 가능, 수정된 셀의 에러만 제거
+- **형식 자동 유지**: 날짜(YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD), 금액(콤마, 원, 소수점) 원본 형식 감지 및 유지
+- **참고사항 자동 제거**: 파서에서 "참고사항", "비고" 컬럼 자동 필터링
+- **셀 주소 표시**: AI 응답에 셀 주소(B5 등) 자동 포함
+- **ai-spreadsheet.jsx 스타일**: Soft Pastel 버튼, Gradient 체크마크, 다크 모드
+
 ### ✅ AI 검증 레이어 구현
 - **AI 기반 검증**: 진단 질문 컨텍스트 고려 (validation_layer_ai.py)
 - **규칙 JSON 관리**: 19개 규칙 + 학습된 패턴 (error_rules.json)
@@ -58,16 +67,16 @@
 
 ---
 
-## 📊 현재 완성도: **90%**
+## 📊 현재 완성도: **95%**
 
 | 영역 | 완성도 | 상태 |
 |------|--------|------|
-| 파싱 | 95% | ✅ XLS/XLSX, 빈 행 필터, 날짜 변환 |
+| 파싱 | 95% | ✅ XLS/XLSX, 빈 행 필터, 날짜 변환, 참고사항 제거 |
 | 헤더 매칭 | 95% | ✅ AI + Few-shot + 폴백 |
-| 검증 | 90% | ✅ L1/L2/AI, 중복 탐지 |
+| 검증 | 95% | ✅ L1/L2/AI, 중복 탐지, 재검증 |
 | 학습 시스템 | 90% | ✅ 케이스 저장, 자율 학습 |
 | 보안 | 90% | ✅ CORS, Rate Limit, PII 마스킹 |
-| UI | 70% | 🔶 기본 완성, 개선 필요 |
+| UI | 95% | ✅ SheetEditorPro, AI 사이드바, 다크 모드 |
 | 리포트 | 60% | 🔶 JSON만, Excel 출력 미완 |
 
 ---
@@ -75,16 +84,16 @@
 ## ⚡ 빠른 실행
 
 ```bash
-# 터미널 1 - 백엔드 (포트 8003)
+# 터미널 1 - 백엔드 (포트 8004)
 cd /Users/kj/Desktop/wiki/WIKISOFT3
 source ../.venv/bin/activate
-PYTHONPATH=$(pwd) uvicorn external.api.main:app --reload --port 8003
+PYTHONPATH=$(pwd) uvicorn external.api.main:app --reload --port 8004
 
-# 터미널 2 - 프론트엔드 (포트 3004)
-cd frontend && npm run dev -- --port 3004
+# 터미널 2 - 프론트엔드 (포트 3006)
+cd frontend && npm run dev
 ```
 
-브라우저에서 `http://localhost:3004` 접속
+브라우저에서 `http://localhost:3006` 접속
 
 ---
 

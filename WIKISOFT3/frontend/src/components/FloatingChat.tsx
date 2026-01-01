@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useImperativeHandle, forwardRef } from 'react'
 import './FloatingChat.css'
 
 interface Message {
@@ -6,25 +6,58 @@ interface Message {
   content: string
 }
 
-export default function FloatingChat() {
+export interface FloatingChatHandle {
+  open: () => void
+  setQuestion: (question: string) => void
+  askQuestion: (question: string) => void
+}
+
+interface FloatingChatProps {
+  validationContext?: any  // 검증 결과 컨텍스트
+}
+
+const FloatingChat = forwardRef<FloatingChatHandle, FloatingChatProps>(({ validationContext }, ref) => {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return
+  // 외부에서 호출 가능한 메서드 노출
+  useImperativeHandle(ref, () => ({
+    open: () => setIsOpen(true),
+    setQuestion: (question: string) => {
+      setIsOpen(true)
+      setInput(question)
+    },
+    askQuestion: (question: string) => {
+      setIsOpen(true)
+      setInput(question)
+      // 약간의 딜레이 후 자동 전송
+      setTimeout(() => {
+        sendMessage(question)
+      }, 100)
+    }
+  }))
 
-    const userMessage: Message = { role: 'user', content: input.trim() }
+  const sendMessage = async (messageText: string) => {
+    if (!messageText.trim() || loading) return
+
+    const userMessage: Message = { role: 'user', content: messageText.trim() }
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:8003/api/agent/ask', {
+      const res = await fetch('/api/agent/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage.content }),
+        body: JSON.stringify({ 
+          message: userMessage.content,
+          context: validationContext ? {
+            validation_results: validationContext,
+            has_file: true
+          } : undefined
+        }),
       })
 
       if (!res.ok) throw new Error('Agent error')
@@ -46,6 +79,10 @@ export default function FloatingChat() {
     }
   }
 
+  const handleSend = async () => {
+    await sendMessage(input)
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -57,7 +94,7 @@ export default function FloatingChat() {
     <>
       {/* Floating Button */}
       <button
-        className="floating-chat-btn"
+        className="floating-chat-button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="AI 도움받기"
       >
@@ -110,4 +147,6 @@ export default function FloatingChat() {
       )}
     </>
   )
-}
+})
+
+export default FloatingChat

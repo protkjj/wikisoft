@@ -49,6 +49,7 @@ export interface ValidationResult {
 
 export interface AutoValidateResult {
   status: string
+  session_id?: string  // 세션 ID (다운로드 시 필요)
   confidence: {
     score: number
     factors: {
@@ -65,7 +66,7 @@ export interface AutoValidateResult {
   steps: {
     parsed_summary: { headers: string[]; row_count: number }
     matches: any
-    validation: { passed: boolean; warnings: string[]; checks: any[] }
+    validation: { passed: boolean; errors?: any[]; warnings: any[]; checks: any[] }
     report: any
   }
 }
@@ -166,4 +167,17 @@ export interface DuplicateItem {
   count: number
   message: string
   emp_ids?: string[]
+}
+
+// Windmill 실행 기록
+export interface ValidationRun {
+  timestamp: string
+  status: string
+  action?: string | null
+  auto_approve?: boolean | null
+  confidence?: number | null
+  message?: string | null
+  file_url?: string | null
+  run_id?: string | null
+  flow_id?: string | null
 }

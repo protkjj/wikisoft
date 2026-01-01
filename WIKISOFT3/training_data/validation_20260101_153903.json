@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-01-01T15:39:03.833714",
+  "category": "validation",
+  "input": {
+    "data_summary": "총 행 수: 1\n컬럼 수: 3\n\n=== 샘플 데이터 (처음 5행) ===\n행1: {\"사원번호\": \"001\", \"이름\": \"홍길동\", \"입사일\": \"2020-01-01\"}",
+    "context": "진단 질문 응답 없음 (기본 규칙 적용)",
+    "diagnostic_answers": {}
+  },
+  "ai_response": {
+    "errors": [],
+    "warnings": [],
+    "reasoning": "제공된 데이터는 사원번호, 이름, 입사일로 구성되어 있으며, 모든 필드가 유효합니다. 사원번호는 비어있지 않고, 입사일도 올바른 형식입니다. 따라서 오류나 경고가 발생하지 않았습니다."
+  },
+  "human_correction": null,
+  "is_correct": true
+}

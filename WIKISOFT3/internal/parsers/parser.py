@@ -139,6 +139,32 @@ def _find_date_columns(headers: List[str]) -> List[int]:
                 break
     return date_indices
 
+def _find_note_columns(headers: List[str]) -> List[int]:
+    """참고사항/비고 컨럼 인덱스 찾기 (제거 대상)."""
+    note_keywords = ["참고사항", "참고", "비고", "메모", "비고란", "노트"]
+    note_indices = []
+    for idx, h in enumerate(headers):
+        h_clean = str(h).strip().lower()
+        for kw in note_keywords:
+            if kw in h_clean:
+                note_indices.append(idx)
+                break
+    return note_indices
+
+
+def _remove_columns(headers: List[str], rows: List[List[Any]], columns_to_remove: List[int]) -> tuple:
+    """특정 컨럼을 헤더와 모든 행에서 제거."""
+    if not columns_to_remove:
+        return headers, rows
+    
+    columns_to_remove_set = set(columns_to_remove)
+    new_headers = [h for idx, h in enumerate(headers) if idx not in columns_to_remove_set]
+    new_rows = []
+    for row in rows:
+        new_row = [val for idx, val in enumerate(row) if idx not in columns_to_remove_set]
+        new_rows.append(new_row)
+    
+    return new_headers, new_rows
 
 def _infer_types(rows: List[List[Any]], sample_rows: int = 200) -> Dict[int, str]:
     """간단한 컬럼 타입 추론(문자/숫자/날짜 후보)."""
@@ -242,8 +268,11 @@ def _parse_xlsx(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: i
         # 날짜 컬럼 변환
         converted_row = _convert_dates_in_row(raw_row, date_columns)
         rows.append(converted_row)
-    
-    return {
+        # 참고사항/비고 열 제거
+    note_columns = _find_note_columns(headers)
+    if note_columns:
+        headers, rows = _remove_columns(headers, rows, note_columns)
+        return {
         "headers": headers,
         "rows": rows,
         "meta": {
@@ -316,6 +345,11 @@ def _parse_xls(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: in
         # 날짜 컬럼 변환
         converted_row = _convert_dates_in_row(clean_row, date_columns)
         rows.append(converted_row)
+
+    # 참고사항/비고 열 제거
+    note_columns = _find_note_columns(headers)
+    if note_columns:
+        headers, rows = _remove_columns(headers, rows, note_columns)
 
     return {
         "headers": headers,

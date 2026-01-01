@@ -15,6 +15,20 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
     """Layer 1: 규칙/스키마 기반 유효성 검사."""
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
+    
+    def mask_emp_id(emp_id: Any) -> str:
+        """사원번호 마스킹 (앞 4자리만 표시)"""
+        s = str(emp_id).strip()
+        if len(s) > 4:
+            return s[:4] + "****"
+        return s
+    
+    def get_emp_info(row, idx) -> str:
+        """사원번호 정보 문자열 생성"""
+        emp_id = row.get("사원번호", "")
+        if emp_id and not pd.isna(emp_id):
+            return f"사원번호 {mask_emp_id(emp_id)}"
+        return f"행 {idx+2}"
 
     # 필수 필드 존재 확인 (경고만, 행별 검사는 계속 진행)
     base_required = ["생년월일", "사원번호", "기준급여"]  # 핵심 필드만
@@ -30,12 +44,14 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
 
     # 행별 검사 (항상 실행)
     for idx, row in df.iterrows():
+        emp_info = get_emp_info(row, idx)
+        
         # 필수 값 누락 (존재하는 컬럼만 검사)
         for req_col in ["사원번호", "생년월일", "기준급여"]:
             if req_col in df.columns:
                 val = row.get(req_col)
                 if pd.isna(val) or str(val).strip() == "":
-                    errors.append({"row": idx, "column": req_col, "error": "필수 값 누락", "severity": "error"})
+                    errors.append({"row": idx, "emp_info": emp_info, "column": req_col, "error": "필수 값 누락", "severity": "error"})
 
         # 전화번호 형식
         phone_aliases = get_all_aliases("전화번호")
@@ -45,7 +61,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                 if phone and not phone.startswith("PHONE_"):
                     digits = re.sub(r"\D", "", phone)
                     if not (digits.startswith("0") and len(digits) in (10, 11)):
-                        errors.append({"row": idx, "column": col, "error": "전화번호 형식 오류", "severity": "error"})
+                        errors.append({"row": idx, "emp_info": emp_info, "column": col, "error": "전화번호 형식 오류", "severity": "error"})
 
         # 이메일 형식
         email_aliases = get_all_aliases("이메일")
@@ -53,28 +69,32 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             if col in email_aliases:
                 email = str(row[col]).strip()
                 if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
-                    warnings.append({"row": idx, "column": col, "warning": "이메일 형식 경고", "severity": "warning"})
+                    warnings.append({"row": idx, "emp_info": emp_info, "column": col, "warning": "이메일 형식 경고", "severity": "warning"})
 
         # 생년월일: yyyymmdd + 1945~2010
         if "생년월일" in df.columns:
             birth_raw = row["생년월일"]
             birth_norm = normalize_date(birth_raw)
             if not birth_norm or not is_valid_yyyymmdd(birth_norm):
-                errors.append({"row": idx, "column": "생년월일", "error": "생년월일 형식 오류", "severity": "error"})
+                errors.append({"row": idx, "emp_info": emp_info, "column": "생년월일", "error": "생년월일 형식 오류", "severity": "error"})
             else:
                 birth_year = int(birth_norm[:4])
                 if birth_year < 1945 or birth_year > 2010:
-                    errors.append({"row": idx, "column": "생년월일", "error": "생년월일 범위 오류", "severity": "error"})
+                    errors.append({"row": idx, "emp_info": emp_info, "column": "생년월일", "error": "생년월일 범위 오류", "severity": "error"})
 
-        # 급여: 양수
+        # 급여: 양수 + 최저임금 체크
+        # 2024년 최저임금: 시급 9,860원 × 209시간 = 월 2,060,740원
+        MIN_WAGE_MONTHLY = 2060740
         for sal_col in ["급여", "기준급여"]:
             if sal_col in df.columns:
                 try:
                     sal = float(row[sal_col]) if not pd.isna(row[sal_col]) else 0
                     if sal <= 0:
-                        errors.append({"row": idx, "column": sal_col, "error": f"{sal_col} 음수 또는 0", "severity": "error"})
+                        errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 음수 또는 0", "severity": "error"})
+                    elif sal < MIN_WAGE_MONTHLY:
+                        warnings.append({"row": idx, "emp_info": emp_info, "column": sal_col, "warning": f"{sal_col} {sal:,.0f}원 - 최저임금(월 206만원) 미달", "severity": "warning"})
                 except (ValueError, TypeError):
-                    errors.append({"row": idx, "column": sal_col, "error": f"{sal_col} 형식 오류", "severity": "error"})
+                    errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 형식 오류", "severity": "error"})
 
         # 입사일 > 생년월일 (18세) + 미래 날짜 검사
         hire_col = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
@@ -87,7 +107,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                     if pd.notnull(hire_date):
                         # 미래 입사일 검사
                         if hire_date > pd.Timestamp.now():
-                            errors.append({"row": idx, "column": hire_col, "error": "입사일이 미래임", "severity": "error"})
+                            errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사일이 미래임", "severity": "error"})
                         
                         # 18세 미만 입사 검사
                         if "생년월일" in df.columns:
@@ -97,15 +117,15 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                                 if pd.notnull(birth_date):
                                     age_at_hire = (hire_date - birth_date).days / 365.25
                                     if age_at_hire < 18:
-                                        errors.append({"row": idx, "column": hire_col, "error": "입사 나이 18세 미만", "severity": "error"})
+                                        errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사 나이 18세 미만", "severity": "error"})
                                     
                                     # 고령 입사 경고 (70세 이상)
                                     if age_at_hire > 70:
-                                        warnings.append({"row": idx, "column": hire_col, "warning": f"입사 나이 {int(age_at_hire)}세 (70세 초과)", "severity": "warning"})
+                                        warnings.append({"row": idx, "emp_info": emp_info, "column": hire_col, "warning": f"입사 나이 {int(age_at_hire)}세 (70세 초과)", "severity": "warning"})
                                     
                                     # 입사일 < 생년월일 (불가능)
                                     if hire_date < birth_date:
-                                        errors.append({"row": idx, "column": hire_col, "error": "입사일이 생년월일보다 앞섬", "severity": "error"})
+                                        errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사일이 생년월일보다 앞섬", "severity": "error"})
             except Exception:
                 pass
 
@@ -124,7 +144,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                     retire_date = pd.to_datetime(retire_norm, format="%Y%m%d", errors="coerce")
                     hire_date = pd.to_datetime(hire_norm, format="%Y%m%d", errors="coerce")
                     if pd.notnull(retire_date) and pd.notnull(hire_date) and retire_date < hire_date:
-                        errors.append({"row": idx, "column": retire_col, "error": "퇴직일 < 입사일", "severity": "error"})
+                        errors.append({"row": idx, "emp_info": emp_info, "column": retire_col, "error": "퇴직일 < 입사일", "severity": "error"})
             except Exception:
                 pass
 
@@ -134,9 +154,9 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                 try:
                     amt = float(row[amt_col]) if not pd.isna(row[amt_col]) else 0
                     if amt < 0:
-                        errors.append({"row": idx, "column": amt_col, "error": f"{amt_col} 음수", "severity": "error"})
+                        errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 음수", "severity": "error"})
                 except (ValueError, TypeError):
-                    errors.append({"row": idx, "column": amt_col, "error": f"{amt_col} 형식 오류", "severity": "error"})
+                    errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 형식 오류", "severity": "error"})
 
         # 도메인 값: 성별(1/2)
         gender_col = None
@@ -147,13 +167,14 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
         if gender_col:
             gender_val = str(row[gender_col]).strip()
             if gender_val and gender_val not in ["1", "2", "1.0", "2.0", "남", "여", "M", "F", "nan"]:
-                errors.append({"row": idx, "column": gender_col, "error": f"성별 값 오류: {gender_val}", "severity": "error"})
+                errors.append({"row": idx, "emp_info": emp_info, "column": gender_col, "error": f"성별 값 오류: {gender_val}", "severity": "error"})
 
     # 중복 검사
     if "사원번호" in df.columns:
         dup_emp = df.groupby("사원번호").size()
         for emp_id, cnt in dup_emp[dup_emp > 1].items():
             rows = df[df["사원번호"] == emp_id].index.tolist()
-            warnings.append({"row": rows[0], "column": "사원번호", "warning": f"중복 사원번호 (행: {rows})", "severity": "warning"})
+            masked_id = str(emp_id)[:4] + "****" if len(str(emp_id)) > 4 else str(emp_id)
+            warnings.append({"row": rows[0], "emp_info": f"{masked_id} (행 {rows[0]+1})", "column": "사원번호", "warning": f"중복 사원번호 {len(rows)}건", "severity": "warning"})
 
     return {"errors": errors, "warnings": warnings}

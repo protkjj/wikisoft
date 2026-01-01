@@ -9,19 +9,19 @@ router = APIRouter(prefix="/batch-validate", tags=["batch-validate"])
 
 @router.post("")
 async def batch_validate(files: List[UploadFile] = File(...)) -> dict:
+    """배치 파일 검증 (현재 미구현 - 단일 파일 검증 사용 권장)
+
+    NOTE: 이 엔드포인트는 아직 완전히 구현되지 않았습니다.
+    실제 파일 처리가 되지 않으며, 단일 파일 검증(/api/auto-validate)을 사용해주세요.
+    """
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="at least one file is required")
 
-    file_names = [f.filename or "unknown" for f in files]
-    job_id = enqueue_jobs(file_names)
-
-    # TODO: 실제 큐(RQ/Celery 등)에 enqueue, 워커가 처리 후 webhook/status 업데이트
-    return {
-        "status": "queued",
-        "job_id": job_id,
-        "files_received": len(files),
-        "note": "stub: replace with real queue + worker",
-    }
+    # 기능 미구현 경고
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="배치 처리 기능은 현재 개발 중입니다. 단일 파일 검증(/api/auto-validate)을 사용해주세요."
+    )
 
 
 @router.get("/{job_id}")

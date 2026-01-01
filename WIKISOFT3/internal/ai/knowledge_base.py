@@ -32,7 +32,7 @@ SYSTEM_KNOWLEDGE = """
 - Agent Layer: Tool Registry, Confidence Scorer, Decision Engine
 - Core Tools: Parser(Excel), AI Matcher(GPT-4o), Validator(L1/L2), Report Generator
 - Queue Layer: Redis/RQ (배치 작업용)
-- Frontend: React + Vite (포트 3003)
+- Frontend: React + Vite (포트 3004)
 
 === 주요 엔드포인트 ===
 - GET /api/health - 시스템 상태

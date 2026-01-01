@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-01-02T04:43:58.220734",
+  "category": "layer1_error",
+  "input": {
+    "error_type": "입사일자",
+    "error_message": "입사 나이 18세 미만",
+    "row_sample": [
+      "중간정산액",
+      220001.0,
+      "2004-02-10",
+      2.0,
+      "2022-01-01",
+      2916000.0,
+      2916000.0,
+      5832000.0,
+      1.0,
+      "",
+      "",
+      "",
+      1.0
+    ]
+  },
+  "ai_response": {
+    "detected": false,
+    "source": "layer1"
+  },
+  "human_correction": {
+    "should_detect": true,
+    "rule": "입사 나이 18세 미만"
+  },
+  "is_correct": false
+}

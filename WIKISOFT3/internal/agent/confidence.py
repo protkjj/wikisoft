@@ -1,5 +1,5 @@
 """
-Confidence & Anomaly 감지: 간단한 휴리스틱 기반 규칙
+정상 데이터 비율 계산 & 이상치 감지
 """
 from typing import Any, Dict
 
@@ -8,40 +8,43 @@ from internal.validators.validation_layer2 import validate_layer2
 
 
 def estimate_confidence(parsed: Dict[str, Any], matches: Dict[str, Any], validation_l1: Dict[str, Any]) -> Dict[str, Any]:
-    """신뢰도 추정: 0.0~1.0 범위.
+    """정상 데이터 비율 계산: 0.0~1.0 범위.
 
-    규칙:
-    - 매칭 신뢰도 평균: 0~1.0
-    - L1 에러 패널티: 각 에러당 -0.1
-    - 경고 패널티: 각 경고당 -0.05
-    - 최소: 0.0, 최대: 1.0
+    계산 방식:
+    - 전체 행 수 대비 에러가 없는 행의 비율
+    - 에러가 있는 행을 제외한 비율 = 정상 데이터 비율
     """
-    confidence = 1.0
-    avg_conf = 0.0
+    total_rows = len(parsed.get("rows", []))
+    if total_rows == 0:
+        return {
+            "score": 1.0,
+            "label": "정상 데이터 비율",
+            "factors": {
+                "total_rows": 0,
+                "error_rows": 0,
+                "warning_rows": 0,
+            },
+        }
 
-    # matches가 리스트인 경우 처리 (list object has no attribute 'get' 버그 수정)
-    if isinstance(matches, list):
-        match_list = matches
-    else:
-        match_list = matches.get("matches", [])
-    
-    # 매칭 신뢰도
-    if match_list:
-        avg_conf = sum(m.get("confidence", 0) for m in match_list) / len(match_list)
-        confidence *= avg_conf
-
-    # L1 검증 페널티
+    # 에러/경고가 있는 행 수 계산
     errors = validation_l1.get("errors", []) if isinstance(validation_l1, dict) else []
     warnings = validation_l1.get("warnings", []) if isinstance(validation_l1, dict) else []
-    confidence -= len(errors) * 0.1
-    confidence -= len(warnings) * 0.05
+    
+    error_rows = set(e.get("row") for e in errors if "row" in e)
+    warning_rows = set(w.get("row") for w in warnings if "row" in w)
+    
+    # 정상 행 = 전체 - 에러 행
+    normal_rows = total_rows - len(error_rows)
+    score = normal_rows / total_rows if total_rows > 0 else 1.0
 
     return {
-        "score": max(0.0, min(1.0, confidence)),
+        "score": max(0.0, min(1.0, score)),
+        "label": "정상 데이터 비율",
         "factors": {
-            "match_confidence": avg_conf if match_list else 0.0,
-            "error_count": len(errors),
-            "warning_count": len(warnings),
+            "total_rows": total_rows,
+            "error_rows": len(error_rows),
+            "warning_rows": len(warning_rows),
+            "normal_rows": normal_rows,
         },
     }
 
@@ -70,20 +73,12 @@ def detect_anomalies(parsed: Dict[str, Any], matches: Dict[str, Any], validation
         anomalies.append({
             "type": "high_unmapped_headers",
             "severity": "warning",
-            "message": f"Unmapped headers > 20% ({unmapped_count}/{len(match_list)})",
+            "message": f"매핑되지 않은 컬럼이 20% 초과 ({unmapped_count}/{len(match_list)}개)",
         })
 
-    # L1 에러 비율
-    errors = validation_l1.get("errors", [])
-    if "rows" in parsed and len(parsed["rows"]) > 0:
-        error_rows = {e.get("row") for e in errors if "row" in e}
-        error_rate = len(error_rows) / len(parsed["rows"])
-        if error_rate > 0.05:
-            anomalies.append({
-                "type": "high_error_rate",
-                "severity": "error",
-                "message": f"Error rate > 5% ({len(error_rows)}/{len(parsed['rows'])})",
-            })
+    # L1 에러 비율 - 개별 에러가 이미 표시되므로 제거 (중복 방지)
+    # errors = validation_l1.get("errors", [])
+    # ...
 
     # 낮은 매칭 신뢰도
     if match_list:
@@ -92,7 +87,7 @@ def detect_anomalies(parsed: Dict[str, Any], matches: Dict[str, Any], validation
             anomalies.append({
                 "type": "low_match_confidence",
                 "severity": "warning",
-                "message": f"Average match confidence < 0.5 ({avg_conf:.2f})",
+                "message": f"헤더 매칭 신뢰도가 낮음 (평균 {avg_conf:.0%})",
             })
 
     return {

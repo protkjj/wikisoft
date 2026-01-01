@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { api } from './api'
 import ChatBot from './ChatBot'
-import FloatingChat from './components/FloatingChat'
+import FloatingChat, { FloatingChatHandle } from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
-import ValidationResults from './ValidationResults'
+import SheetEditorPro from './components/SheetEditorPro'
+// ValidationResults 컴포넌트는 현재 사용하지 않음
+// import ValidationResults from './ValidationResults'
 import ThemeToggle from './components/ThemeToggle'
-import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch } from './types'
+import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
+
+// 수정할 에러 정보
+interface EditTarget {
+  row: number
+  field: string
+  message: string
+}
 
 function App() {
   const [currentStep, setCurrentStep] = useState<Step>('onboarding')
@@ -16,7 +25,8 @@ function App() {
   const [answers, setAnswers] = useState<Record<string, string | number>>({})
   const [file, setFile] = useState<File | null>(null)
   const [validationResult, setValidationResult] = useState<AutoValidateResult | null>(null)
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo>({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_companyInfo, setCompanyInfo] = useState<CompanyInfo>({
     company_name: '',
     phone: '',
     email: '',
@@ -26,10 +36,21 @@ function App() {
   const [error, setError] = useState<string>('')
   const [showManualMapping, setShowManualMapping] = useState(false)
   const [currentMatches, setCurrentMatches] = useState<HeaderMatch[]>([])
+  
+  // SheetEditor 상태
+  const [showSheetEditor, setShowSheetEditor] = useState(false)
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
+  const [sheetData, setSheetData] = useState<string[][]>([])
+  const [allErrors, setAllErrors] = useState<Array<{severity: 'error' | 'warning', message: string, row?: number, field?: string, emp_info?: string}>>([])
+  const [latestRuns, setLatestRuns] = useState<ValidationRun[]>([])
+  const [runsLoading, setRunsLoading] = useState(false)
+  
+  const chatRef = useRef<FloatingChatHandle>(null)
 
   // 초기 로드: 진단 질문 조회
   useEffect(() => {
     loadQuestions()
+    loadLatestRuns()
   }, [])
 
   const loadQuestions = async () => {
@@ -46,12 +67,22 @@ function App() {
     }
   }
 
-  const handleAnswerChange = (questionId: string, value: string | number) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: value
-    }))
+  const loadLatestRuns = async () => {
+    try {
+      setRunsLoading(true)
+      const runs = await api.getLatestRuns(6)
+      setLatestRuns(runs)
+    } catch (err) {
+      console.error('최근 실행 이력 로드 실패', err)
+    } finally {
+      setRunsLoading(false)
+    }
   }
+
+  // TODO: 진단 질문 기능 복원 시 사용
+  // const handleAnswerChange = (questionId: string, value: string | number) => {
+  //   setAnswers(prev => ({ ...prev, [questionId]: value }))
+  // }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -65,8 +96,8 @@ function App() {
       return
     }
 
-    // 필수 답변 체크
-    const unansweredQuestions = questions.filter(q => !answers[q.id])
+    // 필수 답변 체크 (0도 유효한 답변으로 처리)
+    const unansweredQuestions = questions.filter(q => answers[q.id] === undefined)
     if (unansweredQuestions.length > 0) {
       alert(`${unansweredQuestions.length}개의 질문에 답변이 없습니다. 모든 질문에 답변해주세요.`)
       return
@@ -86,6 +117,19 @@ function App() {
       // 매칭 결과 저장 (수동 매핑용)
       if (result.steps?.matches?.matches) {
         setCurrentMatches(result.steps.matches.matches)
+      }
+      
+      // 스프레드시트 데이터 저장 (수정용)
+      if (result.steps?.parsed_summary) {
+        const headers = result.steps.parsed_summary.headers || []
+        // API에서 all_rows 제공
+        const stepsAny = result.steps as any
+        const rows = stepsAny.all_rows || []
+        if (rows.length > 0) {
+          setSheetData([headers, ...rows.map((row: any) => 
+            headers.map((h: string) => String(row[h] ?? ''))
+          )])
+        }
       }
       
       setCurrentStep('results')
@@ -119,19 +163,7 @@ function App() {
       setCurrentStep('download')
     } catch (err: any) {
       console.error('Excel 다운로드 오류:', err)
-      // 실패시 JSON 다운로드로 폴백
-      const dataStr = JSON.stringify(validationResult, null, 2)
-      const blob = new Blob([dataStr], { type: 'application/json' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `검증결과_${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      
-      setCurrentStep('download')
+      setError('Excel 리포트 다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.')
     } finally {
       setLoading(false)
     }
@@ -170,13 +202,16 @@ function App() {
     return 'pending'
   }
 
-  const categoryLabels: Record<string, string> = {
-    'data_quality': '📊 데이터 품질',
-    'financial_assumptions': '💰 재무 가정',
-    'retirement_settings': '🏖️ 퇴직 설정',
-    'headcount_aggregates': '👥 인원 집계',
-    'amount_aggregates': '💵 금액 집계'
+  const formatConfidence = (value?: number | null) => {
+    if (value === null || value === undefined) return '-'
+    return value > 1 ? `${Math.round(value)}%` : `${Math.round(value * 100)}%`
   }
+
+  // TODO: 카테고리 레이블 사용 시 복원
+  // const categoryLabels: Record<string, string> = {
+  //   'data_quality': '📊 데이터 품질',
+  //   ...
+  // }
 
   return (
     <div className="app">
@@ -222,7 +257,7 @@ function App() {
         </div>
       )}
 
-      {loading && (
+      {loading && currentStep !== 'upload' && (
         <div className="loading">
           <div className="spinner"></div>
           <p>처리 중입니다...</p>
@@ -307,6 +342,7 @@ function App() {
             </div>
           </div>
 
+          {/* 시작하기 버튼 + 준비물 - 최근 검증상태 위로 이동 */}
           <div className="onboarding-footer">
             <div className="file-requirements">
               <div className="file-icon">
@@ -331,6 +367,51 @@ function App() {
             >
               시작하기
             </button>
+          </div>
+
+          {/* 최근 검증 상태 - 하단으로 이동 */}
+          <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '12px', background: 'var(--bg-secondary, #f9fafb)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ margin: 0 }}>최근 검증 상태 (Windmill)</h3>
+              {runsLoading && <span style={{ color: 'var(--text-secondary)' }}>불러오는 중...</span>}
+            </div>
+            {latestRuns.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)' }}>최근 실행 기록이 없습니다.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {latestRuns.map((run, idx) => (
+                  <div
+                    key={`${run.run_id || run.timestamp}-${idx}`}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.75rem',
+                      borderRadius: '10px',
+                      background: 'var(--bg-primary, #fff)',
+                      border: '1px solid var(--border-color, #e5e7eb)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span style={{ fontWeight: 600 }}>
+                        {run.action || run.status}
+                      </span>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {new Date(run.timestamp).toLocaleString('ko-KR')}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span style={{ fontWeight: 600 }}>
+                        {formatConfidence(run.confidence)}
+                      </span>
+                      <span style={{ color: 'var(--text-secondary)' }}>
+                        {run.auto_approve ? '자동 승인' : '수동 검토'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -387,6 +468,13 @@ function App() {
                 </div>
               </div>
             )}
+
+            {loading && (
+              <div className="file-processing">
+                <div className="spinner-small"></div>
+                <span>처리 중...</span>
+              </div>
+            )}
           </div>
 
           <div className="upload-actions">
@@ -437,11 +525,13 @@ function App() {
               <div className="result-stat-value">
                 {(validationResult.confidence?.score * 100).toFixed(0)}%
               </div>
-              <div className="result-stat-label">신뢰도</div>
+              <div className="result-stat-label">정상 데이터 비율</div>
             </div>
             <div className="result-stat warning">
               <div className="result-stat-value">
-                {validationResult.anomalies?.anomalies?.length ?? 0}
+                {(validationResult.anomalies?.anomalies?.length ?? 0) + 
+                 (validationResult.steps?.validation?.errors?.length ?? 0) + 
+                 (validationResult.steps?.validation?.warnings?.length ?? 0)}
               </div>
               <div className="result-stat-label">이상 탐지</div>
             </div>
@@ -469,85 +559,191 @@ function App() {
               <table className="mapping-table">
                 <thead>
                   <tr>
-                    <th>소스 컬럼</th>
+                    <th>소스 헤더</th>
                     <th></th>
-                    <th>타겟 컬럼</th>
-                    <th>매핑 신뢰도</th>
-                    <th>상태</th>
+                    <th>타겟 필드</th>
+                    <th>매칭율</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || []).slice(0, 6).map((match: HeaderMatch, idx: number) => (
+                  {(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || [])
+                    .sort((a: HeaderMatch, b: HeaderMatch) => {
+                      // 필수 필드 먼저 표시
+                      const requiredFields = ['사원번호', '생년월일', '성별', '입사일자', '종업원구분', '기준급여'];
+                      const aRequired = requiredFields.includes(a.target || '');
+                      const bRequired = requiredFields.includes(b.target || '');
+                      if (aRequired && !bRequired) return -1;
+                      if (!aRequired && bRequired) return 1;
+                      return 0;
+                    })
+                    .map((match: HeaderMatch, idx: number) => {
+                      const requiredFields = ['사원번호', '생년월일', '성별', '입사일자', '종업원구분', '기준급여'];
+                      const isRequired = requiredFields.includes(match.target || '');
+                      return (
                     <tr key={idx}>
                       <td>{match.source}</td>
                       <td className="arrow">→</td>
-                      <td>{match.target || '-'}</td>
+                      <td>
+                        {match.target ? (
+                          <span className={isRequired ? 'required-field' : 'optional-field'}>
+                            {match.target} {isRequired ? '(필수)' : '[선택]'}
+                          </span>
+                        ) : '-'}
+                      </td>
                       <td className={`mapping-confidence ${match.confidence >= 0.95 ? 'high' : match.confidence >= 0.85 ? 'medium' : 'low'}`}>
                         {match.confidence > 0 && match.confidence < 1 ? `${Math.round(match.confidence * 100)}%` : match.target ? '100%' : '-'}
                       </td>
-                      <td className="mapping-status">
-                        {match.target ? <span style={{ color: 'var(--success)' }}>✓ 일치</span> : <span style={{ color: 'var(--error)' }}>✕</span>}
-                      </td>
                     </tr>
-                  ))}
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
           )}
 
-          {/* 이상 목록 */}
-          {validationResult.anomalies?.detected && validationResult.anomalies.anomalies.length > 0 && (
-            <div className="anomalies-section">
-              <h3>🤖 AI 분석 결과</h3>
-              <div className="anomalies-list">
-                {/* AI 질문 (고객 확인 필요) */}
-                {validationResult.anomalies.anomalies
-                  .filter((a: any) => a.severity === 'question')
-                  .map((anomaly: any, idx: number) => (
-                  <div key={`q-${idx}`} className="anomaly-item question">
-                    <div className="anomaly-title">
-                      <span className="anomaly-icon">❓</span>
-                      <strong>AI 질문:</strong> {anomaly.message}
-                    </div>
-                    <div className="ai-question-actions">
-                      <button className="btn-ai-answer" onClick={() => {
-                        // FloatingChat 열기
-                        const chatBtn = document.querySelector('.floating-chat-button') as HTMLButtonElement;
-                        if (chatBtn) chatBtn.click();
-                      }}>💬 AI와 대화로 답변</button>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* 오류/경고 */}
-                {validationResult.anomalies.anomalies
-                  .filter((a: any) => a.severity !== 'question')
-                  .map((anomaly: any, idx: number) => (
-                  <div key={idx} className={`anomaly-item ${anomaly.severity === 'error' ? 'error' : anomaly.severity === 'warning' ? 'warning' : 'info'}`}>
-                    <div className="anomaly-title">
-                      <span className="anomaly-icon">
-                        {anomaly.severity === 'error' ? '🔴' : anomaly.severity === 'warning' ? '🟠' : 'ℹ️'}
-                      </span>
-                      {anomaly.message}
-                    </div>
-                    {anomaly.auto_fix && (
-                      <div className="anomaly-fix">
-                        💡 수정 제안: {anomaly.auto_fix}
-                      </div>
-                    )}
-                    <div className="anomaly-details">
-                      유형: {anomaly.type}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {validationResult.anomalies.recommendation && (
-                <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--success-light)', borderRadius: 'var(--radius-md)', color: 'var(--success)' }}>
-                  💡 {validationResult.anomalies.recommendation}
+          {/* 통합 검증 결과 (validation + anomalies 합쳐서 중복 제거) */}
+          {(() => {
+            // 모든 결과 수집
+            const allResults: Array<{
+              severity: 'error' | 'warning' | 'info' | 'question', 
+              message: string, 
+              details?: string, 
+              key: string,
+              row?: number,
+              field?: string,
+              emp_info?: string
+            }> = [];
+            const seenMessages = new Set<string>();
+            
+            // validation.errors
+            validationResult.steps?.validation?.errors?.forEach((err: any, idx: number) => {
+              const msg = `${err.emp_info || `행 ${err.row}`}: ${err.field || err.column} - ${err.message || err.error}`;
+              if (!seenMessages.has(msg)) {
+                seenMessages.add(msg);
+                allResults.push({ 
+                  severity: 'error', 
+                  message: msg, 
+                  details: err.reason, 
+                  key: `verr-${idx}`,
+                  row: err.row,
+                  field: err.field || err.column,
+                  emp_info: err.emp_info
+                });
+              }
+            });
+            
+            // validation.warnings
+            validationResult.steps?.validation?.warnings?.forEach((warn: any, idx: number) => {
+              const msg = typeof warn === 'string' ? warn : `${warn.emp_info || `행 ${warn.row}`}: ${warn.field || warn.column} - ${warn.message || warn.warning}`;
+              if (!seenMessages.has(msg)) {
+                seenMessages.add(msg);
+                allResults.push({ 
+                  severity: 'warning', 
+                  message: msg, 
+                  details: warn.reason, 
+                  key: `vwarn-${idx}`,
+                  row: typeof warn === 'object' ? warn.row : undefined,
+                  field: typeof warn === 'object' ? (warn.field || warn.column) : undefined,
+                  emp_info: typeof warn === 'object' ? warn.emp_info : undefined
+                });
+              }
+            });
+            
+            // anomalies (중복 체크)
+            validationResult.anomalies?.anomalies?.forEach((a: any, idx: number) => {
+              const msg = a.message;
+              // 이미 유사한 메시지가 있으면 스킵 (예: "중복 사원번호 2건"이 이미 상세 정보로 있으면)
+              const isDuplicate = Array.from(seenMessages).some(seen => 
+                seen.includes(msg) || msg.includes('중복') && seen.includes('중복')
+              );
+              if (!isDuplicate && !seenMessages.has(msg)) {
+                seenMessages.add(msg);
+                const severity = a.severity === 'error' ? 'error' : a.severity === 'warning' ? 'warning' : a.severity === 'question' ? 'question' : 'info';
+                allResults.push({ severity, message: msg, details: a.auto_fix, key: `anom-${idx}` });
+              }
+            });
+            
+            if (allResults.length === 0) return null;
+            
+            // severity 순서로 정렬: question > error > warning > info
+            const order = { question: 0, error: 1, warning: 2, info: 3 };
+            allResults.sort((a, b) => order[a.severity] - order[b.severity]);
+            
+            // 에러/경고만 추출 (SheetEditor용)
+            const editableErrors = allResults.filter(r => 
+              (r.severity === 'error' || r.severity === 'warning') && r.row && r.field
+            ) as Array<{severity: 'error' | 'warning', message: string, row?: number, field?: string, emp_info?: string}>;
+            
+            return (
+              <div className="anomalies-section">
+                <div className="anomalies-header">
+                  <h3>⚠️ 검증 결과 상세</h3>
+                  {editableErrors.length > 0 && sheetData.length > 0 && (
+                    <button 
+                      className="btn-edit-all"
+                      onClick={() => {
+                        setAllErrors(editableErrors);
+                        setEditTarget(null);
+                        setShowSheetEditor(true);
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                      전체 수정하기 ({editableErrors.length}건)
+                    </button>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+                <div className="anomalies-list">
+                  {allResults.map((item) => (
+                    <div key={item.key} className={`anomaly-item ${item.severity}`}>
+                      <div className="anomaly-title">
+                        <span className="anomaly-icon">!</span>
+                        {item.severity === 'question' ? <strong>AI 질문:</strong> : null} {item.message}
+                      </div>
+                      {item.details && (
+                        <div className="anomaly-details">
+                          {item.severity === 'question' ? '' : '💡 '}{item.details}
+                        </div>
+                      )}
+                      <div className="anomaly-actions">
+                        {item.severity === 'question' && (
+                          <button className="btn-ai-answer" onClick={() => {
+                            chatRef.current?.setQuestion(item.message);
+                          }}>💬 AI와 대화로 답변</button>
+                        )}
+                        {(item.severity === 'error' || item.severity === 'warning') && item.field && sheetData.length > 0 && (
+                          <button 
+                            className={`btn-edit-value ${item.severity}`}
+                            onClick={() => {
+                              setEditTarget({
+                                row: item.row ?? 0,
+                                field: item.field ?? '',
+                                message: item.message
+                              });
+                              setShowSheetEditor(true);
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                            </svg>
+                            값 수정
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {validationResult.anomalies?.recommendation && (
+                  <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--success-light)', borderRadius: 'var(--radius-md)', color: 'var(--success)' }}>
+                    💡 {validationResult.anomalies.recommendation}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 파싱 요약 */}
           {validationResult.steps?.parsed_summary && (
@@ -622,7 +818,7 @@ function App() {
                     <td>{validationResult?.steps?.parsed_summary?.row_count ?? 0}</td>
                   </tr>
                   <tr>
-                    <td className="label">신뢰도</td>
+                    <td className="label">헤더 매칭율</td>
                     <td>{Math.round((validationResult?.steps?.matches?.matches?.reduce((sum: number, m: HeaderMatch) => sum + m.confidence, 0) ?? 0) / (validationResult?.steps?.matches?.matches?.length ?? 1) * 100)}%</td>
                   </tr>
                   <tr>
@@ -680,8 +876,57 @@ function App() {
         />
       )}
 
+      {/* 스프레드시트 에디터 모달 */}
+      <SheetEditorPro
+        isOpen={showSheetEditor}
+        onClose={() => {
+          setShowSheetEditor(false);
+          setEditTarget(null);
+          setAllErrors([]);
+        }}
+        data={sheetData}
+        targetRow={editTarget?.row ? editTarget.row - 2 : undefined}
+        targetField={editTarget?.field}
+        errorMessage={editTarget?.message}
+        allErrors={allErrors}
+        filename={file?.name || 'export.xlsx'}
+        onSave={(updatedData) => {
+          setSheetData(updatedData);
+          setAllErrors([]);
+          console.log('📝 수정된 데이터:', updatedData);
+        }}
+        onRevalidate={async (updatedData) => {
+          // 수정된 데이터로 재검증 API 호출
+          try {
+            // 현재는 간단히 빈 배열 반환 (실제 구현 필요)
+            // TODO: 백엔드에 수정된 데이터 전송하여 재검증
+            console.log('🔍 재검증 요청:', updatedData);
+            
+            // 임시: 수정된 셀의 에러만 제거
+            const newErrors = allErrors.filter(err => {
+              // 수정된 행/필드가 있으면 해당 에러 제거
+              const headers = updatedData[0];
+              const colIdx = headers.indexOf(err.field || '');
+              if (colIdx === -1 || !err.row) return true;
+              
+              const dataRowIdx = err.row - 2; // API row → 데이터 인덱스
+              if (dataRowIdx < 0 || dataRowIdx >= updatedData.length - 1) return true;
+              
+              // 값이 변경되었으면 에러 제거 (실제로는 재검증 필요)
+              return false;
+            });
+            
+            setAllErrors(newErrors);
+            return newErrors;
+          } catch (error) {
+            console.error('재검증 실패:', error);
+            return allErrors;
+          }
+        }}
+      />
+
       {/* Floating AI Chat */}
-      <FloatingChat />
+      <FloatingChat ref={chatRef} validationContext={validationResult} />
     </div>
   )
 }

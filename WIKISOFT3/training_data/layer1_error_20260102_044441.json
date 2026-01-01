@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-01-02T04:44:41.815638",
+  "category": "layer1_error",
+  "input": {
+    "error_type": "입사일자",
+    "error_message": "입사 나이 18세 미만",
+    "row_sample": {
+      "사원번호": "1001",
+      "입사일자": "2020-01-01",
+      "생년월일": "2005-01-01"
+    }
+  },
+  "ai_response": {
+    "detected": false,
+    "source": "layer1"
+  },
+  "human_correction": {
+    "should_detect": true,
+    "rule": "입사 나이 18세 미만"
+  },
+  "is_correct": false
+}

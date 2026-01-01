@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn, windmill, tools
+from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn, windmill, tools, export
 
 app = FastAPI(title="WIKISOFT3 API", version="0.0.1")
 
@@ -84,9 +84,11 @@ async def rate_limit_middleware(request: Request, call_next):
 # 환경에 따라 설정
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else [
     "http://localhost:3003",
-    "http://localhost:3004", 
+    "http://localhost:3004",
+    "http://localhost:3006",
     "http://127.0.0.1:3003",
     "http://127.0.0.1:3004",
+    "http://127.0.0.1:3006",
 ]
 
 app.add_middleware(
@@ -108,6 +110,7 @@ app.include_router(react_agent.router, prefix="/api")
 app.include_router(learn.router, prefix="/api")
 app.include_router(windmill.router, prefix="/api")
 app.include_router(tools.router, prefix="/api")
+app.include_router(export.router, prefix="/api")
 
 # 기존 경로도 유지 (하위 호환)
 app.include_router(health.router)
@@ -119,14 +122,28 @@ app.include_router(react_agent.router)
 app.include_router(learn.router)
 app.include_router(windmill.router)
 app.include_router(tools.router)
+app.include_router(export.router)
 
 # 테스트 파일 서빙 (Windmill 테스트용)
 TEST_FILES_DIR = Path(__file__).parent.parent.parent / "test_files"
+ALLOWED_EXTENSIONS = {'.xlsx', '.xls', '.csv'}
 
 @app.get("/files/{filename}")
 async def serve_test_file(filename: str):
     """테스트 파일 다운로드 엔드포인트"""
-    file_path = TEST_FILES_DIR / filename
+    # Path Traversal 방지: 파일명에서 경로 구분자 제거
+    safe_filename = os.path.basename(filename)
+
+    # 허용된 확장자만 허용
+    ext = Path(safe_filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="허용되지 않은 파일 형식입니다")
+
+    # 경로 검증
+    file_path = (TEST_FILES_DIR / safe_filename).resolve()
+    if not str(file_path).startswith(str(TEST_FILES_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="접근 권한이 없습니다")
+
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
-    return FileResponse(file_path, filename=filename)
+    return FileResponse(file_path, filename=safe_filename)

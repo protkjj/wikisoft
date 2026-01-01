@@ -1,10 +1,18 @@
 import axios from 'axios'
-import type { DiagnosticQuestionsResponse, ValidationResult, AutoValidateResult } from './types'
+import type { DiagnosticQuestionsResponse, ValidationResult, AutoValidateResult, ValidationRun } from './types'
 
 const API_BASE = '/api'
 
+// 세션 ID 저장 (다운로드 시 필요)
+let currentSessionId: string | null = null
+
 export const api = {
-  // 24개 진단 질문 조회 (v3)
+  // 현재 세션 ID 조회
+  getSessionId(): string | null {
+    return currentSessionId
+  },
+
+  // 13개 진단 질문 조회 (v3)
   async getDiagnosticQuestions(): Promise<DiagnosticQuestionsResponse> {
     const response = await axios.get(`${API_BASE}/diagnostic-questions`)
     return response.data
@@ -20,6 +28,12 @@ export const api = {
         'Content-Type': 'multipart/form-data'
       }
     })
+
+    // 세션 ID 저장
+    if (response.data.session_id) {
+      currentSessionId = response.data.session_id
+    }
+
     return response.data
   },
 
@@ -39,6 +53,12 @@ export const api = {
         'Content-Type': 'multipart/form-data'
       }
     })
+
+    // 세션 ID 저장
+    if (response.data.session_id) {
+      currentSessionId = response.data.session_id
+    }
+
     return response.data
   },
 
@@ -56,17 +76,39 @@ export const api = {
 
   // Excel 파일 다운로드 (검증 리포트)
   async downloadExcel(): Promise<Blob> {
+    if (!currentSessionId) {
+      throw new Error('세션이 없습니다. 먼저 파일을 검증해주세요.')
+    }
+
     const response = await axios.get(`${API_BASE}/auto-validate/download-excel`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      headers: {
+        'X-Session-Id': currentSessionId
+      }
     })
     return response.data
   },
 
   // 최종 수정본 다운로드 (매핑 완료된 데이터)
   async downloadFinalData(): Promise<Blob> {
+    if (!currentSessionId) {
+      throw new Error('세션이 없습니다. 먼저 파일을 검증해주세요.')
+    }
+
     const response = await axios.get(`${API_BASE}/auto-validate/download-final-data`, {
-      responseType: 'blob'
+      responseType: 'blob',
+      headers: {
+        'X-Session-Id': currentSessionId
+      }
     })
     return response.data
+  },
+
+  // Windmill 최근 실행 기록 조회
+  async getLatestRuns(limit = 5): Promise<ValidationRun[]> {
+    const response = await axios.get(`${API_BASE}/windmill/latest`, {
+      params: { limit }
+    })
+    return response.data?.runs ?? []
   }
 }

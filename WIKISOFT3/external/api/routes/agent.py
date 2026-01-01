@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, status
@@ -9,6 +10,8 @@ from internal.ai.diagnostic_questions import ALL_QUESTIONS
 from internal.ai.knowledge_base import get_system_context
 from internal.ai.llm_client import get_llm_client
 from internal.ai.autonomous_learning import analyze_chat_for_learning
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -62,6 +65,46 @@ def _build_messages(req: AgentAskRequest) -> List[Dict[str, str]]:
     # 시스템 지식 로드
     knowledge = get_system_context(req.message)
     
+    # 컨텍스트가 있으면 파일이 이미 업로드된 상태
+    has_context = req.context and req.context.get("has_file")
+    
+    context_info = ""
+    if has_context and req.context.get("validation_results"):
+        vr = req.context["validation_results"]
+        
+        # 매칭 결과 요약
+        matches = vr.get("steps", {}).get("matches", {}).get("matches", [])
+        matched_fields = [m.get("target") for m in matches if m.get("target")]
+        required_fields = ['사원번호', '생년월일', '성별', '입사일자', '종업원구분', '기준급여']
+        matched_required = [f for f in required_fields if f in matched_fields]
+        missing_required = [f for f in required_fields if f not in matched_fields]
+        
+        # 검증 오류/경고 요약
+        errors = vr.get("steps", {}).get("validation", {}).get("errors", [])
+        warnings = vr.get("steps", {}).get("validation", {}).get("warnings", [])
+        
+        # 신뢰도
+        confidence = vr.get("confidence", {}).get("score", 0)
+        
+        context_info = f"""
+=== 현재 검증 완료된 파일 상태 ===
+✅ 파일이 정상적으로 업로드되어 검증 완료됨
+
+📊 컬럼 매핑 결과:
+- 매핑된 필드 {len(matched_fields)}개: {', '.join(matched_fields)}
+- 필수 필드 매핑: {', '.join(matched_required)} ({len(matched_required)}/{len(required_fields)}개 완료)
+- 누락된 필수 필드: {', '.join(missing_required) if missing_required else '없음 (모두 매핑됨)'}
+
+🔍 검증 결과:
+- 신뢰도: {confidence*100:.0f}%
+- 오류: {len(errors)}건
+- 경고: {len(warnings)}건
+{('- 오류 내용: ' + ', '.join([e.get('message', '')[:50] for e in errors[:3]])) if errors else ''}
+{('- 경고 내용: ' + ', '.join([w.get('message', '')[:50] for w in warnings[:3]])) if warnings else ''}
+
+⚠️ 주의: 위 정보가 이미 검증된 결과입니다. 사용자에게 "파일을 제공해주세요"라고 하지 마세요.
+"""
+
     system_prompt = f"""You are the WIKISOFT3 validation co-pilot.
 Help users validate HR/pension Excel files.
 Use tools when needed. Be concise in Korean.
@@ -69,10 +112,18 @@ Use tools when needed. Be concise in Korean.
 === System Knowledge ===
 {knowledge}
 
+{context_info}
+
+⚠️ 중요 지침:
+1. 사용자가 이미 파일을 업로드했으면 "파일을 제공해 주세요" 같은 말 금지
+2. 날짜/숫자 형식은 시스템이 자동 변환하므로 "형식 확인" 요청 금지
+3. 검증 결과가 context에 있으면 그걸 바탕으로 바로 답변
+4. 실제 데이터 값 언급 시 개인정보 마스킹 (예: 사원번호 앞 4자리만)
+
 When answering questions about the system, refer to this knowledge base."""
 
     user_content = req.message.strip()
-    if req.context:
+    if req.context and not has_context:
         user_content += f"\n\nContext: {json.dumps(req.context, ensure_ascii=False)}"
 
     return [
@@ -135,7 +186,7 @@ async def ask_agent(req: AgentAskRequest) -> Dict[str, Any]:
             analyze_chat_for_learning(req.message, answer, validation_context)
         except Exception as learn_err:
             # 학습 실패해도 응답은 정상적으로 반환
-            print(f"[Autonomous Learning] Analysis failed: {learn_err}")
+            logger.warning(f"Autonomous Learning 분석 실패: {learn_err}")
 
         return {
             "answer": answer,
@@ -146,3 +197,64 @@ async def ask_agent(req: AgentAskRequest) -> Dict[str, Any]:
         raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"agent error: {str(e)}")
+
+
+# ============================================
+# /chat 엔드포인트 - SheetEditor AI 챗봇용
+# ============================================
+
+class ChatRequest(BaseModel):
+    message: str
+    context: Optional[str] = None
+
+
+@router.post("/chat", summary="SheetEditor AI 챗봇")
+async def chat_with_ai(req: ChatRequest):
+    """
+    SheetEditor의 AI 챗봇용 간단한 채팅 엔드포인트.
+    사용자가 "수정해줘"라고 하면 [수정:행:필드:값] 형식으로 응답.
+    """
+    client = get_llm_client()
+    
+    system_prompt = """당신은 HR 데이터 검증 시스템의 AI 어시스턴트입니다.
+
+[핵심 규칙]
+1. 컨텍스트에 "에러/경고 목록"이 있습니다.
+2. 사용자가 "N번"이라고 하면, 그것은 에러 목록의 N번째 항목입니다.
+3. 에러 목록에서 해당 항목의 "행번호"와 "필드명"을 찾아서 수정 명령을 생성하세요.
+
+[수정 명령 형식]
+수정 요청 시 반드시 이 형식으로 응답: [수정:행번호:필드명:새값]
+
+[예시]
+- 에러 목록에 "1번: 행번호=15, 필드명="입사일자", 에러내용=..."이 있을 때
+- 사용자: "1번 2024년 1월 1일로 수정해줘"
+- 응답: 1번 항목(입사일자)을 수정합니다. [수정:15:입사일자:20240101]
+
+[값 변환 규칙]
+- 날짜: YYYYMMDD (2024년 1월 1일 → 20240101)
+- 금액: 숫자만 (206만원 → 2060000, 2,060,740원 → 2060740)
+
+[중요]
+- 에러 목록에서 행번호와 필드명을 반드시 확인하세요
+- 사용자가 "N번"이라고 하면 바로 수정 명령을 생성하세요
+- 추가 질문 없이 바로 수정해주세요!
+"""
+    
+    messages = [
+        {"role": "system", "content": system_prompt},
+    ]
+    
+    if req.context:
+        messages.append({"role": "system", "content": f"[컨텍스트]\n{req.context}"})
+    
+    messages.append({"role": "user", "content": req.message})
+    
+    try:
+        response = client.chat(messages)
+        answer = response.get("content", "") if isinstance(response, dict) else str(response)
+        
+        return {"response": answer}
+    except Exception as e:
+        logger.error(f"Chat error: {e}")
+        return {"response": f"오류가 발생했습니다: {str(e)}"}

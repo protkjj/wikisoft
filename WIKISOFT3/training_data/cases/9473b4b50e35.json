@@ -1,6 +1,6 @@
 {
   "case_id": "9473b4b50e35",
-  "timestamp": "2025-12-31T15:38:58.860146",
+  "timestamp": "2026-01-01T19:00:25.880104",
   "headers": [
     "참고사항",
     "사원번호",
@@ -36,8 +36,7 @@
       "source": "참고사항",
       "target": null,
       "confidence": 0.0,
-      "unmapped": true,
-      "fallback": true
+      "ignored": true
     },
     {
       "source": "사원번호",
@@ -112,15 +111,10 @@
       "from_fewshot": true
     }
   ],
-  "confidence": 0.6769230769230767,
+  "confidence": 0.8769230769230768,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "20251223_세라젬_202512_확정급여채무평가_작성요청자료_기타장기 제외_메일발송 (1).xls",
-    "company_name": "세라젬",
-    "row_count": 750,
-    "error_count": 2,
-    "warning_count": 0,
-    "anomaly_count": 0
+    "filename": "20251223_세라젬_202512_확정급여채무평가_작성요청자료_기타장기 제외_메일발송 (1).xls"
   }
 }

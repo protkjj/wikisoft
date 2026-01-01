@@ -69,22 +69,59 @@ def validate_with_ai(
 === 데이터 요약 ===
 {data_summary}
 
-=== 지시사항 ===
-1. 각 이상치에 대해 오류인지 경고인지 판단하세요.
-2. 컨텍스트를 고려하세요 (예: 임원이면 고령 입사 허용).
-3. 판단 근거를 설명하세요.
+=== 중요 지시사항 ===
+1. 샘플 데이터에서 **실제로 확인한 값만** 보고하세요.
+2. 요약 통계를 보고 추측하지 마세요. 확실한 것만 보고하세요.
+3. 문제가 없으면 errors와 warnings는 빈 배열([])로 반환하세요.
+4. 기본 검증(음수, 형식 오류 등)은 이미 다른 레이어에서 처리됩니다.
+5. 당신은 **데이터 간 관계**, **패턴 이상**, **맥락적 오류**만 찾으세요.
+   예: "임원인데 급여가 일반 직원보다 낮음", "퇴직자인데 퇴직금이 0"
+6. **행번호는 0-based index**로 반환하세요. (데이터 첫 행 = 0)
 
 JSON 형식으로 응답하세요:
 {{
     "errors": [
-        {{"row": 행번호, "field": "필드명", "value": "값", "message": "오류 설명", "reason": "판단 근거"}}
+        {{"row": 행번호, "field": "필드명", "value": "실제값", "message": "오류 설명", "reason": "판단 근거"}}
     ],
     "warnings": [
-        {{"row": 행번호, "field": "필드명", "value": "값", "message": "경고 설명", "reason": "판단 근거"}}
+        {{"row": 행번호, "field": "필드명", "value": "실제값", "message": "경고 설명", "reason": "판단 근거"}}
     ],
-    "reasoning": "전체적인 검증 판단 설명"
+    "reasoning": "전체적인 검증 판단 설명 (문제 없으면 '검토 결과 특이사항 없음')"
 }}
 """
+
+    # 사원번호 컬럼 찾기 (emp_info 추가용)
+    emp_col = None
+    for m in matches:
+        if m.get("target") == "사원번호" and m.get("source") in df.columns:
+            emp_col = m["source"]
+            break
+
+    def mask_emp_id(emp_id: Any) -> str:
+        """사원번호 앞 4자리만 표시"""
+        emp_str = str(emp_id) if emp_id else ""
+        if len(emp_str) >= 4:
+            return emp_str[:4] + "*" * (len(emp_str) - 4)
+        return emp_str or "****"
+
+    def add_emp_info(items: List[Dict]) -> List[Dict]:
+        """에러/경고에 emp_info 추가 (AI는 0-based index로 응답)"""
+        for item in items:
+            row = item.get("row")
+            if row is not None:
+                try:
+                    row_int = int(row)
+                    # AI는 0-based index로 응답하므로 그대로 사용
+                    row_idx = row_int if row_int >= 0 else 0
+                    if emp_col and 0 <= row_idx < len(df):
+                        emp_id = df.iloc[row_idx][emp_col]
+                        masked = mask_emp_id(emp_id)
+                        item["emp_info"] = f"사원번호 {masked}"
+                    else:
+                        item["emp_info"] = f"행 {row_int + 2}"  # 엑셀 기준 행번호
+                except:
+                    item["emp_info"] = f"행 {row}"
+        return items
 
     # 5. AI 호출
     try:
@@ -95,8 +132,8 @@ JSON 형식으로 응답하세요:
             result = _parse_ai_response(response)
             
             if result:
-                errors = result.get("errors", [])
-                warnings = result.get("warnings", [])
+                errors = add_emp_info(result.get("errors", []))
+                warnings = add_emp_info(result.get("warnings", []))
                 ai_reasoning = [result.get("reasoning", "")]
                 
                 # 학습 데이터 저장
