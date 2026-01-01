@@ -11,9 +11,10 @@ load_dotenv(env_path)
 
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
-from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn
+from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn, windmill, tools
 
 app = FastAPI(title="WIKISOFT3 API", version="0.0.1")
 
@@ -105,6 +106,8 @@ app.include_router(batch.router, prefix="/api")
 app.include_router(agent.router, prefix="/api")
 app.include_router(react_agent.router, prefix="/api")
 app.include_router(learn.router, prefix="/api")
+app.include_router(windmill.router, prefix="/api")
+app.include_router(tools.router, prefix="/api")
 
 # 기존 경로도 유지 (하위 호환)
 app.include_router(health.router)
@@ -114,3 +117,16 @@ app.include_router(batch.router)
 app.include_router(agent.router)
 app.include_router(react_agent.router)
 app.include_router(learn.router)
+app.include_router(windmill.router)
+app.include_router(tools.router)
+
+# 테스트 파일 서빙 (Windmill 테스트용)
+TEST_FILES_DIR = Path(__file__).parent.parent.parent / "test_files"
+
+@app.get("/files/{filename}")
+async def serve_test_file(filename: str):
+    """테스트 파일 다운로드 엔드포인트"""
+    file_path = TEST_FILES_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
+    return FileResponse(file_path, filename=filename)

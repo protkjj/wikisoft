@@ -1,0 +1,154 @@
+# WIKISOFT3 재직자명부 검증 플로우
+# Windmill에서 Import하여 사용
+#
+# 플로우 구조:
+#   1. 파일 검증 (validate_roster)
+#   2. 분기 (Branch)
+#      - auto_approve → IFRS 계산 → Slack 알림 (성공)
+#      - needs_review → Slack 알림 (검토 요청)
+#      - rejected → Slack 알림 (실패)
+
+summary: "재직자명부 검증 및 IFRS 계산 워크플로우"
+description: |
+  1. 업로드된 재직자명부 Excel 파일을 검증
+  2. 신뢰도 90% 이상이면 자동 승인 → IFRS 계산
+  3. 신뢰도 미달 또는 중복 발견 시 수동 검토 요청
+  4. 에러 발생 시 파일 반려
+
+value:
+  modules:
+    # Step 1: 파일 검증
+    - id: validate
+      value:
+        type: script
+        path: f/wikisoft3/validate_roster
+        input_transforms:
+          file_url:
+            type: javascript
+            expr: flow_input.file_url
+          sheet_type:
+            type: static
+            value: "재직자"
+          api_url:
+            type: javascript
+            expr: flow_input.api_url || "http://localhost:8003"
+          auto_approve_threshold:
+            type: static
+            value: 0.90
+
+    # Step 2: 분기
+    - id: branch
+      value:
+        type: branchone
+        branches:
+          # Branch A: 자동 승인 → IFRS 계산
+          - summary: "자동 승인"
+            expr: results.validate.action == "auto_approve"
+            modules:
+              # IFRS 계산
+              - id: ifrs_calc
+                value:
+                  type: script
+                  path: f/wikisoft3/ifrs_calculate
+                  input_transforms:
+                    headers:
+                      type: javascript
+                      expr: results.validate.parsed.headers
+                    rows:
+                      type: javascript
+                      expr: results.validate.parsed.rows
+                    matches:
+                      type: javascript
+                      expr: results.validate.matches.matches
+                    api_url:
+                      type: javascript
+                      expr: flow_input.api_url || "http://localhost:8003"
+
+              # Slack 성공 알림
+              - id: notify_success
+                value:
+                  type: script
+                  path: f/wikisoft3/notify_slack
+                  input_transforms:
+                    webhook_url:
+                      type: javascript
+                      expr: flow_input.slack_webhook_url
+                    action:
+                      type: static
+                      value: "auto_approve"
+                    confidence:
+                      type: javascript
+                      expr: results.validate.confidence
+                    message:
+                      type: javascript
+                      expr: results.validate.message
+                    ifrs_summary:
+                      type: javascript
+                      expr: results.ifrs_calc.summary
+
+          # Branch B: 수동 검토 필요
+          - summary: "수동 검토 필요"
+            expr: results.validate.action == "needs_review"
+            modules:
+              - id: notify_review
+                value:
+                  type: script
+                  path: f/wikisoft3/notify_slack
+                  input_transforms:
+                    webhook_url:
+                      type: javascript
+                      expr: flow_input.slack_webhook_url
+                    action:
+                      type: static
+                      value: "needs_review"
+                    confidence:
+                      type: javascript
+                      expr: results.validate.confidence
+                    message:
+                      type: javascript
+                      expr: results.validate.message
+                    warnings:
+                      type: javascript
+                      expr: results.validate.warnings
+
+          # Branch C: 검증 실패
+          - summary: "검증 실패"
+            expr: results.validate.action == "rejected"
+            modules:
+              - id: notify_rejected
+                value:
+                  type: script
+                  path: f/wikisoft3/notify_slack
+                  input_transforms:
+                    webhook_url:
+                      type: javascript
+                      expr: flow_input.slack_webhook_url
+                    action:
+                      type: static
+                      value: "rejected"
+                    confidence:
+                      type: javascript
+                      expr: results.validate.confidence
+                    message:
+                      type: javascript
+                      expr: results.validate.message
+                    errors:
+                      type: javascript
+                      expr: results.validate.errors
+
+schema:
+  $schema: "https://json-schema.org/draft/2020-12/schema"
+  type: object
+  required:
+    - file_url
+  properties:
+    file_url:
+      type: string
+      description: "검증할 Excel 파일 URL"
+    api_url:
+      type: string
+      description: "WIKISOFT3 API URL (기본: http://localhost:8003)"
+      default: "http://localhost:8003"
+    slack_webhook_url:
+      type: string
+      description: "Slack Webhook URL"
