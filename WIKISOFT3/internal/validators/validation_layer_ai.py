@@ -168,14 +168,26 @@ JSON 형식으로 응답하세요:
                 warnings = normalize_items(warnings)
                 
                 # L1에서 이미 처리하는 기본 검증은 제외
-                # - 성별 값 오류
-                # - 형식 오류
-                errors = [e for e in errors if not (
-                    "성별" in e.get("field", "") and ("값 오류" in e.get("message", "") or "형식" in e.get("message", ""))
-                )]
-                warnings = [w for w in warnings if not (
-                    "성별" in w.get("field", "") and ("값 오류" in w.get("message", "") or "형식" in w.get("message", ""))
-                )]
+                # - 성별 값 오류/형식 오류
+                # - 음수/0 오류 (급여, 퇴직금 등)
+                # - 입사 나이/연령 오류 (L1에서 이미 체크)
+                def should_filter(item: Dict) -> bool:
+                    msg = item.get("message", "").lower()
+                    field = item.get("field", "").lower()
+                    
+                    # 성별 관련
+                    if "성별" in field and ("값 오류" in msg or "형식" in msg):
+                        return True
+                    # 음수 관련 (L1에서 이미 체크)
+                    if "음수" in msg or "0보다 작" in msg:
+                        return True
+                    # 입사 나이/연령 (L1에서 이미 체크)
+                    if ("입사" in msg or "입사" in field) and ("나이" in msg or "연령" in msg or "미만" in msg):
+                        return True
+                    return False
+                
+                errors = [e for e in errors if not should_filter(e)]
+                warnings = [w for w in warnings if not should_filter(w)]
                 
                 ai_reasoning = [result.get("reasoning", "")]
                 
