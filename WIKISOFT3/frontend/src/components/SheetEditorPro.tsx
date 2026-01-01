@@ -465,8 +465,15 @@ export default function SheetEditorPro({
       console.log('✅ 적용할 수정 사항:', edits)
       const newData = [...sheetData]
       edits.forEach(edit => {
-        newData[edit.row] = [...newData[edit.row]]
-        newData[edit.row][edit.col] = edit.value
+        // 행이 배열인지 객체인지 확인하고 복사
+        if (Array.isArray(newData[edit.row])) {
+          newData[edit.row] = [...newData[edit.row]]
+          newData[edit.row][edit.col] = edit.value
+        } else {
+          newData[edit.row] = { ...newData[edit.row] }
+          // 객체인 경우 필드명으로 값 설정
+          newData[edit.row][edit.field] = edit.value
+        }
       })
       setSheetData(newData)
       setPendingEdits(prev => [...prev, ...edits])
