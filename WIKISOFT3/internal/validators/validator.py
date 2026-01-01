@@ -144,76 +144,54 @@ def validate(
     # 중복 제거: 같은 사원번호 + 같은 필드면 하나로 통합
     # errors와 warnings를 합쳐서 처리 (같은 문제가 에러/경고로 중복되는 것 방지)
     # ========================================
-    def normalize_message(msg: str) -> str:
-        """메시지를 정규화해서 비교하기 쉽게
-        
-        비슷한 오류를 같은 것으로 처리:
-        - "입사 나이 18세 미만" ≈ "입사연령 17세 미만" → 같은 오류 (입사|나이|미만)
-        - "기준급여 최저임금 미달" ≈ "기준급여가 최저임금 미달 가능성" → 같은 오류
-        """
-        import re
-        msg = msg.lower().strip()
-        # 쉼표, 원 단위, 불필요한 문자 정규화
-        msg = re.sub(r'[,원]', '', msg)
-        # 연령/나이 동일 처리
-        msg = msg.replace('연령', '나이')
-        # 핵심 키워드 + 조건 키워드 추출
-        type_keywords = ['미만', '초과', '미달', '음수', '누락', '중복', '형식오류', '불일치']
-        field_keywords = ['입사', '나이', '급여', '최저임금', '생년월일', '사원번호', '성별', '기준급여']
-        
-        found_types = [k for k in type_keywords if k in msg]
-        found_fields = [k for k in field_keywords if k in msg]
-        
-        # 조건 키워드가 있으면 필드+조건으로 구분
-        if found_types and found_fields:
-            return f"{'|'.join(sorted(found_fields))}:{'|'.join(sorted(found_types))}"
-        elif found_fields:
-            return '|'.join(sorted(found_fields))
-        else:
-            # 핵심 부분만 추출 (처음 30자)
-            return msg[:30]
+    def normalize_emp_info(emp_info: str) -> str:
+        """emp_info를 정규화 (공백 제거, 형식 통일)"""
+        return emp_info.strip() if emp_info else ""
     
     def deduplicate_all(error_list: List[Dict], warning_list: List[Dict]) -> tuple:
-        """에러와 경고를 합쳐서 중복 제거. 같은 (사원, 필드)면 더 심각한 것(에러)만 남김"""
-        seen = {}  # key: (emp_info, field, normalized_msg)
+        """같은 사원번호 + 같은 필드 = 하나만 남기기
         
-        # 에러 먼저 처리 (우선순위 높음)
-        for err in error_list:
-            emp_info = err.get("emp_info", "") or f"row_{err.get('row', -1)}"
-            field = err.get("field", "") or err.get("column", "") or "unknown"
-            norm_msg = normalize_message(err.get("message", ""))
-            key = (emp_info, field, norm_msg)
-            
-            if key not in seen:
-                seen[key] = {"item": err.copy(), "is_error": True}
-            else:
-                # 이미 있으면 메시지 합치기
-                existing = seen[key]["item"]
-                new_msg = err.get("message", "")
-                if new_msg and new_msg not in existing.get("message", ""):
-                    existing["message"] = f"{existing['message']}; {new_msg}"
+        - 에러와 경고가 같은 대상이면 에러만 남김 (더 심각)
+        - 같은 종류(에러/경고)면 메시지 합치기
+        """
+        seen = {}  # key: (정규화된_emp_info, field)
         
-        # 경고 처리 (에러에서 이미 처리된 것은 스킵)
-        for warn in warning_list:
-            if not isinstance(warn, dict):
+        all_items = [(e, "error") for e in error_list] + [(w, "warning") for w in warning_list]
+        
+        for item, severity in all_items:
+            if not isinstance(item, dict):
                 continue
-            emp_info = warn.get("emp_info", "") or f"row_{warn.get('row', -1)}"
-            field = warn.get("field", "") or warn.get("column", "") or "unknown"
-            norm_msg = normalize_message(warn.get("message", warn.get("warning", "")))
-            key = (emp_info, field, norm_msg)
+            
+            emp_info = normalize_emp_info(item.get("emp_info", ""))
+            field = (item.get("field") or item.get("column") or "unknown").strip()
+            key = (emp_info, field)
             
             if key not in seen:
-                seen[key] = {"item": warn.copy(), "is_error": False}
-            # 이미 에러로 있으면 경고는 무시 (에러가 더 심각)
+                # 새 항목 추가
+                seen[key] = item.copy()
+                seen[key]["severity"] = severity
+            else:
+                existing = seen[key]
+                # 경고 → 에러로 업그레이드
+                if existing.get("severity") == "warning" and severity == "error":
+                    seen[key] = item.copy()
+                    seen[key]["severity"] = severity
+                # 같은 심각도면 메시지 보충
+                elif existing.get("severity") == severity:
+                    msg1 = existing.get("message", "")
+                    msg2 = item.get("message", "")
+                    if msg2 and msg2 not in msg1:
+                        existing["message"] = f"{msg1}; {msg2}"
         
         # 분리해서 반환
         new_errors = []
         new_warnings = []
-        for data in seen.values():
-            if data["is_error"]:
-                new_errors.append(data["item"])
+        for item in seen.values():
+            sev = item.pop("severity")
+            if sev == "error":
+                new_errors.append(item)
             else:
-                new_warnings.append(data["item"])
+                new_warnings.append(item)
         
         return new_errors, new_warnings
     

@@ -112,9 +112,11 @@ JSON 형식으로 응답하세요:
                     # AI는 0-based index로 응답하므로 그대로 사용
                     row_idx = row_int if row_int >= 0 else 0
                     if emp_col and 0 <= row_idx < len(df):
-                        emp_id = df.iloc[row_idx][emp_col]
-                        masked = mask_emp_id(emp_id)
-                        item["emp_info"] = f"사원번호 {masked}"
+                        emp_id = str(df.iloc[row_idx][emp_col]).strip()
+                        # 소수점 제거 (float → int)
+                        if '.' in emp_id:
+                            emp_id = emp_id.split('.')[0]
+                        item["emp_info"] = f"사원번호 {emp_id}"
                     else:
                         item["emp_info"] = f"행 {row_int + 2}"  # 엑셀 기준 행번호
                 except:
