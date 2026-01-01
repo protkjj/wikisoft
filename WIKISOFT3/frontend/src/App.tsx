@@ -891,9 +891,15 @@ function App() {
         allErrors={allErrors}
         filename={file?.name || 'export.xlsx'}
         onSave={(updatedData) => {
-          setSheetData(updatedData);
+          // 새 배열로 복사하여 상태 업데이트 강제
+          const newData = updatedData.map(row => [...row]);
+          setSheetData(newData);
           setAllErrors([]);
-          console.log('📝 수정된 데이터:', updatedData);
+          console.log('📝 수정된 데이터 적용:', newData);
+          // 강제 리렌더링을 위해 짧은 지연 후 재검증
+          setTimeout(() => {
+            setShowSheetEditor(false);
+          }, 100);
         }}
         onRevalidate={async (updatedData) => {
           // 수정된 데이터로 재검증 API 호출
