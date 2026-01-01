@@ -192,7 +192,7 @@ export default function SheetEditorPro({
 
   if (!isOpen) return null
 
-  const headers = sheetData[0] || []
+  const headers = sheetData[1] || []  // 1행이 실제 헤더 (0행은 컬럼 레이블)
 
   // 열 문자 변환
   const getColumnLetter = (colIdx: number): string => {
