@@ -6,6 +6,47 @@
 
 ---
 
+## ⚡ 빠른 시작
+
+### 1. 프로젝트 클론
+```bash
+git clone https://github.com/protkjj/wikisoft.git
+cd wikisoft
+```
+
+### 2. Python 가상환경 설정
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r WIKISOFT3/requirements.txt
+```
+
+### 3. 프론트엔드 의존성 설치
+```bash
+cd WIKISOFT3/frontend
+npm install
+cd ../..
+```
+
+### 4. 서버 시작 + 브라우저 열기
+```bash
+cd WIKISOFT3
+./start.sh
+```
+
+이 명령으로:
+- ✅ 백엔드 서버 (http://localhost:8004)
+- ✅ 프론트엔드 (http://localhost:3005)
+- ✅ 브라우저 자동 열림
+
+### 5. (선택) alias 설정
+```bash
+# ~/.zshrc 또는 ~/.bashrc에 추가
+alias startserver="cd /your/path/WIKISOFT3 && ./start.sh"
+```
+
+---
+
 ## 🎯 프로젝트 목표
 
 **"고객이 제출한 재직자 명부 엑셀 파일을 AI가 자동으로 검증하여, 사람의 개입을 최소화한다"**
