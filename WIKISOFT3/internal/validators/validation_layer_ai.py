@@ -98,11 +98,9 @@ JSON 형식으로 응답하세요:
             break
 
     def mask_emp_id(emp_id: Any) -> str:
-        """사원번호 앞 4자리만 표시"""
+        """사원번호 (마스킹 비활성화)"""
         emp_str = str(emp_id) if emp_id else ""
-        if len(emp_str) >= 4:
-            return emp_str[:4] + "*" * (len(emp_str) - 4)
-        return emp_str or "****"
+        return emp_str or "(없음)"
 
     def add_emp_info(items: List[Dict]) -> List[Dict]:
         """에러/경고에 emp_info 추가 (AI는 0-based index로 응답)"""

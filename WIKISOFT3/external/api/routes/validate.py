@@ -111,22 +111,10 @@ async def auto_validate(
     # 7. 리포트 생성
     report = registry.call_tool("generate_report", validation=validation)
     
-    # 8. 개인정보 마스킹 적용
-    from internal.agent.tool_registry import mask_personal_info
-    
-    def mask_anomalies(anomalies_data):
-        """anomalies 내 메시지에서 개인정보 마스킹"""
-        if not anomalies_data:
-            return anomalies_data
-        masked = dict(anomalies_data)
-        if "anomalies" in masked:
-            masked["anomalies"] = [
-                {**a, "message": mask_personal_info(a.get("message", ""))}
-                for a in masked["anomalies"]
-            ]
-        return masked
-    
-    masked_anomalies = mask_anomalies(anomalies)
+    # 8. 개인정보 마스킹 비활성화 (사용자 요청)
+    # from internal.agent.tool_registry import mask_personal_info
+    # 마스킹 없이 원본 데이터 사용
+    masked_anomalies = anomalies
 
     # 스프레드시트 에디터용 데이터 (최대 100행)
     rows_data = parsed.get("rows", [])[:100]
