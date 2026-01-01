@@ -122,6 +122,34 @@ JSON 형식으로 응답하세요:
                 except:
                     item["emp_info"] = f"행 {row}"
         return items
+    
+    def normalize_field_name(field: str) -> str:
+        """필드명 정규화 - L1과 AI의 필드명 통일
+        
+        예:
+        - "입사연령" → "입사일자" (L1 필드명으로 통일)
+        - "기준급여" ← "급여"
+        """
+        if not field:
+            return field
+        field = field.strip()
+        
+        # 입사 관련
+        if "입사" in field and ("연령" in field or "나이" in field):
+            return "입사일자"  # L1 필드명으로 통일
+        
+        # 급여 관련
+        if "급여" in field:
+            return "기준급여"  # L1 필드명으로 통일
+        
+        return field
+
+    def normalize_items(items: List[Dict]) -> List[Dict]:
+        """items의 field명을 정규화"""
+        for item in items:
+            if "field" in item:
+                item["field"] = normalize_field_name(item["field"])
+        return items
 
     # 5. AI 호출
     try:
@@ -134,6 +162,11 @@ JSON 형식으로 응답하세요:
             if result:
                 errors = add_emp_info(result.get("errors", []))
                 warnings = add_emp_info(result.get("warnings", []))
+                
+                # 필드명 정규화 (L1과 맞추기)
+                errors = normalize_items(errors)
+                warnings = normalize_items(warnings)
+                
                 ai_reasoning = [result.get("reasoning", "")]
                 
                 # 학습 데이터 저장
