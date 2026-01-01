@@ -500,10 +500,8 @@ export default function SheetEditorPro({
       })
       setSheetData(newData)
       setPendingEdits(prev => {
-        // pendingEdits는 하이라이트를 위해 row를 -1 (배열 인덱스로 변환)
-        const editsForHighlight = edits.map(e => ({ ...e, row: e.row - 1 }))
-        const updated = [...prev, ...editsForHighlight]
-        console.log('📌 pendingEdits 업데이트 (하이라이트용):', updated)
+        const updated = [...prev, ...edits]
+        console.log('📌 pendingEdits 업데이트:', updated)
         return updated
       })
       
@@ -712,6 +710,11 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
                       const isEdited = pendingEdits.some(e => e.row === rowIdx && e.col === colIdx)
                       const isStart = selection.start?.row === rowIdx && selection.start?.col === colIdx
                       const errorType = getCellErrorType(rowIdx, colIdx)
+                      
+                      // 디버그: 수정된 셀 확인
+                      if (isEdited) {
+                        console.log(`🎨 하이라이트: rowIdx=${rowIdx}, colIdx=${colIdx}, 행번호=${row[0]}`)
+                      }
                       
                       return (
                         <td
