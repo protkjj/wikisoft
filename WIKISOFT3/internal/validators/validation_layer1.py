@@ -17,11 +17,8 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
     warnings: List[Dict[str, Any]] = []
     
     def mask_emp_id(emp_id: Any) -> str:
-        """사원번호 마스킹 (앞 4자리만 표시)"""
-        s = str(emp_id).strip()
-        if len(s) > 4:
-            return s[:4] + "****"
-        return s
+        """사원번호 (마스킹 비활성화)"""
+        return str(emp_id).strip()
     
     def get_emp_info(row, idx) -> str:
         """사원번호 정보 문자열 생성"""
@@ -174,7 +171,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
         dup_emp = df.groupby("사원번호").size()
         for emp_id, cnt in dup_emp[dup_emp > 1].items():
             rows = df[df["사원번호"] == emp_id].index.tolist()
-            masked_id = str(emp_id)[:4] + "****" if len(str(emp_id)) > 4 else str(emp_id)
-            warnings.append({"row": rows[0], "emp_info": f"{masked_id} (행 {rows[0]+1})", "column": "사원번호", "warning": f"중복 사원번호 {len(rows)}건", "severity": "warning"})
+            emp_id_str = str(emp_id).strip()
+            warnings.append({"row": rows[0], "emp_info": f"{emp_id_str} (행 {rows[0]+1})", "column": "사원번호", "warning": f"중복 사원번호 {len(rows)}건", "severity": "warning"})
 
     return {"errors": errors, "warnings": warnings}
