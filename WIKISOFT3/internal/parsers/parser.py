@@ -153,6 +153,7 @@ def _normalize_emp_id_in_rows(headers: List[str], rows: List[List[Any]]) -> List
     return normalized_rows
 
 
+def _convert_dates_in_row(row: List[Any], date_columns: List[int]) -> List[Any]:
     """특정 컬럼들의 날짜를 변환."""
     result = list(row)
     for idx in date_columns:
