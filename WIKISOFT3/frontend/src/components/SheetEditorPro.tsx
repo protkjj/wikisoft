@@ -500,8 +500,10 @@ export default function SheetEditorPro({
       })
       setSheetData(newData)
       setPendingEdits(prev => {
-        const updated = [...prev, ...edits]
-        console.log('📌 pendingEdits 업데이트:', updated)
+        // pendingEdits는 하이라이트를 위해 row를 -1 (배열 인덱스로 변환)
+        const editsForHighlight = edits.map(e => ({ ...e, row: e.row - 1 }))
+        const updated = [...prev, ...editsForHighlight]
+        console.log('📌 pendingEdits 업데이트 (하이라이트용):', updated)
         return updated
       })
       
