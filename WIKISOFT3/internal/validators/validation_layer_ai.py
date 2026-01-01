@@ -167,6 +167,16 @@ JSON 형식으로 응답하세요:
                 errors = normalize_items(errors)
                 warnings = normalize_items(warnings)
                 
+                # L1에서 이미 처리하는 기본 검증은 제외
+                # - 성별 값 오류
+                # - 형식 오류
+                errors = [e for e in errors if not (
+                    "성별" in e.get("field", "") and ("값 오류" in e.get("message", "") or "형식" in e.get("message", ""))
+                )]
+                warnings = [w for w in warnings if not (
+                    "성별" in w.get("field", "") and ("값 오류" in w.get("message", "") or "형식" in w.get("message", ""))
+                )]
+                
                 ai_reasoning = [result.get("reasoning", "")]
                 
                 # 학습 데이터 저장
