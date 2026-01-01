@@ -79,8 +79,20 @@ export default function SheetEditorPro({
       // 컬럼 수 계산
       const colCount = initialData[0].length + 1  // +1 for row number column
       
+      // 컬럼 레터 생성 함수 (인라인)
+      const toColLetter = (col: number): string => {
+        let result = ''
+        let n = col
+        while (n > 0) {
+          n--
+          result = String.fromCharCode(65 + (n % 26)) + result
+          n = Math.floor(n / 26)
+        }
+        return result
+      }
+      
       // 0행: 컬럼 레이블 (빈칸, A, B, C, D...)
-      const columnLabels = ['', ...Array.from({ length: colCount - 1 }, (_, i) => getColumnLetter(i + 1))]
+      const columnLabels = ['', ...Array.from({ length: colCount - 1 }, (_, i) => toColLetter(i + 1))]
       
       // 1행: 헤더 (행번호 칸, 사원번호, 성명...)
       const headers = ['', ...initialData[0]]
