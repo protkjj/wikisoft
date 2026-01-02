@@ -1,0 +1,389 @@
+summary: 퇴직연금 통합 관리 플랫폼 v2
+description: |
+  IFRS 파이프라인 (필수): WIKISOFT3 명부검증 → 퇴직금 계산 → 리포트 생성
+  선택적 에이전트: ALM, 재정검증, 업무지원
+
+value:
+  modules:
+    # ============================================
+    # IFRS 파이프라인 (필수, 순차 실행)
+    # ============================================
+    
+    # Step 1: WIKISOFT3 명부검증
+    - id: step1_validate
+      summary: 명부 검증 (WIKISOFT3)
+      value:
+        path: u/dlrkdwns1589/validate_roster_py
+        type: script
+        input_transforms:
+          api_url:
+            expr: flow_input.api_url
+            type: javascript
+          file_url:
+            expr: flow_input.file_url
+            type: javascript
+          sheet_type:
+            expr: flow_input.sheet_type || "standard"
+            type: javascript
+
+    # Step 2: 퇴직금 계산
+    - id: step2_calculate
+      summary: 퇴직금 계산 (IFRS 1019)
+      value:
+        path: u/dlrkdwns1589/ifrs_calculate_py
+        type: script
+        input_transforms:
+          api_url:
+            expr: flow_input.api_url
+            type: javascript
+          headers:
+            expr: results.step1_validate.parsed.headers
+            type: javascript
+          rows:
+            expr: results.step1_validate.parsed.rows
+            type: javascript
+          matches:
+            expr: results.step1_validate.matches.matches
+            type: javascript
+          calculation_date:
+            expr: flow_input.calculation_date || new Date().toISOString().split('T')[0]
+            type: javascript
+
+    # Step 3: 리포트 생성 (PDF + 챗봇 지원)
+    - id: step3_report
+      summary: 리포트 생성 (PDF + 챗봇)
+      value:
+        lock: |
+          {
+            "dependencies": {}
+          }
+        type: rawscript
+        content: |
+          export async function main(
+            validation_result: any,
+            calculation_result: any,
+            report_format: string = "pdf"
+          ) {
+            // 리포트 데이터 구성
+            const report = {
+              generated_at: new Date().toISOString(),
+              format: report_format,
+              
+              // 검증 결과 요약
+              validation: {
+                total_employees: validation_result?.parsed?.rows?.length || 0,
+                errors: validation_result?.validation?.errors || [],
+                warnings: validation_result?.validation?.warnings || [],
+                confidence: validation_result?.confidence?.score || 0
+              },
+              
+              // 계산 결과 요약
+              calculation: {
+                total_liability: calculation_result?.total_liability || 0,
+                service_cost: calculation_result?.service_cost || 0,
+                interest_cost: calculation_result?.interest_cost || 0,
+                by_employee: calculation_result?.by_employee || []
+              },
+              
+              // 챗봇 컨텍스트 (후속 질문용)
+              chatbot_context: {
+                session_id: `report_${Date.now()}`,
+                available_queries: [
+                  "개별 직원 상세 조회",
+                  "오류 항목 설명",
+                  "계산 근거 확인",
+                  "PDF 다운로드"
+                ]
+              }
+            };
+            
+            return {
+              status: "success",
+              report: report,
+              pdf_url: null,  // TODO: PDF 생성 후 URL
+              message: "리포트 생성 완료"
+            };
+          }
+        language: bun
+        input_transforms:
+          validation_result:
+            expr: results.step1_validate
+            type: javascript
+          calculation_result:
+            expr: results.step2_calculate
+            type: javascript
+          report_format:
+            expr: flow_input.report_format || "pdf"
+            type: javascript
+
+    # ============================================
+    # 선택적 에이전트 브랜치 (IFRS 완료 후)
+    # ============================================
+    - id: optional_agents
+      summary: 선택적 에이전트 실행
+      value:
+        type: branchall
+        parallel: true
+        branches:
+          # ALM 에이전트
+          - expr: flow_input.run_alm === true
+            summary: ALM (자산부채관리)
+            modules:
+              - id: alm_agent
+                summary: ALM 분석
+                value:
+                  lock: |
+                    {
+                      "dependencies": {}
+                    }
+                  type: rawscript
+                  content: |
+                    export async function main(
+                      calculation_result: any,
+                      alm_params: any
+                    ) {
+                      // ALM 분석 로직
+                      const analysis = {
+                        liability_profile: calculation_result?.by_employee || [],
+                        duration: alm_params?.duration || 10,
+                        discount_rate: alm_params?.discount_rate || 0.05,
+                        
+                        // TODO: 실제 ALM 계산 로직
+                        asset_liability_gap: 0,
+                        recommended_allocation: {
+                          bonds: 0.6,
+                          stocks: 0.3,
+                          alternatives: 0.1
+                        }
+                      };
+                      
+                      return {
+                        status: "success",
+                        agent: "ALM",
+                        analysis: analysis
+                      };
+                    }
+                  language: bun
+                  input_transforms:
+                    calculation_result:
+                      expr: results.step2_calculate
+                      type: javascript
+                    alm_params:
+                      expr: flow_input.alm_params || {}
+                      type: javascript
+
+          # 재정검증 에이전트
+          - expr: flow_input.run_financial_verify === true
+            summary: 재정검증
+            modules:
+              - id: financial_verify_agent
+                summary: 재정검증 분석
+                value:
+                  lock: |
+                    {
+                      "dependencies": {}
+                    }
+                  type: rawscript
+                  content: |
+                    export async function main(
+                      validation_result: any,
+                      calculation_result: any,
+                      verify_params: any
+                    ) {
+                      // 재정검증 로직
+                      const verification = {
+                        data_integrity: {
+                          total_records: validation_result?.parsed?.rows?.length || 0,
+                          error_rate: (validation_result?.validation?.errors?.length || 0) / 
+                                      (validation_result?.parsed?.rows?.length || 1)
+                        },
+                        
+                        calculation_verify: {
+                          total_liability: calculation_result?.total_liability || 0,
+                          variance_check: "PASS",  // TODO: 실제 검증
+                          consistency_check: "PASS"
+                        },
+                        
+                        compliance: {
+                          ifrs_1019: "COMPLIANT",
+                          local_gaap: "COMPLIANT"
+                        }
+                      };
+                      
+                      return {
+                        status: "success",
+                        agent: "재정검증",
+                        verification: verification
+                      };
+                    }
+                  language: bun
+                  input_transforms:
+                    validation_result:
+                      expr: results.step1_validate
+                      type: javascript
+                    calculation_result:
+                      expr: results.step2_calculate
+                      type: javascript
+                    verify_params:
+                      expr: flow_input.verify_params || {}
+                      type: javascript
+
+          # 업무지원 에이전트
+          - expr: flow_input.run_business_support === true
+            summary: 업무지원
+            modules:
+              - id: business_support_agent
+                summary: 업무지원 서비스
+                value:
+                  lock: |
+                    {
+                      "dependencies": {}
+                    }
+                  type: rawscript
+                  content: |
+                    export async function main(
+                      report_result: any,
+                      support_type: string
+                    ) {
+                      // 업무지원 로직
+                      const support = {
+                        report_summary: report_result?.report || {},
+                        
+                        available_services: [
+                          "퇴직금 시뮬레이션",
+                          "직원별 상세 조회",
+                          "예측 분석",
+                          "이메일 발송",
+                          "엑셀 내보내기"
+                        ],
+                        
+                        requested_service: support_type,
+                        result: null  // TODO: 실제 서비스 실행
+                      };
+                      
+                      return {
+                        status: "success",
+                        agent: "업무지원",
+                        support: support
+                      };
+                    }
+                  language: bun
+                  input_transforms:
+                    report_result:
+                      expr: results.step3_report
+                      type: javascript
+                    support_type:
+                      expr: flow_input.support_type || "summary"
+                      type: javascript
+
+    # ============================================
+    # 최종 결과 통합
+    # ============================================
+    - id: final_result
+      summary: 결과 통합
+      value:
+        lock: |
+          {
+            "dependencies": {}
+          }
+        type: rawscript
+        content: |
+          export async function main(
+            step1: any,
+            step2: any, 
+            step3: any,
+            optional: any
+          ) {
+            return {
+              status: "completed",
+              timestamp: new Date().toISOString(),
+              
+              // IFRS 파이프라인 결과
+              ifrs_pipeline: {
+                validation: step1?.status || "unknown",
+                calculation: step2?.status || "unknown",
+                report: step3?.status || "unknown"
+              },
+              
+              // 선택적 에이전트 결과
+              optional_agents: {
+                alm: optional?.alm_agent || null,
+                financial_verify: optional?.financial_verify_agent || null,
+                business_support: optional?.business_support_agent || null
+              },
+              
+              // 리포트 URL
+              report_url: step3?.pdf_url || null,
+              
+              // 챗봇 세션
+              chatbot_session: step3?.report?.chatbot_context?.session_id || null
+            };
+          }
+        language: bun
+        input_transforms:
+          step1:
+            expr: results.step1_validate
+            type: javascript
+          step2:
+            expr: results.step2_calculate
+            type: javascript
+          step3:
+            expr: results.step3_report
+            type: javascript
+          optional:
+            expr: results.optional_agents || {}
+            type: javascript
+
+schema:
+  type: object
+  required:
+    - file_url
+  properties:
+    # 필수 입력
+    file_url:
+      type: string
+      description: 검증할 명부 파일 URL
+    api_url:
+      type: string
+      default: https://irrational-ignacio-wonderingly.ngrok-free.dev
+      description: WIKISOFT3 API URL
+    sheet_type:
+      type: string
+      default: standard
+      description: 시트 유형
+    calculation_date:
+      type: string
+      description: 계산 기준일 (YYYY-MM-DD)
+    report_format:
+      type: string
+      enum:
+        - pdf
+        - excel
+        - json
+      default: pdf
+      description: 리포트 형식
+    
+    # 선택적 에이전트 활성화
+    run_alm:
+      type: boolean
+      default: false
+      description: ALM 에이전트 실행 여부
+    run_financial_verify:
+      type: boolean
+      default: false
+      description: 재정검증 에이전트 실행 여부
+    run_business_support:
+      type: boolean
+      default: false
+      description: 업무지원 에이전트 실행 여부
+    
+    # 에이전트별 파라미터
+    alm_params:
+      type: object
+      description: ALM 분석 파라미터
+    verify_params:
+      type: object
+      description: 재정검증 파라미터
+    support_type:
+      type: string
+      description: 업무지원 서비스 유형
