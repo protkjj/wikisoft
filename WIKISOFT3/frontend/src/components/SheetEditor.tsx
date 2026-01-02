@@ -266,7 +266,7 @@ ${errorListContext}
 5. 사용자가 "N번"이라고 하면 에러 목록에서 N번째 항목의 행번호와 필드명을 사용하세요!
       `.trim()
 
-      const response = await fetch('http://127.0.0.1:8004/agent/chat', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

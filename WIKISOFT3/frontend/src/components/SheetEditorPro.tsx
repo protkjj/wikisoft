@@ -322,7 +322,7 @@ export default function SheetEditorPro({
         return obj
       })
       
-      const response = await fetch('http://127.0.0.1:8004/api/export/xlsx', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/export/xlsx`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -561,7 +561,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
       
-      const response = await fetch('http://127.0.0.1:8004/agent/chat', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage, context }),

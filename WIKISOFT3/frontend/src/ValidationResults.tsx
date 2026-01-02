@@ -227,16 +227,16 @@ export default function ValidationResults({
       )}
 
       {/* 검증 오류/경고 상세 목록 */}
-      {(result.steps?.validation?.errors?.length > 0 || result.steps?.validation?.warnings?.length > 0) && (
+      {((result.steps?.validation?.errors?.length ?? 0) > 0 || (result.steps?.validation?.warnings?.length ?? 0) > 0) && (
         <div className="section">
           <h3>🔍 검증 상세 결과</h3>
           
           {/* 오류 목록 */}
-          {result.steps?.validation?.errors?.length > 0 && (
+          {(result.steps?.validation?.errors?.length ?? 0) > 0 && (
             <div className="validation-errors">
-              <h4>🔴 오류 ({result.steps.validation.errors.length}건)</h4>
+              <h4>🔴 오류 ({result.steps?.validation?.errors?.length ?? 0}건)</h4>
               <div className="error-list">
-                {result.steps.validation.errors.slice(0, 20).map((error: any, idx: number) => (
+                {(result.steps?.validation?.errors ?? []).slice(0, 20).map((error: any, idx: number) => (
                   <div key={idx} className="validation-item error">
                     <span className="item-row">행 {error.row}</span>
                     <span className="item-field">{error.field}</span>
@@ -244,19 +244,19 @@ export default function ValidationResults({
                     {error.reason && <span className="item-reason">💡 {error.reason}</span>}
                   </div>
                 ))}
-                {result.steps.validation.errors.length > 20 && (
-                  <div className="more-items">... 외 {result.steps.validation.errors.length - 20}건 더</div>
+                {(result.steps?.validation?.errors?.length ?? 0) > 20 && (
+                  <div className="more-items">... 외 {(result.steps?.validation?.errors?.length ?? 0) - 20}건 더</div>
                 )}
               </div>
             </div>
           )}
 
           {/* 경고 목록 */}
-          {result.steps?.validation?.warnings?.length > 0 && (
+          {(result.steps?.validation?.warnings?.length ?? 0) > 0 && (
             <div className="validation-warnings">
-              <h4>🟠 경고 ({result.steps.validation.warnings.length}건)</h4>
+              <h4>🟠 경고 ({result.steps?.validation?.warnings?.length ?? 0}건)</h4>
               <div className="warning-list">
-                {result.steps.validation.warnings.slice(0, 20).map((warning: any, idx: number) => (
+                {(result.steps?.validation?.warnings ?? []).slice(0, 20).map((warning: any, idx: number) => (
                   <div key={idx} className="validation-item warning">
                     {typeof warning === 'string' ? (
                       <span className="item-message">{warning}</span>
@@ -269,8 +269,8 @@ export default function ValidationResults({
                     )}
                   </div>
                 ))}
-                {result.steps.validation.warnings.length > 20 && (
-                  <div className="more-items">... 외 {result.steps.validation.warnings.length - 20}건 더</div>
+                {(result.steps?.validation?.warnings?.length ?? 0) > 20 && (
+                  <div className="more-items">... 외 {(result.steps?.validation?.warnings?.length ?? 0) - 20}건 더</div>
                 )}
               </div>
             </div>

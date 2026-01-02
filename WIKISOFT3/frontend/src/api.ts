@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { DiagnosticQuestionsResponse, ValidationResult, AutoValidateResult, ValidationRun } from './types'
+import type { DiagnosticQuestionsResponse, AutoValidateResult, ValidationRun } from './types'
 
 const API_BASE = '/api'
 

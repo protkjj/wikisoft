@@ -1,0 +1,39 @@
+# Docker Compose 설정 (개발/프로덕션)
+version: '3.8'
+
+services:
+  # 백엔드 API
+  backend:
+    build: .
+    ports:
+      - "8004:8004"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/app
+    volumes:
+      # 개발 시 소스 마운트 (핫리로드)
+      - ./internal:/app/internal
+      - ./external:/app/external
+      - ./training_data:/app/training_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 프론트엔드 (프로덕션 빌드 후 nginx로 서빙)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3005:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://backend:8004
+
+# 네트워크 설정
+networks:
+  default:
+    name: wikisoft-network

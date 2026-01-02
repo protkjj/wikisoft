@@ -64,9 +64,9 @@ export interface AutoValidateResult {
     recommendation: string
   }
   steps: {
-    parsed_summary: { headers: string[]; row_count: number }
+    parsed_summary: { headers: string[]; row_count: number; all_rows?: any[] }
     matches: any
-    validation: { passed: boolean; errors?: any[]; warnings: any[]; checks: any[] }
+    validation: { passed: boolean; errors?: any[]; warnings?: any[]; checks?: any[] }
     report: any
   }
 }
