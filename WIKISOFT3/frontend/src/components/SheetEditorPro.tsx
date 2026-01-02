@@ -711,11 +711,6 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
                       const isStart = selection.start?.row === rowIdx && selection.start?.col === colIdx
                       const errorType = getCellErrorType(rowIdx, colIdx)
                       
-                      // 디버그: 수정된 셀 확인
-                      if (isEdited) {
-                        console.log(`🎨 하이라이트: rowIdx=${rowIdx}, colIdx=${colIdx}, 행번호=${row[0]}`)
-                      }
-                      
                       return (
                         <td
                           key={`${rowIdx}-${colIdx}`}
