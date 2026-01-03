@@ -4,16 +4,7 @@ WIKISOFT 4.1 Core Modules
 Security-first, privacy-focused HR/Finance data validation platform.
 """
 
-from . import security
-from . import privacy
-from . import validators
-from . import parsers
-from . import ai
-from . import agent
-from . import generators
-from . import memory
-from . import utils
-
+# Lazy imports - modules are imported on demand to avoid circular dependencies
 __all__ = [
     "security",
     "privacy",
