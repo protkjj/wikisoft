@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import './App.css'
 import { api } from './api'
 import ChatBot from './ChatBot'
@@ -41,9 +41,56 @@ function App() {
   const [showSheetEditor, setShowSheetEditor] = useState(false)
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
   const [sheetData, setSheetData] = useState<string[][]>([])
-  const [allErrors, setAllErrors] = useState<Array<{severity: 'error' | 'warning', message: string, row?: number, field?: string, emp_info?: string}>>([])
   const [latestRuns, setLatestRuns] = useState<ValidationRun[]>([])
   const [runsLoading, setRunsLoading] = useState(false)
+
+  // 검증 결과에서 수정 가능한 에러/경고만 추출 (useMemo로 자동 계산)
+  const editableErrors = useMemo(() => {
+    if (!validationResult) return []
+
+    const allResults: Array<{
+      severity: 'error' | 'warning',
+      message: string,
+      row?: number,
+      field?: string,
+      emp_info?: string
+    }> = []
+    const seenMessages = new Set<string>()
+
+    // validation.errors 추출
+    validationResult.steps?.validation?.errors?.forEach((err: any) => {
+      const msg = `${err.emp_info || `행 ${err.row}`}: ${err.field || err.column} - ${err.message || err.error}`
+      if (!seenMessages.has(msg) && err.row && err.field) {
+        seenMessages.add(msg)
+        allResults.push({
+          severity: 'error',
+          message: msg,
+          row: err.row,
+          field: err.field || err.column,
+          emp_info: err.emp_info
+        })
+      }
+    })
+
+    // validation.warnings 추출
+    validationResult.steps?.validation?.warnings?.forEach((warn: any) => {
+      if (typeof warn === 'object' && warn.row && warn.field) {
+        const msg = `${warn.emp_info || `행 ${warn.row}`}: ${warn.field || warn.column} - ${warn.message || warn.warning}`
+        if (!seenMessages.has(msg)) {
+          seenMessages.add(msg)
+          allResults.push({
+            severity: 'warning',
+            message: msg,
+            row: warn.row,
+            field: warn.field || warn.column,
+            emp_info: warn.emp_info
+          })
+        }
+      }
+    })
+
+    return allResults
+  }, [validationResult])
   
   const chatRef = useRef<FloatingChatHandle>(null)
 
@@ -199,8 +246,8 @@ function App() {
     try {
       setLoading(true)
 
-      // allErrors에서 에러/경고만 추출
-      const errorsToExport = allErrors.map(err => ({
+      // editableErrors 사용 (validationResult 변경 시 자동 계산됨)
+      const errorsToExport = editableErrors.map(err => ({
         row: err.row ?? 0,
         field: err.field ?? '',
         message: err.message,
@@ -719,10 +766,9 @@ function App() {
                 <div className="anomalies-header">
                   <h3>⚠️ 검증 결과 상세</h3>
                   {editableErrors.length > 0 && sheetData.length > 0 && (
-                    <button 
+                    <button
                       className="btn-edit-all"
                       onClick={() => {
-                        setAllErrors(editableErrors);
                         setEditTarget(null);
                         setShowSheetEditor(true);
                       }}
@@ -806,14 +852,14 @@ function App() {
             >
               ← 다시 검증
             </button>
-            {allErrors.length > 0 && (
+            {editableErrors.length > 0 && (
               <button
                 className="btn-secondary"
                 onClick={handleDownloadErrorsOnly}
                 disabled={loading}
-                title={`${allErrors.length}건의 의심 항목 다운로드`}
+                title={`${editableErrors.length}건의 의심 항목 다운로드`}
               >
-                ⚠️ 의심 목록 ({allErrors.length})
+                ⚠️ 의심 목록 ({editableErrors.length})
               </button>
             )}
             <button
@@ -932,13 +978,12 @@ function App() {
         onClose={() => {
           setShowSheetEditor(false);
           setEditTarget(null);
-          setAllErrors([]);
         }}
         data={sheetData}
         targetRow={editTarget?.row ? editTarget.row - 1 : undefined}
         targetField={editTarget?.field}
         errorMessage={editTarget?.message}
-        allErrors={allErrors}
+        allErrors={editableErrors}
         filename={file?.name || 'export.xlsx'}
         onSave={(updatedData) => {
           // 새 배열로 복사하여 상태 업데이트 강제
@@ -965,8 +1010,7 @@ function App() {
               }
             });
           }
-          
-          setAllErrors([]);
+
           console.log('📝 수정된 데이터 적용:', newData);
           // 강제 리렌더링을 위해 짧은 지연 후 재검증
           setTimeout(() => {
@@ -979,26 +1023,25 @@ function App() {
             // 현재는 간단히 빈 배열 반환 (실제 구현 필요)
             // TODO: 백엔드에 수정된 데이터 전송하여 재검증
             console.log('🔍 재검증 요청:', updatedData);
-            
+
             // 임시: 수정된 셀의 에러만 제거
-            const newErrors = allErrors.filter(err => {
+            const newErrors = editableErrors.filter(err => {
               // 수정된 행/필드가 있으면 해당 에러 제거
               const headers = updatedData[0];
               const colIdx = headers.indexOf(err.field || '');
               if (colIdx === -1 || !err.row) return true;
-              
+
               const dataRowIdx = err.row - 2; // API row → 데이터 인덱스
               if (dataRowIdx < 0 || dataRowIdx >= updatedData.length - 1) return true;
-              
+
               // 값이 변경되었으면 에러 제거 (실제로는 재검증 필요)
               return false;
             });
-            
-            setAllErrors(newErrors);
+
             return newErrors;
           } catch (error) {
             console.error('재검증 실패:', error);
-            return allErrors;
+            return editableErrors;
           }
         }}
       />
