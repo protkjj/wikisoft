@@ -1,6 +1,6 @@
 {
   "case_id": "9e266a5695df",
-  "timestamp": "2026-01-01T23:56:14.230532",
+  "timestamp": "2026-01-03T09:05:24.546429",
   "headers": [
     "사원번호",
     "생년월일",
@@ -103,10 +103,10 @@
       "from_fewshot": true
     }
   ],
-  "confidence": 0.8666666666666667,
+  "confidence": 1.0,
   "was_auto_approved": true,
   "human_corrections": {},
   "metadata": {
-    "filename": "230111_에이치자산운용_2212_확정급여채무평가_작성요청자료.xls"
+    "filename": "자강산업_2022_확정급여채무평가_작성자료ver1.0.xls"
   }
 }
