@@ -11,6 +11,7 @@ import ThemeToggle from './components/ThemeToggle'
 import { useSession } from './contexts/SessionContext'
 import { downloadBlob, generateTimestampedFilename } from './utils/download'
 import { getRequiredFieldLabels } from './constants/fields'
+import { handleError } from './utils/errorHandler'
 import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
@@ -105,8 +106,8 @@ function App() {
       setQuestions(data.questions)
       setError('')
     } catch (err) {
-      setError('진단 질문을 불러오는데 실패했습니다. 서버가 실행 중인지 확인해주세요.')
-      console.error(err)
+      const message = handleError('DiagnosticQuestions', err, '진단 질문을 불러오는데 실패했습니다. 서버가 실행 중인지 확인해주세요.')
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -118,7 +119,7 @@ function App() {
       const runs = await api.getLatestRuns(6)
       setLatestRuns(runs)
     } catch (err) {
-      console.error('최근 실행 이력 로드 실패', err)
+      handleError('LatestRuns', err, '최근 실행 이력 로드 실패')
     } finally {
       setRunsLoading(false)
     }
@@ -182,11 +183,9 @@ function App() {
       
       setCurrentStep('results')
       console.log('✅ Step 변경 완료: results')
-    } catch (err: any) {
-      console.error('❌ 검증 오류:', err)
-      console.error('❌ 오류 상세:', err.response?.data)
-      setError(err.response?.data?.detail || '검증 중 오류가 발생했습니다.')
-      console.error(err)
+    } catch (err) {
+      const message = handleError('Validation', err, '검증 중 오류가 발생했습니다.')
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -201,9 +200,9 @@ function App() {
       const filename = generateTimestampedFilename('검증리포트', 'xlsx')
       downloadBlob(blob, filename)
       setCurrentStep('download')
-    } catch (err: any) {
-      console.error('Excel 다운로드 오류:', err)
-      setError('Excel 리포트 다운로드에 실패했습니다. 잠시 후 다시 시도해주세요.')
+    } catch (err) {
+      const message = handleError('DownloadExcel', err, 'Excel 리포트 다운로드에 실패했습니다.')
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -217,9 +216,9 @@ function App() {
       const blob = await api.downloadFinalData(session.sessionId)
       const filename = generateTimestampedFilename('최종수정본', 'xlsx')
       downloadBlob(blob, filename)
-    } catch (err: any) {
-      console.error('최종 수정본 다운로드 오류:', err)
-      setError('최종 수정본 다운로드에 실패했습니다.')
+    } catch (err) {
+      const message = handleError('DownloadFinalData', err, '최종 수정본 다운로드에 실패했습니다.')
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -249,9 +248,9 @@ function App() {
       const filename = generateTimestampedFilename('의심목록', 'xlsx')
       downloadBlob(blob, filename)
       console.log(`✅ ${errorsToExport.length}건의 오류를 다운로드했습니다.`)
-    } catch (err: any) {
-      console.error('오류 목록 다운로드 실패:', err)
-      setError('의심 목록 다운로드에 실패했습니다.')
+    } catch (err) {
+      const message = handleError('DownloadErrors', err, '의심 목록 다운로드에 실패했습니다.')
+      setError(message)
     } finally {
       setLoading(false)
     }
