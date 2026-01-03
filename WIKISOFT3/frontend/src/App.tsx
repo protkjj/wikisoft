@@ -9,6 +9,8 @@ import SheetEditorPro from './components/SheetEditorPro'
 // import ValidationResults from './ValidationResults'
 import ThemeToggle from './components/ThemeToggle'
 import { useSession } from './contexts/SessionContext'
+import { downloadBlob, generateTimestampedFilename } from './utils/download'
+import { getRequiredFieldLabels } from './constants/fields'
 import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
@@ -195,17 +197,9 @@ function App() {
 
     try {
       setLoading(true)
-      // Excel 파일 다운로드 (검증 리포트)
       const blob = await api.downloadExcel(session.sessionId)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `검증리포트_${new Date().toISOString().split('T')[0]}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
+      const filename = generateTimestampedFilename('검증리포트', 'xlsx')
+      downloadBlob(blob, filename)
       setCurrentStep('download')
     } catch (err: any) {
       console.error('Excel 다운로드 오류:', err)
@@ -220,16 +214,9 @@ function App() {
 
     try {
       setLoading(true)
-      // 최종 수정본 다운로드 (매핑 완료된 데이터)
       const blob = await api.downloadFinalData(session.sessionId)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `최종수정본_${new Date().toISOString().split('T')[0]}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const filename = generateTimestampedFilename('최종수정본', 'xlsx')
+      downloadBlob(blob, filename)
     } catch (err: any) {
       console.error('최종 수정본 다운로드 오류:', err)
       setError('최종 수정본 다운로드에 실패했습니다.')
@@ -246,7 +233,7 @@ function App() {
       setLoading(true)
 
       // editableErrors 사용 (validationResult 변경 시 자동 계산됨)
-      const errorsToExport = editableErrors.map(err => ({
+      const errorsToExport = editableErrors.filter((e) => e.severity === 'error').map(err => ({
         row: err.row ?? 0,
         field: err.field ?? '',
         message: err.message,
@@ -254,25 +241,17 @@ function App() {
       }))
 
       if (errorsToExport.length === 0) {
-        alert('오류가 없습니다!')
+        alert('다운로드할 오류가 없습니다.')
         return
       }
 
-      // API 호출
       const blob = await api.downloadErrorsExcel(file.name, errorsToExport)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${file.name.replace(/\.[^/.]+$/, '')}_오류목록_${new Date().toISOString().split('T')[0]}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
+      const filename = generateTimestampedFilename('의심목록', 'xlsx')
+      downloadBlob(blob, filename)
       console.log(`✅ ${errorsToExport.length}건의 오류를 다운로드했습니다.`)
     } catch (err: any) {
       console.error('오류 목록 다운로드 실패:', err)
-      setError('오류 목록 다운로드에 실패했습니다.')
+      setError('의심 목록 다운로드에 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -655,7 +634,7 @@ function App() {
                   {(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || [])
                     .sort((a: HeaderMatch, b: HeaderMatch) => {
                       // 필수 필드 먼저 표시
-                      const requiredFields = ['사원번호', '생년월일', '성별', '입사일자', '종업원구분', '기준급여'];
+                      const requiredFields = getRequiredFieldLabels();
                       const aRequired = requiredFields.includes(a.target || '');
                       const bRequired = requiredFields.includes(b.target || '');
                       if (aRequired && !bRequired) return -1;
@@ -663,7 +642,7 @@ function App() {
                       return 0;
                     })
                     .map((match: HeaderMatch, idx: number) => {
-                      const requiredFields = ['사원번호', '생년월일', '성별', '입사일자', '종업원구분', '기준급여'];
+                      const requiredFields = getRequiredFieldLabels();
                       const isRequired = requiredFields.includes(match.target || '');
                       return (
                     <tr key={idx}>

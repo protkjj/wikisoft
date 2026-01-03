@@ -1,7 +1,8 @@
 import axios from 'axios'
 import type { DiagnosticQuestionsResponse, AutoValidateResult, ValidationRun } from './types'
+import { API_BASE_URL } from './config/api'
 
-const API_BASE = '/api'
+const API_BASE = API_BASE_URL
 
 export const api = {
 

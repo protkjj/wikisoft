@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import './SheetEditor.css'
+import { AGENT_CHAT_URL } from '../config/api'
 
 // 에러/경고 항목
 interface ValidationItem {
@@ -266,7 +267,7 @@ ${errorListContext}
 5. 사용자가 "N번"이라고 하면 에러 목록에서 N번째 항목의 행번호와 필드명을 사용하세요!
       `.trim()
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/chat`, {
+      const response = await fetch(AGENT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

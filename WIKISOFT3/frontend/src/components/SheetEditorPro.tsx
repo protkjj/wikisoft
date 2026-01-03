@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import './SheetEditorPro.css'
+import { downloadBlob } from '../utils/download'
+import { AGENT_CHAT_URL, API_BASE_URL } from '../config/api'
 
 // 에러/경고 항목
 interface ValidationItem {
@@ -322,7 +324,7 @@ export default function SheetEditorPro({
         return obj
       })
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/export/xlsx`, {
+      const response = await fetch(`${API_BASE_URL}/export/xlsx`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,10 +342,7 @@ export default function SheetEditorPro({
       
       // Blob으로 변환하여 다운로드
       const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      
+
       // 파일명 추출 (Content-Disposition 헤더에서)
       const contentDisposition = response.headers.get('Content-Disposition')
       let downloadFilename = filename.replace('.xlsx', '_수정본.xlsx')
@@ -353,12 +352,8 @@ export default function SheetEditorPro({
           downloadFilename = decodeURIComponent(filenameMatch[1])
         }
       }
-      
-      a.download = downloadFilename
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+
+      downloadBlob(blob, downloadFilename)
       
       // 성공 메시지
       setMessages(prev => [...prev, {
@@ -561,7 +556,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
       
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/agent/chat`, {
+      const response = await fetch(AGENT_CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userMessage, context }),
