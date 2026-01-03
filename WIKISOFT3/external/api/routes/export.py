@@ -156,10 +156,10 @@ async def export_errors(request: ExportErrorsRequest):
         for row in ws.iter_rows(min_row=2, max_row=len(request.errors) + 1):
             ws.row_dimensions[row[0].row].height = None  # auto
         
-        # 파일명 생성 (원본명_오류목록_날짜.xlsx)
+        # 파일명 생성 (원본명_의심목록_날짜.xlsx)
         base_name = request.filename.rsplit(".", 1)[0]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"{base_name}_오류목록_{timestamp}.xlsx"
+        output_filename = f"{base_name}_의심목록_{timestamp}.xlsx"
         
         # BytesIO에 저장
         excel_buffer = BytesIO()

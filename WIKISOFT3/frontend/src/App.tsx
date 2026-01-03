@@ -811,9 +811,9 @@ function App() {
                 className="btn-secondary"
                 onClick={handleDownloadErrorsOnly}
                 disabled={loading}
-                title={`${allErrors.length}건의 오류 항목만 다운로드`}
+                title={`${allErrors.length}건의 의심 항목 다운로드`}
               >
-                ⚠️ 오류만 다운로드 ({allErrors.length})
+                ⚠️ 의심 목록 ({allErrors.length})
               </button>
             )}
             <button
