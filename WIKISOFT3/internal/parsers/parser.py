@@ -10,6 +10,18 @@ from openpyxl import load_workbook
 # Excel 날짜 직렬 번호 변환 (1900-01-01 기준)
 EXCEL_EPOCH = _dt.date(1899, 12, 30)
 
+# 헤더 행 탐지용 키워드 (재직자명부에서 자주 등장하는 컬럼명)
+HEADER_KEYWORDS = {
+    "사원번호", "직원번호", "사번", "emp_id",
+    "성명", "이름", "직원명", "name",
+    "생년월일", "생일", "birth",
+    "입사일", "입사일자", "hire",
+    "부서", "부서명", "dept",
+    "직급", "직위", "position",
+    "기준급여", "급여", "salary",
+    "퇴직급여", "퇴직금",
+}
+
 
 def _convert_excel_date(value: Any) -> Any:
     """Excel 직렬 번호를 날짜 문자열로 변환."""
@@ -232,6 +244,29 @@ def _infer_types(rows: List[List[Any]], sample_rows: int = 200) -> Dict[int, str
     return col_types
 
 
+def _find_header_row(df_preview) -> int:
+    """헤더 행 자동 탐지: 재직자명부 키워드가 포함된 첫 행을 찾음.
+
+    Args:
+        df_preview: pandas DataFrame (header=None으로 읽은 상태)
+
+    Returns:
+        헤더 행 인덱스 (0부터 시작). 찾지 못하면 0 반환.
+    """
+    for idx in range(min(10, len(df_preview))):  # 최대 10행까지 탐색
+        row_values = df_preview.iloc[idx].astype(str).str.lower().str.strip().tolist()
+        # 키워드 매칭 (소문자로 비교)
+        matches = sum(
+            1 for val in row_values
+            for kw in HEADER_KEYWORDS
+            if kw.lower() in val
+        )
+        # 2개 이상 키워드 매칭 시 헤더로 판단
+        if matches >= 2:
+            return idx
+    return 0  # 찾지 못하면 첫 행을 헤더로 간주
+
+
 def _parse_csv(text: str) -> Dict[str, Any]:
     reader = csv.reader(io.StringIO(text))
     all_rows: List[List[str]] = list(reader)
@@ -357,7 +392,12 @@ def _parse_xls(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: in
                 target_sheet = name
             break
 
-    df = pd.read_excel(xls, sheet_name=target_sheet, header=0, nrows=max_rows)
+    # 헤더 행 자동 탐지: 먼저 헤더 없이 읽어서 분석
+    df_preview = pd.read_excel(xls, sheet_name=target_sheet, header=None, nrows=15)
+    header_row = _find_header_row(df_preview)
+
+    # 탐지된 헤더 행으로 다시 읽기
+    df = pd.read_excel(xls, sheet_name=target_sheet, header=header_row, nrows=max_rows)
     # 헤더 정리: 줄바꿈/공백 제거
     headers = [str(c).replace('\n', ' ').replace('\r', '').strip() for c in df.columns.tolist()]
     
@@ -404,10 +444,11 @@ def _parse_xls(file_bytes: bytes, sheet_name: Optional[str] = None, max_rows: in
             "total_rows_sampled": len(rows),
             "skipped_empty_rows": skipped_empty,
             "skipped_description_rows": skipped_desc,
+            "header_row_detected": header_row,
             "sheet": target_sheet,
             "available_sheets": xls.sheet_names,
             "column_types": _infer_types(rows),
-            "note": f"capped at {max_rows} rows, {skipped_empty} empty + {skipped_desc} desc rows filtered",
+            "note": f"capped at {max_rows} rows, header at row {header_row}, {skipped_empty} empty + {skipped_desc} desc rows filtered",
         },
     }
 
