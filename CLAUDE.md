@@ -16,7 +16,11 @@ WIKISOFT4/
 ├── core/
 │   ├── security/      # Auth, encryption, RBAC, audit
 │   ├── privacy/       # PII detection, masking, anonymization
-│   └── validators/    # Data validation (migrated from v3)
+│   ├── validators/    # 3-layer validation (format→cross→AI)
+│   ├── parsers/       # Excel/CSV parsing with header detection
+│   ├── ai/            # AI matching, LLM client, knowledge base
+│   ├── agent/         # ReACT agent, tool registry
+│   └── generators/    # Report generation
 ├── integrations/
 │   ├── n8n/          # n8n webhook adapter
 │   ├── temporal/     # Temporal workflow support
@@ -25,6 +29,7 @@ WIKISOFT4/
 │   ├── routes/       # API endpoints
 │   ├── middleware/   # Auth, logging, rate limiting
 │   └── schemas/      # Pydantic models
+├── frontend/         # React/TypeScript UI (port 3005)
 ├── tests/
 └── docs/
 ```
@@ -36,6 +41,13 @@ WIKISOFT4/
 cd WIKISOFT4
 source ../.venv/bin/activate
 uvicorn api.v4.main:app --reload --port 8004
+```
+
+### Frontend (React/Vite on port 3005)
+```bash
+cd WIKISOFT4/frontend
+npm install  # first time only
+npm run dev
 ```
 
 ### Tests
@@ -58,6 +70,14 @@ pytest tests/ -v
 - **Data Masking**: 김철수 → 김*수, 010-1234-5678 → 010-****-5678
 - **Anonymization**: k-anonymity support for exports
 - **Consent Management**: Track data processing consent
+
+## Validation Features (migrated from v3)
+
+- **Layer 1**: Format validation (dates, types, ranges)
+- **Layer 2**: Cross-validation (duplicates, logic)
+- **Layer 3**: AI-assisted validation with domain context
+- **Header Detection**: Auto-detect header row in Korean Excel files
+- **ReACT Agent**: Think → Act → Observe loop for complex validation
 
 ## Workflow Integration
 
@@ -89,6 +109,9 @@ POST /api/v4/webhook/n8n
 JWT_SECRET_KEY=your-secret-key
 ENCRYPTION_KEY=your-32-byte-key
 API_KEY_SALT=your-salt
+
+# AI
+OPENAI_API_KEY=your-openai-key
 
 # Database
 DATABASE_URL=postgresql://...
