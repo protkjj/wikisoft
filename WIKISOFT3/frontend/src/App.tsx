@@ -624,9 +624,8 @@ function App() {
             }> = [];
             const seenMessages = new Set<string>();
 
-            // validation.errors & warnings (use hook)
-            const rawErrors = useValidationErrors(validationResult);
-            rawErrors.forEach((item, idx) => {
+            // validation.errors & warnings (이미 상단에서 hook으로 계산됨)
+            editableErrors.forEach((item, idx) => {
               const msg = `${item.emp_info || `행 ${item.row}`}: ${item.field} - ${item.message}`;
               if (!seenMessages.has(msg)) {
                 seenMessages.add(msg);
