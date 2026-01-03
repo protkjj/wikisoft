@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import health, validation, privacy, webhook
+from .routes import health, validation, privacy, webhook, compat
 # TODO: Fix migrated routes after dependency cleanup
 # from .routes import auto_validate, diagnostic_questions, export
 from .middleware.auth import AuthMiddleware
@@ -77,6 +77,9 @@ app.include_router(health.router, prefix="/api/v4", tags=["Health"])
 app.include_router(validation.router, prefix="/api/v4", tags=["Validation"])
 app.include_router(privacy.router, prefix="/api/v4", tags=["Privacy"])
 app.include_router(webhook.router, prefix="/api/v4", tags=["Webhook"])
+
+# WIKISOFT3 호환 라우터 (프론트엔드 /api/* 경로 지원)
+app.include_router(compat.router, tags=["Compatibility"])
 
 # TODO: WIKISOFT3에서 마이그레이션된 라우터 (의존성 정리 후 활성화)
 # app.include_router(auto_validate.router, tags=["Auto Validate"])
