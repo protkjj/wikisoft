@@ -1419,3 +1419,28 @@
     width: 100%;
   }
 }
+/* 접기/펼치기 섹션 스타일 */
+.section-header.collapsible,
+.anomalies-header.collapsible {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.section-header.collapsible:hover,
+.anomalies-header.collapsible:hover {
+  background-color: var(--bg-hover);
+  border-radius: var(--radius-md);
+}
+
+.collapse-icon {
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 0.8em;
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.collapse-icon.expanded {
+  transform: rotate(90deg);
+}
