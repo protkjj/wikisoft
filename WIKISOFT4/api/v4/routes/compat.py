@@ -103,7 +103,7 @@ async def auto_validate(
         # core 모듈 사용
         from core.parsers.parser import parse_roster
         from core.ai.matcher import match_headers
-        from core.validators.validator import validate_all
+        from core.validators.validator import validate
         from core.validators.duplicate_detector import detect_duplicates
         from core.agent.confidence import estimate_confidence, detect_anomalies
         from core.generators.report import generate_report
@@ -126,7 +126,7 @@ async def auto_validate(
         df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
 
         # 3. 검증
-        validation = validate_all(
+        validation = validate(
             parsed=parsed,
             matches=matches,
             diagnostic_answers=diagnostic_answers,
