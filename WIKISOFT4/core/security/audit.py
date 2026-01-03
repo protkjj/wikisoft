@@ -146,17 +146,20 @@ def log_action(
     log_data = entry.model_dump()
     log_data["timestamp"] = entry.timestamp.isoformat()
 
+    # Prepare log data without 'action' duplication
+    filtered_log = {k: v for k, v in log_data.items() if v is not None and k != 'action'}
+
     if success:
         logger.info(
             "audit_event",
             action=action.value,
-            **{k: v for k, v in log_data.items() if v is not None}
+            **filtered_log
         )
     else:
         logger.warning(
             "audit_event_failed",
             action=action.value,
-            **{k: v for k, v in log_data.items() if v is not None}
+            **filtered_log
         )
 
     return entry
