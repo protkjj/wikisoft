@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import health, validation, privacy, webhook
+from .routes import health, validation, privacy, webhook, auto_validate, diagnostic_questions, export
 from .middleware.auth import AuthMiddleware
 from .middleware.audit import AuditMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
@@ -74,6 +74,11 @@ app.include_router(health.router, prefix="/api/v4", tags=["Health"])
 app.include_router(validation.router, prefix="/api/v4", tags=["Validation"])
 app.include_router(privacy.router, prefix="/api/v4", tags=["Privacy"])
 app.include_router(webhook.router, prefix="/api/v4", tags=["Webhook"])
+
+# WIKISOFT3에서 마이그레이션된 라우터
+app.include_router(auto_validate.router, tags=["Auto Validate"])
+app.include_router(diagnostic_questions.router, tags=["Diagnostic"])
+app.include_router(export.router, tags=["Export"])
 
 
 # Root endpoint

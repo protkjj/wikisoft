@@ -11,6 +11,8 @@ from . import parsers
 from . import ai
 from . import agent
 from . import generators
+from . import memory
+from . import utils
 
 __all__ = [
     "security",
@@ -20,4 +22,6 @@ __all__ = [
     "ai",
     "agent",
     "generators",
+    "memory",
+    "utils",
 ]
