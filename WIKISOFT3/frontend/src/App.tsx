@@ -182,8 +182,8 @@ function App() {
     try {
       setLoading(true)
 
-      // editableErrors 사용 (validationResult 변경 시 자동 계산됨)
-      const errorsToExport = editableErrors.filter((e) => e.severity === 'error').map(err => ({
+      // editableErrors 사용 - error와 warning 모두 포함
+      const errorsToExport = editableErrors.map(err => ({
         row: err.row ?? 0,
         field: err.field ?? '',
         message: err.message,
@@ -191,7 +191,7 @@ function App() {
       }))
 
       if (errorsToExport.length === 0) {
-        alert('다운로드할 오류가 없습니다.')
+        alert('다운로드할 항목이 없습니다.')
         return
       }
 
