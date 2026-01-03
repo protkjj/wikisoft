@@ -108,5 +108,19 @@ export const api = {
       params: { limit }
     })
     return response.data?.runs ?? []
+  },
+
+  // 오류 목록만 엑셀로 내보내기
+  async downloadErrorsExcel(
+    filename: string,
+    errors: Array<{ row?: number; field?: string; message: string; severity: 'error' | 'warning' }>
+  ): Promise<Blob> {
+    const response = await axios.post(`${API_BASE}/export/errors`, {
+      filename,
+      errors
+    }, {
+      responseType: 'blob'
+    })
+    return response.data
   }
 }

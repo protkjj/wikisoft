@@ -192,6 +192,46 @@ function App() {
     }
   }
 
+  // 오류 목록만 다운로드
+  const handleDownloadErrorsOnly = async () => {
+    if (!validationResult || !file) return
+
+    try {
+      setLoading(true)
+
+      // allErrors에서 에러/경고만 추출
+      const errorsToExport = allErrors.map(err => ({
+        row: err.row ?? 0,
+        field: err.field ?? '',
+        message: err.message,
+        severity: err.severity
+      }))
+
+      if (errorsToExport.length === 0) {
+        alert('오류가 없습니다!')
+        return
+      }
+
+      // API 호출
+      const blob = await api.downloadErrorsExcel(file.name, errorsToExport)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${file.name.replace(/\.[^/.]+$/, '')}_오류목록_${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      console.log(`✅ ${errorsToExport.length}건의 오류를 다운로드했습니다.`)
+    } catch (err: any) {
+      console.error('오류 목록 다운로드 실패:', err)
+      setError('오류 목록 다운로드에 실패했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const getStepStatus = (step: Step): 'active' | 'completed' | 'pending' => {
     const steps: Step[] = ['questions', 'upload', 'results', 'download']
     const currentIndex = steps.indexOf(currentStep)
@@ -766,6 +806,16 @@ function App() {
             >
               ← 다시 검증
             </button>
+            {allErrors.length > 0 && (
+              <button
+                className="btn-secondary"
+                onClick={handleDownloadErrorsOnly}
+                disabled={loading}
+                title={`${allErrors.length}건의 오류 항목만 다운로드`}
+              >
+                ⚠️ 오류만 다운로드 ({allErrors.length})
+              </button>
+            )}
             <button
               className="btn-secondary"
               onClick={handleDownloadFinalData}
