@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from io import BytesIO
 from pydantic import BaseModel
 from typing import List, Dict, Any
+from urllib.parse import quote
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
@@ -84,10 +85,10 @@ async def export_xlsx(request: ExportRequest):
             excel_buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{output_filename}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"파일 생성 실패: {str(e)}")
 
@@ -170,9 +171,9 @@ async def export_errors(request: ExportErrorsRequest):
             excel_buffer,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{output_filename}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"파일 생성 실패: {str(e)}")
