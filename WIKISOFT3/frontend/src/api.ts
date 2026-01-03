@@ -46,8 +46,6 @@ export const api = {
     formData.append('file', file)
     formData.append('chatbot_answers', JSON.stringify(chatbotAnswers))
 
-    console.log('📤 진단 답변 전송:', chatbotAnswers)
-
     const response = await axios.post(`${API_BASE}/auto-validate`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
