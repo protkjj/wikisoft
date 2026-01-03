@@ -30,7 +30,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           return parsed
         }
       } catch (e) {
-        console.error('Failed to parse session', e)
+        // Session parsing failed - will use default session
       }
     }
     return { sessionId: null, createdAt: null, expiresAt: null }

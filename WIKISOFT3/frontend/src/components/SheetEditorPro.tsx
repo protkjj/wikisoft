@@ -302,7 +302,6 @@ export default function SheetEditorPro({
       // 행 번호 열 제거
       const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
       const saveData = [sheetData[0].slice(1), ...dataWithoutRowNumbers]
-      console.log('💾 저장 데이터:', saveData)
       onSave(saveData)
     }
     onClose()
@@ -361,9 +360,8 @@ export default function SheetEditorPro({
         content: `✅ **다운로드 완료!** "${downloadFilename}" 파일이 저장되었습니다.`,
         timestamp: new Date()
       }])
-      
+
     } catch (error) {
-      console.error('다운로드 에러:', error)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: `❌ 다운로드 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
@@ -445,18 +443,15 @@ export default function SheetEditorPro({
 
   // AI 수정 명령 적용
   const applyEditCommands = (response: string) => {
-    console.log('🔍 AI 응답 분석:', response)
     const editPattern = /\[(?:EDIT|수정):(\d+):([^:]+):([^\]]+)\]/gi
     const edits: Array<{row: number, col: number, value: string, field: string, cellAddress: string}> = []
     let match
-    
+
     while ((match = editPattern.exec(response)) !== null) {
       const rowNum = parseInt(match[1])
       const fieldName = match[2].trim()
       let newValue = match[3].trim()
       const colIdx = headers.indexOf(fieldName)
-      
-      console.log(`📝 수정 명령 발견: row=${rowNum}, field=${fieldName}, value=${newValue}, colIdx=${colIdx}`)
       
       if (colIdx !== -1 && rowNum > 0 && rowNum <= sheetData.length) {
         const originalValue = sheetData[rowNum]?.[colIdx] || ''
@@ -476,9 +471,8 @@ export default function SheetEditorPro({
         edits.push({ row: rowNum, col: colIdx, value: newValue, field: fieldName, cellAddress: getCellAddress(rowNum, colIdx) })
       }
     }
-    
+
     if (edits.length > 0) {
-      console.log('✅ 적용할 수정 사항:', edits)
       const newData = [...sheetData]
       edits.forEach(edit => {
         // 행 복사 후 값 수정
@@ -490,18 +484,15 @@ export default function SheetEditorPro({
       setSheetData(newData)
       setPendingEdits(prev => {
         const updated = [...prev, ...edits]
-        console.log('📌 pendingEdits 업데이트:', updated)
         return updated
       })
-      
+
       // 첫 번째 수정 셀 선택
       setSelection({
         start: { row: edits[0].row, col: edits[0].col },
         end: { row: edits[0].row, col: edits[0].col },
         isSelecting: false
       })
-    } else {
-      console.log('⚠️ 수정 명령을 찾을 수 없음')
     }
     return edits
   }
@@ -583,8 +574,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
         setMessages(prev => [...prev, { role: 'assistant', content: `서버 오류가 발생했습니다. (상태: ${response.status})`, timestamp: new Date() }])
       }
     } catch (error) {
-      console.error('❌ 네트워크 오류:', error)
-      const errorMessage = error instanceof Error 
+      const errorMessage = error instanceof Error
         ? (error.name === 'AbortError' ? '요청 시간이 초과되었습니다. (30초)' : error.message)
         : '알 수 없는 오류'
       setMessages(prev => [...prev, { role: 'assistant', content: `네트워크 오류: ${errorMessage}`, timestamp: new Date() }])

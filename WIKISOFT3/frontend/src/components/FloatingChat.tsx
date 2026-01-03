@@ -69,7 +69,6 @@ const FloatingChat = forwardRef<FloatingChatHandle, FloatingChatProps>(({ valida
       }
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
-      console.error('Agent error:', error)
       setMessages(prev => [
         ...prev,
         { role: 'assistant', content: '⚠️ 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 import { api } from './api'
 import ChatBot from './ChatBot'
@@ -12,6 +12,7 @@ import { useSession } from './contexts/SessionContext'
 import { downloadBlob, generateTimestampedFilename } from './utils/download'
 import { getRequiredFieldLabels } from './constants/fields'
 import { handleError } from './utils/errorHandler'
+import { useValidationErrors } from './hooks/useValidationErrors'
 import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
@@ -43,54 +44,9 @@ function App() {
   const [latestRuns, setLatestRuns] = useState<ValidationRun[]>([])
   const [runsLoading, setRunsLoading] = useState(false)
 
-  // 검증 결과에서 수정 가능한 에러/경고만 추출 (useMemo로 자동 계산)
-  const editableErrors = useMemo(() => {
-    if (!validationResult) return []
+  // 검증 결과에서 수정 가능한 에러/경고만 추출
+  const editableErrors = useValidationErrors(validationResult)
 
-    const allResults: Array<{
-      severity: 'error' | 'warning',
-      message: string,
-      row?: number,
-      field?: string,
-      emp_info?: string
-    }> = []
-    const seenMessages = new Set<string>()
-
-    // validation.errors 추출
-    validationResult.steps?.validation?.errors?.forEach((err) => {
-      const msg = `${err.emp_info || `행 ${err.row}`}: ${err.field || err.column} - ${err.message || err.error}`
-      if (!seenMessages.has(msg) && err.row && err.field) {
-        seenMessages.add(msg)
-        allResults.push({
-          severity: 'error',
-          message: msg,
-          row: err.row,
-          field: err.field || err.column,
-          emp_info: err.emp_info
-        })
-      }
-    })
-
-    // validation.warnings 추출
-    validationResult.steps?.validation?.warnings?.forEach((warn) => {
-      if (typeof warn === 'object' && warn.row && warn.field) {
-        const msg = `${warn.emp_info || `행 ${warn.row}`}: ${warn.field || warn.column} - ${warn.message || warn.warning}`
-        if (!seenMessages.has(msg)) {
-          seenMessages.add(msg)
-          allResults.push({
-            severity: 'warning',
-            message: msg,
-            row: warn.row,
-            field: warn.field || warn.column,
-            emp_info: warn.emp_info
-          })
-        }
-      }
-    })
-
-    return allResults
-  }, [validationResult])
-  
   const chatRef = useRef<FloatingChatHandle>(null)
 
   // 초기 로드: 진단 질문 조회
@@ -149,15 +105,11 @@ function App() {
       return
     }
 
-    console.log('🚀 검증 시작:', { file: file.name, answers })
-
     try {
       setLoading(true)
       setError('')
-      console.log('📤 API 호출 중... (진단 답변 포함)')
       // 진단 질문 답변을 함께 전송하여 교차 검증
       const { result, sessionId } = await api.validateWithRoster(file, answers)
-      console.log('✅ API 응답:', result)
       if (sessionId) {
         setSession(sessionId)
       }
@@ -182,7 +134,6 @@ function App() {
       }
       
       setCurrentStep('results')
-      console.log('✅ Step 변경 완료: results')
     } catch (err) {
       const message = handleError('Validation', err, '검증 중 오류가 발생했습니다.')
       setError(message)
@@ -247,7 +198,6 @@ function App() {
       const blob = await api.downloadErrorsExcel(file.name, errorsToExport)
       const filename = generateTimestampedFilename('의심목록', 'xlsx')
       downloadBlob(blob, filename)
-      console.log(`✅ ${errorsToExport.length}건의 오류를 다운로드했습니다.`)
     } catch (err) {
       const message = handleError('DownloadErrors', err, '의심 목록 다운로드에 실패했습니다.')
       setError(message)
@@ -545,7 +495,6 @@ function App() {
             <button
               className="btn-secondary"
               onClick={() => {
-                console.log('⬅️ 이전 버튼 클릭')
                 setCurrentStep('questions')
               }}
             >
@@ -554,10 +503,6 @@ function App() {
             <button
               className="btn-primary"
               onClick={() => {
-                console.log('🔘 검증 시작 버튼 클릭됨!')
-                console.log('파일:', file)
-                console.log('답변:', answers)
-                console.log('disabled:', !file || loading)
                 handleValidate()
               }}
               disabled={!file || loading}
@@ -669,50 +614,34 @@ function App() {
           {(() => {
             // 모든 결과 수집
             const allResults: Array<{
-              severity: 'error' | 'warning' | 'info' | 'question', 
-              message: string, 
-              details?: string, 
+              severity: 'error' | 'warning' | 'info' | 'question',
+              message: string,
+              details?: string,
               key: string,
               row?: number,
               field?: string,
               emp_info?: string
             }> = [];
             const seenMessages = new Set<string>();
-            
-            // validation.errors
-            validationResult.steps?.validation?.errors?.forEach((err: any, idx: number) => {
-              const msg = `${err.emp_info || `행 ${err.row}`}: ${err.field || err.column} - ${err.message || err.error}`;
+
+            // validation.errors & warnings (use hook)
+            const rawErrors = useValidationErrors(validationResult);
+            rawErrors.forEach((item, idx) => {
+              const msg = `${item.emp_info || `행 ${item.row}`}: ${item.field} - ${item.message}`;
               if (!seenMessages.has(msg)) {
                 seenMessages.add(msg);
-                allResults.push({ 
-                  severity: 'error', 
-                  message: msg, 
-                  details: err.reason, 
-                  key: `verr-${idx}`,
-                  row: err.row,
-                  field: err.field || err.column,
-                  emp_info: err.emp_info
+                allResults.push({
+                  severity: item.severity,
+                  message: msg,
+                  details: undefined,
+                  key: `${item.severity}-${idx}`,
+                  row: item.row,
+                  field: item.field,
+                  emp_info: item.emp_info
                 });
               }
             });
-            
-            // validation.warnings
-            validationResult.steps?.validation?.warnings?.forEach((warn: any, idx: number) => {
-              const msg = typeof warn === 'string' ? warn : `${warn.emp_info || `행 ${warn.row}`}: ${warn.field || warn.column} - ${warn.message || warn.warning}`;
-              if (!seenMessages.has(msg)) {
-                seenMessages.add(msg);
-                allResults.push({ 
-                  severity: 'warning', 
-                  message: msg, 
-                  details: warn.reason, 
-                  key: `vwarn-${idx}`,
-                  row: typeof warn === 'object' ? warn.row : undefined,
-                  field: typeof warn === 'object' ? (warn.field || warn.column) : undefined,
-                  emp_info: typeof warn === 'object' ? warn.emp_info : undefined
-                });
-              }
-            });
-            
+
             // anomalies (중복 체크)
             validationResult.anomalies?.anomalies?.forEach((a: any, idx: number) => {
               const msg = a.message;
@@ -728,16 +657,11 @@ function App() {
             });
             
             if (allResults.length === 0) return null;
-            
+
             // severity 순서로 정렬: question > error > warning > info
             const order = { question: 0, error: 1, warning: 2, info: 3 };
             allResults.sort((a, b) => order[a.severity] - order[b.severity]);
-            
-            // 에러/경고만 추출 (SheetEditor용)
-            const editableErrors = allResults.filter(r => 
-              (r.severity === 'error' || r.severity === 'warning') && r.row && r.field
-            ) as Array<{severity: 'error' | 'warning', message: string, row?: number, field?: string, emp_info?: string}>;
-            
+
             return (
               <div className="anomalies-section">
                 <div className="anomalies-header">
@@ -983,7 +907,6 @@ function App() {
             });
           }
 
-          console.log('📝 수정된 데이터 적용:', newData);
           // 강제 리렌더링을 위해 짧은 지연 후 재검증
           setTimeout(() => {
             setShowSheetEditor(false);
@@ -994,7 +917,6 @@ function App() {
           try {
             // 현재는 간단히 빈 배열 반환 (실제 구현 필요)
             // TODO: 백엔드에 수정된 데이터 전송하여 재검증
-            console.log('🔍 재검증 요청:', updatedData);
 
             // 임시: 수정된 셀의 에러만 제거
             const newErrors = editableErrors.filter(err => {
@@ -1012,7 +934,6 @@ function App() {
 
             return newErrors;
           } catch (error) {
-            console.error('재검증 실패:', error);
             return editableErrors;
           }
         }}

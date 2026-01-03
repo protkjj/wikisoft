@@ -154,29 +154,19 @@ export default function SheetEditor({
       // headers[0]은 빈 문자열(행번호 열), headers[1]부터가 실제 필드
       // item.field가 실제 필드명이므로 headers에서 찾으면 됨
       const colIdx = headers.indexOf(item.field)
-      
-      console.log('🎯 에러 클릭:', { 
-        field: item.field, 
-        row: item.row, 
-        colIdx,
-        headers: headers.slice(0, 5)
-      })
-      
+
       if (colIdx !== -1) {
         // API row는 1-indexed (헤더 포함)
         // sheetData도 행번호가 1부터 시작 (row 1 = sheetData[1])
         // 따라서 API row - 1 = sheetData 인덱스
         const dataRowIdx = item.row - 1
-        
-        console.log('🎯 하이라이트:', { dataRowIdx, colIdx })
-        
+
         setHighlightRow(dataRowIdx)
         setHighlightCol(colIdx)
-        
+
         // 스크롤 (thead 때문에 +1이 아니라 tbody 내에서 찾아야 함)
         setTimeout(() => {
           const rowElement = tableRef.current?.querySelector(`tbody tr:nth-child(${dataRowIdx + 1})`)
-          console.log('🎯 스크롤 대상:', rowElement)
           rowElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }, 100)
       }
