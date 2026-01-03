@@ -287,7 +287,10 @@ function App() {
         <div className="onboarding">
           <header className="onboarding-header-bar">
             <div className="onboarding-header-title">WIKISOFT</div>
-            <ThemeToggle />
+            <div className="header-right">
+              <span className="version-badge">v3</span>
+              <ThemeToggle />
+            </div>
           </header>
           <div className="onboarding-header">
             <h1 className="onboarding-title">
@@ -578,7 +581,6 @@ function App() {
                     <th>소스 헤더</th>
                     <th></th>
                     <th>타겟 필드</th>
-                    <th>매칭율</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -605,9 +607,6 @@ function App() {
                             {match.target} {isRequired ? '(필수)' : '[선택]'}
                           </span>
                         ) : '-'}
-                      </td>
-                      <td className={`mapping-confidence ${match.confidence >= 0.95 ? 'high' : match.confidence >= 0.85 ? 'medium' : 'low'}`}>
-                        {match.confidence > 0 && match.confidence < 1 ? `${Math.round(match.confidence * 100)}%` : match.target ? '100%' : '-'}
                       </td>
                     </tr>
                       );

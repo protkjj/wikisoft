@@ -510,6 +510,22 @@
   color: var(--text-primary);
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.version-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  background: var(--accent-light, #e0f2fe);
+  color: var(--accent-primary, #0284c7);
+  border-radius: 4px;
+  border: 1px solid var(--accent-primary, #0284c7);
+}
+
 .onboarding {
   max-width: 1400px;
   margin: 0 auto;

@@ -44,6 +44,10 @@ function App() {
   const [latestRuns, setLatestRuns] = useState<ValidationRun[]>([])
   const [runsLoading, setRunsLoading] = useState(false)
 
+  // 접기/펼치기 상태
+  const [showMappingDetails, setShowMappingDetails] = useState(false)
+  const [showValidationDetails, setShowValidationDetails] = useState(false)
+
   // 검증 결과에서 수정 가능한 에러/경고만 추출
   const editableErrors = useValidationErrors(validationResult)
 
@@ -283,7 +287,10 @@ function App() {
         <div className="onboarding">
           <header className="onboarding-header-bar">
             <div className="onboarding-header-title">WIKISOFT</div>
-            <ThemeToggle />
+            <div className="header-right">
+              <span className="version-badge">v4</span>
+              <ThemeToggle />
+            </div>
           </header>
           <div className="onboarding-header">
             <h1 className="onboarding-title">
@@ -555,23 +562,25 @@ function App() {
           {/* 컬럼 매핑 테이블 */}
           {validationResult.steps?.matches && (
             <div className="mapping-section">
-              <div className="section-header">
-                <h3>컬럼 매핑 결과</h3>
+              <div className="section-header collapsible" onClick={() => setShowMappingDetails(!showMappingDetails)}>
+                <h3>
+                  <span className={`collapse-icon ${showMappingDetails ? 'expanded' : ''}`}>▶</span>
+                  컬럼 매핑 결과 ({(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || []).length}개)
+                </h3>
                 <button
                   className="btn-secondary"
                   style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                  onClick={() => setShowManualMapping(true)}
+                  onClick={(e) => { e.stopPropagation(); setShowManualMapping(true); }}
                 >
                   수동 매핑
                 </button>
               </div>
-              <table className="mapping-table">
+              {showMappingDetails && <table className="mapping-table">
                 <thead>
                   <tr>
                     <th>소스 헤더</th>
                     <th></th>
                     <th>타겟 필드</th>
-                    <th>매칭율</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -599,14 +608,11 @@ function App() {
                           </span>
                         ) : '-'}
                       </td>
-                      <td className={`mapping-confidence ${match.confidence >= 0.95 ? 'high' : match.confidence >= 0.85 ? 'medium' : 'low'}`}>
-                        {match.confidence > 0 && match.confidence < 1 ? `${Math.round(match.confidence * 100)}%` : match.target ? '100%' : '-'}
-                      </td>
                     </tr>
                       );
                     })}
                 </tbody>
-              </table>
+              </table>}
             </div>
           )}
 
@@ -663,12 +669,16 @@ function App() {
 
             return (
               <div className="anomalies-section">
-                <div className="anomalies-header">
-                  <h3>⚠️ 검증 결과 상세</h3>
+                <div className="anomalies-header collapsible" onClick={() => setShowValidationDetails(!showValidationDetails)}>
+                  <h3>
+                    <span className={`collapse-icon ${showValidationDetails ? 'expanded' : ''}`}>▶</span>
+                    ⚠️ 검증 결과 상세 ({allResults.length}건)
+                  </h3>
                   {editableErrors.length > 0 && sheetData.length > 0 && (
                     <button
                       className="btn-edit-all"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditTarget(null);
                         setShowSheetEditor(true);
                       }}
@@ -681,7 +691,7 @@ function App() {
                     </button>
                   )}
                 </div>
-                <div className="anomalies-list">
+                {showValidationDetails && <div className="anomalies-list">
                   {allResults.map((item) => (
                     <div key={item.key} className={`anomaly-item ${item.severity}`}>
                       <div className="anomaly-title">
@@ -721,7 +731,7 @@ function App() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </div>}
                 {validationResult.anomalies?.recommendation && (
                   <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--success-light)', borderRadius: 'var(--radius-md)', color: 'var(--success)' }}>
                     💡 {validationResult.anomalies.recommendation}
