@@ -8,7 +8,8 @@ import SheetEditorPro from './components/SheetEditorPro'
 // ValidationResults 컴포넌트는 현재 사용하지 않음
 // import ValidationResults from './ValidationResults'
 import ThemeToggle from './components/ThemeToggle'
-import type { DiagnosticQuestion, AutoValidateResult, CompanyInfo, HeaderMatch, ValidationRun } from './types'
+import { useSession } from './contexts/SessionContext'
+import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
 
@@ -20,23 +21,18 @@ interface EditTarget {
 }
 
 function App() {
+  const { session, setSession, clearSession } = useSession()
+
   const [currentStep, setCurrentStep] = useState<Step>('onboarding')
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([])
   const [answers, setAnswers] = useState<Record<string, string | number>>({})
   const [file, setFile] = useState<File | null>(null)
   const [validationResult, setValidationResult] = useState<AutoValidateResult | null>(null)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_companyInfo, setCompanyInfo] = useState<CompanyInfo>({
-    company_name: '',
-    phone: '',
-    email: '',
-    작성기준일: new Date().toISOString().split('T')[0].replace(/-/g, '')
-  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>('')
   const [showManualMapping, setShowManualMapping] = useState(false)
   const [currentMatches, setCurrentMatches] = useState<HeaderMatch[]>([])
-  
+
   // SheetEditor 상태
   const [showSheetEditor, setShowSheetEditor] = useState(false)
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
@@ -58,7 +54,7 @@ function App() {
     const seenMessages = new Set<string>()
 
     // validation.errors 추출
-    validationResult.steps?.validation?.errors?.forEach((err: any) => {
+    validationResult.steps?.validation?.errors?.forEach((err) => {
       const msg = `${err.emp_info || `행 ${err.row}`}: ${err.field || err.column} - ${err.message || err.error}`
       if (!seenMessages.has(msg) && err.row && err.field) {
         seenMessages.add(msg)
@@ -73,7 +69,7 @@ function App() {
     })
 
     // validation.warnings 추출
-    validationResult.steps?.validation?.warnings?.forEach((warn: any) => {
+    validationResult.steps?.validation?.warnings?.forEach((warn) => {
       if (typeof warn === 'object' && warn.row && warn.field) {
         const msg = `${warn.emp_info || `행 ${warn.row}`}: ${warn.field || warn.column} - ${warn.message || warn.warning}`
         if (!seenMessages.has(msg)) {
@@ -157,8 +153,11 @@ function App() {
       setError('')
       console.log('📤 API 호출 중... (진단 답변 포함)')
       // 진단 질문 답변을 함께 전송하여 교차 검증
-      const result = await api.validateWithRoster(file, answers)
+      const { result, sessionId } = await api.validateWithRoster(file, answers)
       console.log('✅ API 응답:', result)
+      if (sessionId) {
+        setSession(sessionId)
+      }
       setValidationResult(result)
       
       // 매칭 결과 저장 (수동 매핑용)
@@ -192,12 +191,12 @@ function App() {
   }
 
   const handleDownload = async () => {
-    if (!validationResult) return
+    if (!validationResult || !session.sessionId) return
 
     try {
       setLoading(true)
       // Excel 파일 다운로드 (검증 리포트)
-      const blob = await api.downloadExcel()
+      const blob = await api.downloadExcel(session.sessionId)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -206,7 +205,7 @@ function App() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       setCurrentStep('download')
     } catch (err: any) {
       console.error('Excel 다운로드 오류:', err)
@@ -217,12 +216,12 @@ function App() {
   }
 
   const handleDownloadFinalData = async () => {
-    if (!validationResult) return
+    if (!validationResult || !session.sessionId) return
 
     try {
       setLoading(true)
       // 최종 수정본 다운로드 (매핑 완료된 데이터)
-      const blob = await api.downloadFinalData()
+      const blob = await api.downloadFinalData(session.sessionId)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -944,12 +943,7 @@ function App() {
                   setFile(null)
                   setValidationResult(null)
                   setCurrentMatches([])
-                  setCompanyInfo({
-                    company_name: '',
-                    phone: '',
-                    email: '',
-                    작성기준일: new Date().toISOString().split('T')[0].replace(/-/g, '')
-                  })
+                  clearSession()
                 }}
               >
                 새로 시작

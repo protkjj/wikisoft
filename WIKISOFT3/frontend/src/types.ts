@@ -28,6 +28,42 @@ export interface ValidationWarning {
   diff_percent?: number
 }
 
+// 검증 에러 (형식/교차 검증)
+export interface ValidationError {
+  row?: number
+  field?: string
+  column?: string
+  message?: string
+  error?: string
+  reason?: string
+  emp_info?: string
+  severity: 'error'
+}
+
+// 검증 경고 (상세 정보 포함)
+export interface ValidationWarningItem {
+  row?: number
+  field?: string
+  column?: string
+  message?: string
+  warning?: string
+  reason?: string
+  emp_info?: string
+  severity: 'warning' | 'low' | 'medium' | 'high' | 'info'
+  question_id?: string
+  user_input?: string
+  calculated?: string
+  diff?: number
+  diff_percent?: number
+}
+
+// 검증 체크 결과
+export interface ValidationCheck {
+  check: string
+  passed: boolean
+  message?: string
+}
+
 export interface ValidationResult {
   status: string
   confidence?: {
@@ -60,14 +96,31 @@ export interface AutoValidateResult {
   }
   anomalies: {
     detected: boolean
-    anomalies: Array<{ type: string; severity: string; message: string }>
+    anomalies: Array<{
+      type: string
+      severity: string
+      message: string
+      auto_fix?: string
+    }>
     recommendation: string
   }
   steps: {
-    parsed_summary: { headers: string[]; row_count: number; all_rows?: any[] }
-    matches: any
-    validation: { passed: boolean; errors?: any[]; warnings?: any[]; checks?: any[] }
-    report: any
+    parsed_summary: {
+      headers: string[]
+      row_count: number
+      all_rows?: Record<string, any>[]  // 행 데이터는 동적이므로 any 허용
+    }
+    matches: MappingResult  // any → MappingResult
+    validation: {
+      passed: boolean
+      errors?: ValidationError[]      // any[] → ValidationError[]
+      warnings?: ValidationWarningItem[]  // any[] → ValidationWarningItem[]
+      checks?: ValidationCheck[]      // any[] → ValidationCheck[]
+    }
+    report: {  // any → 구체적 타입
+      summary?: string
+      details?: Record<string, any>
+    }
   }
 }
 
