@@ -1,10 +1,11 @@
 """
 학습 API: 사용자 피드백으로부터 규칙 학습
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Any
 
+from external.api.auth import verify_token
 from internal.ai.knowledge_base import (
     add_error_rule,
     learn_from_correction,
@@ -16,7 +17,7 @@ from internal.ai.autonomous_learning import (
     analyze_and_learn
 )
 
-router = APIRouter(prefix="/learn", tags=["learn"])
+router = APIRouter(prefix="/api/learn", tags=["learn"])
 
 
 class ErrorCorrectionRequest(BaseModel):
@@ -40,7 +41,10 @@ class NewRuleRequest(BaseModel):
 
 
 @router.post("/correction")
-async def learn_correction(request: ErrorCorrectionRequest) -> dict:
+async def learn_correction(
+    request: ErrorCorrectionRequest,
+    token: str = Depends(verify_token)
+) -> dict:
     """
     사용자가 AI 판단을 수정했을 때 학습.
     
@@ -75,7 +79,10 @@ async def learn_correction(request: ErrorCorrectionRequest) -> dict:
 
 
 @router.post("/rule")
-async def add_rule(request: NewRuleRequest) -> dict:
+async def add_rule(
+    request: NewRuleRequest,
+    token: str = Depends(verify_token)
+) -> dict:
     """새 규칙 직접 추가"""
     rule_id = add_error_rule(
         field=request.field,
@@ -114,7 +121,10 @@ async def get_rules() -> dict:
 
 
 @router.delete("/rule/{rule_id}")
-async def delete_rule(rule_id: str) -> dict:
+async def delete_rule(
+    rule_id: str,
+    token: str = Depends(verify_token)
+) -> dict:
     """규칙 삭제"""
     success = remove_error_rule(rule_id)
     
@@ -125,7 +135,10 @@ async def delete_rule(rule_id: str) -> dict:
 
 
 @router.post("/batch-correction")
-async def batch_learn(corrections: List[ErrorCorrectionRequest]) -> dict:
+async def batch_learn(
+    corrections: List[ErrorCorrectionRequest],
+    token: str = Depends(verify_token)
+) -> dict:
     """여러 수정 한번에 학습"""
     learned_count = 0
     
@@ -154,7 +167,9 @@ async def get_autonomous_stats() -> dict:
 
 
 @router.post("/autonomous/analyze")
-async def trigger_analysis() -> dict:
+async def trigger_analysis(
+    token: str = Depends(verify_token)
+) -> dict:
     """수동으로 자율 학습 분석 트리거"""
     result = analyze_and_learn()
     return {

@@ -8,11 +8,11 @@ WIKISOFT3 is an AI-powered HR/Finance data validation system that automatically 
 
 ## Build & Run Commands
 
-### Backend (FastAPI on port 8003)
+### Backend (FastAPI on port 8004)
 ```bash
 cd WIKISOFT3
 source ../.venv/bin/activate
-PYTHONPATH=$(pwd) uvicorn external.api.main:app --reload --port 8003
+PYTHONPATH=$(pwd) uvicorn external.api.main:app --reload --port 8004
 ```
 
 ### Frontend (React/Vite on port 3004)

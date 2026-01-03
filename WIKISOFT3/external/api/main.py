@@ -102,19 +102,7 @@ app.add_middleware(
     max_age=3600,  # preflight 캐시 1시간
 )
 
-# 라우터 등록 (/api prefix)
-app.include_router(health.router, prefix="/api")
-app.include_router(diagnostic_questions.router, prefix="/api")
-app.include_router(validate.router, prefix="/api")
-app.include_router(batch.router, prefix="/api")
-app.include_router(agent.router, prefix="/api")
-app.include_router(react_agent.router, prefix="/api")
-app.include_router(learn.router, prefix="/api")
-app.include_router(windmill.router, prefix="/api")
-app.include_router(tools.router, prefix="/api")
-app.include_router(export.router, prefix="/api")
-
-# 기존 경로도 유지 (하위 호환)
+# 라우터 등록 (각 라우터가 /api prefix 포함)
 app.include_router(health.router)
 app.include_router(diagnostic_questions.router)
 app.include_router(validate.router)

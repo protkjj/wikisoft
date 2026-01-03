@@ -13,7 +13,7 @@ from internal.ai.autonomous_learning import analyze_chat_for_learning
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agent", tags=["agent"])
+router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 
 class AgentAskRequest(BaseModel):

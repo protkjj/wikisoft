@@ -1,11 +1,14 @@
 from typing import Any, Dict, List, Optional
 import json
+import logging
 import os
 import re
 from difflib import SequenceMatcher
 
 from internal.parsers.standard_schema import STANDARD_SCHEMA, get_required_fields
 from internal.memory.case_store import get_few_shot_examples, save_successful_case
+
+logger = logging.getLogger(__name__)
 
 
 # 매핑 불필요한 컬럼 (무시할 헤더 키워드)
@@ -120,6 +123,7 @@ def ai_match_columns(headers: List[str], sheet_type: str = "all", api_key: Optio
 
     try:
         from openai import OpenAI
+        import openai
 
         client = OpenAI(api_key=api_key_to_use)
         response = client.chat.completions.create(
@@ -134,8 +138,30 @@ def ai_match_columns(headers: List[str], sheet_type: str = "all", api_key: Optio
         )
         content = response.choices[0].message.content
         data = json.loads(content)
-    except Exception as e:  # noqa: BLE001
-        return {**_rule_match(headers, sheet_type), "used_ai": False, "warnings": [f"AI 매칭 실패, fallback 사용: {e}"]}
+    except openai.OpenAIError as e:
+        # OpenAI API 오류 (네트워크, 인증 등)
+        logger.warning(f"OpenAI API 오류: {e}", exc_info=True)
+        return {
+            **_rule_match(headers, sheet_type),
+            "used_ai": False,
+            "warnings": ["AI 매칭 실패 (API 오류), rule-based fallback 사용"]
+        }
+    except json.JSONDecodeError as e:
+        # AI 응답 JSON 파싱 실패
+        logger.error(f"AI 응답 JSON 파싱 실패: {content[:100] if 'content' in locals() else 'N/A'}", exc_info=True)
+        return {
+            **_rule_match(headers, sheet_type),
+            "used_ai": False,
+            "warnings": ["AI 응답 형식 오류, fallback 사용"]
+        }
+    except Exception as e:
+        # 예상치 못한 오류
+        logger.exception(f"예상치 못한 매칭 오류: {e}")
+        return {
+            **_rule_match(headers, sheet_type),
+            "used_ai": False,
+            "warnings": ["매칭 오류 발생, fallback 사용"]
+        }
 
     mappings = []
     warnings = []

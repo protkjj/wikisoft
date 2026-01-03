@@ -7,7 +7,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
 
-router = APIRouter(prefix="/export", tags=["export"])
+router = APIRouter(prefix="/api/export", tags=["export"])
 
 
 class ExportRequest(BaseModel):

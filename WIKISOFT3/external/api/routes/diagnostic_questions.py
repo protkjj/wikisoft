@@ -3,7 +3,7 @@ from typing import Optional
 
 from internal.ai.diagnostic_questions import get_roster_questions
 
-router = APIRouter(prefix="/diagnostic-questions", tags=["diagnostic-questions"])
+router = APIRouter(prefix="/api/diagnostic-questions", tags=["diagnostic-questions"])
 
 
 @router.get("")

@@ -20,7 +20,7 @@ from internal.agent.tool_registry import get_registry
 from internal.agent.confidence import detect_anomalies, estimate_confidence
 from internal.utils.security import validate_upload_file, secure_logger
 
-router = APIRouter(prefix="/windmill", tags=["windmill"])
+router = APIRouter(prefix="/api/windmill", tags=["windmill"])
 
 # 환경변수에서 시크릿 로드
 WINDMILL_CALLBACK_SECRET = os.getenv("WINDMILL_CALLBACK_SECRET", "")

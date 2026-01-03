@@ -15,7 +15,7 @@ from internal.agent.confidence import detect_anomalies, estimate_confidence
 from internal.utils.security import validate_upload_file
 from internal.calculators.ifrs_calculator import calculate_ifrs
 
-router = APIRouter(prefix="/tools", tags=["tools"])
+router = APIRouter(prefix="/api/tools", tags=["tools"])
 
 
 # ============================================================

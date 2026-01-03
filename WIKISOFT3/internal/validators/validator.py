@@ -1,9 +1,12 @@
 from typing import Any, Dict, List, Optional
+import logging
 import pandas as pd
 
 from internal.validators.validation_layer1 import validate_layer1
 from internal.validators.validation_layer_ai import validate_with_ai
 from internal.ai.knowledge_base import save_training_example
+
+logger = logging.getLogger(__name__)
 
 
 def validate(
@@ -92,8 +95,9 @@ def validate(
                             is_correct=False,  # AI가 놓쳤으므로
                             category="layer1_error"
                         )
-                except Exception:
-                    pass  # 학습 저장 실패해도 검증은 계속
+                except Exception as e:
+                    # 학습 실패는 검증에 영향 없지만 로그는 남김
+                    logger.warning(f"학습 이벤트 기록 실패 (검증 계속): {e}", exc_info=True)
             
         except Exception as e:
             checks.append({"name": "layer1_validation", "status": "error", "error": str(e)})

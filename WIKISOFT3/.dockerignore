@@ -1,8 +1,13 @@
+# Git
+.git/
+.gitignore
+
 # Dependencies
 node_modules/
 __pycache__/
 *.pyc
 .venv/
+venv/
 
 # Build outputs
 dist/
@@ -12,26 +17,47 @@ build/
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # Logs
 *.log
+logs/
 nohup.out
 
-# Environment (secrets)
+# Environment (secrets) - 각각 명시
 .env
 .env.local
-.env.*.local
+.env.development
+.env.development.local
+.env.production.local
+.env.test.local
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Test
 .pytest_cache/
 .coverage
 htmlcov/
+tests/
+test_files/
+
+# Project specific (빌드에 불필요)
+training_data/
+windmill/
+scripts/
+*.md
+*.sh
+
+# Docker (자기 자신 제외)
+docker-compose*.yml
+Dockerfile.dev
 
 # Temp files
 *.tmp
 *.temp
-~$*
+*.bak
+*~

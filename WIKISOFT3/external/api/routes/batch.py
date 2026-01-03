@@ -4,7 +4,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, status
 
 from internal.queue.jobs import enqueue_jobs, get_job, update_job
 
-router = APIRouter(prefix="/batch-validate", tags=["batch-validate"])
+router = APIRouter(prefix="/api/batch-validate", tags=["batch-validate"])
 
 
 @router.post("")

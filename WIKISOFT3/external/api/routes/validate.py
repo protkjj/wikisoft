@@ -13,7 +13,7 @@ from internal.memory.case_store import save_successful_case
 from internal.memory.session_store import session_store
 from internal.utils.security import validate_upload_file, secure_logger
 
-router = APIRouter(prefix="/auto-validate", tags=["auto-validate"])
+router = APIRouter(prefix="/api/auto-validate", tags=["auto-validate"])
 
 
 @router.post("")

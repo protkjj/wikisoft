@@ -32,3 +32,4 @@ test_files/
 # Logs
 *.log
 npm-debug.log*
+logs/

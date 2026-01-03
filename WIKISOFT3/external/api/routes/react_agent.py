@@ -16,7 +16,7 @@ from internal.agent.react_agent import create_react_agent
 from internal.memory.case_store import get_case_store, save_successful_case
 from internal.utils.security import secure_logger
 
-router = APIRouter(prefix="/react-agent", tags=["react-agent"])
+router = APIRouter(prefix="/api/react-agent", tags=["react-agent"])
 
 
 @router.post("/validate")
