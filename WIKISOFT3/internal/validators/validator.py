@@ -10,15 +10,19 @@ logger = logging.getLogger(__name__)
 
 
 def validate(
-    parsed: Dict[str, Any], 
+    parsed: Dict[str, Any],
     matches: Dict[str, Any],
     diagnostic_answers: Optional[Dict[str, Any]] = None,
-    use_ai: bool = True
+    use_ai: bool = True,
+    df: Optional[pd.DataFrame] = None
 ) -> Dict[str, Any]:
     """유효성 검사 - 구조 검사 + L1 형식 검사 + AI 검사.
-    
+
     L1 검증: 날짜/전화번호/이메일 형식, 필수값 누락, 음수 급여 등 (하드코딩)
     AI 검증: 컨텍스트 기반 판단 (진단 질문 응답 고려)
+
+    Args:
+        df: 선택적 DataFrame (제공되면 재생성하지 않음, 성능 최적화용)
     """
     headers = parsed.get("headers") or []
     rows = parsed.get("rows") or []
@@ -107,8 +111,10 @@ def validate(
     if use_ai and headers and rows:
         try:
             match_list = matches.get("matches", [])
-            df = pd.DataFrame(rows, columns=headers)
-            
+            # DataFrame 재사용 (성능 최적화)
+            if df is None:
+                df = pd.DataFrame(rows, columns=headers)
+
             ai_result = validate_with_ai(df, match_list, diagnostic_answers)
             
             # AI 오류/경고 추가 (row를 +2 보정하여 Layer1과 통일)

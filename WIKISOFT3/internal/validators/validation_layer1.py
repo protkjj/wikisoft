@@ -166,12 +166,22 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             if gender_val and gender_val not in ["1", "2", "1.0", "2.0", "남", "여", "M", "F", "nan"]:
                 errors.append({"row": idx, "emp_info": emp_info, "column": gender_col, "error": f"성별 값 오류: {gender_val}", "severity": "error"})
 
-    # 중복 검사
+    # 중복 검사 (최적화: O(n²) → O(n))
     if "사원번호" in df.columns:
-        dup_emp = df.groupby("사원번호").size()
-        for emp_id, cnt in dup_emp[dup_emp > 1].items():
-            rows = df[df["사원번호"] == emp_id].index.tolist()
-            emp_id_str = str(emp_id).strip()
-            warnings.append({"row": rows[0], "emp_info": f"{emp_id_str} (행 {rows[0]+1})", "column": "사원번호", "warning": f"중복 사원번호 {len(rows)}건", "severity": "warning"})
+        # duplicated()로 중복 행만 필터링 (O(n))
+        dup_mask = df.duplicated('사원번호', keep=False)
+        if dup_mask.any():
+            dup_df = df[dup_mask]
+            # 이미 필터링된 데이터를 그룹화 (O(n))
+            for emp_id, group in dup_df.groupby('사원번호'):
+                rows = group.index.tolist()
+                emp_id_str = str(emp_id).strip()
+                warnings.append({
+                    "row": rows[0],
+                    "emp_info": f"{emp_id_str} (행 {rows[0]+1})",
+                    "column": "사원번호",
+                    "warning": f"중복 사원번호 {len(rows)}건",
+                    "severity": "warning"
+                })
 
     return {"errors": errors, "warnings": warnings}

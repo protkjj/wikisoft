@@ -13,10 +13,22 @@ from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+import asyncio
 
 from .routes import agent, batch, diagnostic_questions, health, validate, react_agent, learn, windmill, tools, export
+from internal.memory.session_store import session_store
 
 app = FastAPI(title="WIKISOFT3 API", version="0.0.1")
+
+
+# ============================================================
+# 앱 시작 이벤트
+# ============================================================
+@app.on_event("startup")
+async def startup_event():
+    """앱 시작 시 백그라운드 작업 시작"""
+    # 세션 자동 정리 작업 (10분마다)
+    asyncio.create_task(session_store.start_cleanup_task(interval_minutes=10))
 
 
 # ============================================================

@@ -53,7 +53,7 @@ async def auto_validate(
 
     # 2. 헤더 매칭
     matches = registry.call_tool("match_headers", parsed=parsed, sheet_type="재직자")
-    
+
     # 무시 컬럼 필터링 (UI에 표시하지 않음)
     filtered_matches = [
         m for m in matches.get("matches", [])
@@ -61,13 +61,23 @@ async def auto_validate(
     ]
     matches_for_response = {**matches, "matches": filtered_matches}
 
-    # 3. 검증 (진단 답변 전달)
-    validation = registry.call_tool("validate", parsed=parsed, matches=matches, diagnostic_answers=diagnostic_answers)
+    # DataFrame 생성 (성능 최적화: 한 번만 생성하여 재사용)
+    import pandas as pd
+    df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
+
+    # 3. 검증 (진단 답변 전달 + DataFrame 재사용)
+    validation = registry.call_tool(
+        "validate",
+        parsed=parsed,
+        matches=matches,
+        diagnostic_answers=diagnostic_answers,
+        df=df  # DataFrame 재사용
+    )
 
     # 4. 신뢰도/이상치 분석
     confidence = estimate_confidence(parsed, matches, validation)
     anomalies = detect_anomalies(parsed, matches, validation)
-    
+
     # 매칭 경고 (필수 필드 누락 등)를 anomalies에 추가
     for warning in matches.get("warnings", []):
         anomalies["anomalies"].append({
@@ -77,9 +87,7 @@ async def auto_validate(
         })
         anomalies["detected"] = True
 
-    # 5. 중복 탐지
-    import pandas as pd
-    df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
+    # 5. 중복 탐지 (DataFrame 재사용)
     duplicates = registry.call_tool(
         "detect_duplicates",
         df=df,

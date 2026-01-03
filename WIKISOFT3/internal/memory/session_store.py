@@ -5,10 +5,14 @@
 동시 사용자가 있어도 데이터가 섞이지 않음.
 """
 
+import asyncio
+import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
 from threading import Lock
+
+logger = logging.getLogger(__name__)
 
 
 class SessionStore:
@@ -72,7 +76,19 @@ class SessionStore:
             for sid in expired:
                 del self._store[sid]
                 removed += 1
+        if removed > 0:
+            logger.info(f"세션 정리: {removed}개 만료된 세션 제거 (남은 세션: {len(self._store)}개)")
         return removed
+
+    async def start_cleanup_task(self, interval_minutes: int = 10):
+        """백그라운드 세션 정리 작업 시작"""
+        logger.info(f"세션 자동 정리 시작 (주기: {interval_minutes}분)")
+        while True:
+            await asyncio.sleep(interval_minutes * 60)
+            try:
+                self.cleanup_expired()
+            except Exception as e:
+                logger.error(f"세션 정리 중 오류: {e}", exc_info=True)
 
 
 # 싱글톤 인스턴스
