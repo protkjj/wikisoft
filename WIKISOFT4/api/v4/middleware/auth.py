@@ -17,6 +17,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
         "/api/v4/health",
         "/api/v4/health/ready",
         "/api/v4/health/live",
+        # WIKISOFT3 compatibility paths
+        "/api/health",
+        "/api/diagnostic-questions",
+        "/api/auto-validate",
+        "/api/windmill/latest",
+        "/api/export/errors",
+        "/api/export/xlsx",
     }
 
     async def dispatch(self, request: Request, call_next):

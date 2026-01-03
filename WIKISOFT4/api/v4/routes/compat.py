@@ -5,12 +5,17 @@ WIKISOFT3 호환 라우트
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from uuid import uuid4
+from io import BytesIO
+from urllib.parse import quote
 import json
 
 from fastapi import APIRouter, File, Form, Header, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 
 router = APIRouter()
 
@@ -221,3 +226,138 @@ async def health_compat():
         "version": "4.1.0",
         "mode": "compatibility"
     }
+
+
+# ========================================
+# Export API (WIKISOFT3 호환)
+# ========================================
+
+class ExportRequest(BaseModel):
+    """수정된 데이터 내보내기 요청"""
+    filename: str
+    headers: List[str]
+    data: List[Dict[str, Any]]
+
+
+class ExportErrorsRequest(BaseModel):
+    """오류 항목만 추출하여 내보내기"""
+    filename: str
+    errors: List[Dict[str, Any]]
+
+
+@router.post("/api/export/xlsx")
+async def export_xlsx(request: ExportRequest):
+    """수정된 데이터를 Excel 파일로 내보내기"""
+    try:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "재직자명부"
+
+        # 헤더 스타일
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=11)
+        header_alignment = Alignment(horizontal="center", vertical="center")
+
+        # 헤더 작성
+        for col_idx, header in enumerate(request.headers, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+
+        # 데이터 작성
+        for row_idx, row_data in enumerate(request.data, start=2):
+            for col_idx, header in enumerate(request.headers, start=1):
+                value = row_data.get(header, "")
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+        # 컬럼 너비 자동 조정
+        for col_idx, header in enumerate(request.headers, start=1):
+            max_length = len(str(header))
+            for row_idx in range(2, len(request.data) + 2):
+                cell_value = ws.cell(row=row_idx, column=col_idx).value
+                if cell_value:
+                    max_length = max(max_length, len(str(cell_value)))
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = adjusted_width
+
+        # 파일명 생성
+        base_name = request.filename.rsplit(".", 1)[0]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{base_name}_수정본_{timestamp}.xlsx"
+
+        excel_buffer = BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 생성 실패: {str(e)}")
+
+
+@router.post("/api/export/errors")
+async def export_errors(request: ExportErrorsRequest):
+    """검증 오류만 추출하여 Excel 파일로 내보내기"""
+    try:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "오류항목"
+
+        # 헤더 스타일
+        header_fill = PatternFill(start_color="FF5555", end_color="FF5555", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=11)
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        # 헤더 작성
+        headers = ["행번호", "필드명", "오류 내용", "심각도"]
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+
+        # 데이터 작성
+        for row_idx, error in enumerate(request.errors, start=2):
+            ws.cell(row=row_idx, column=1, value=error.get('row', ''))
+            ws.cell(row=row_idx, column=2, value=error.get('field', ''))
+
+            message_cell = ws.cell(row=row_idx, column=3, value=error.get('message', ''))
+            message_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+            severity = error.get('severity', 'warning')
+            severity_cell = ws.cell(row=row_idx, column=4, value=severity)
+            if severity == 'error':
+                severity_cell.fill = PatternFill(start_color="FFD6D6", end_color="FFD6D6", fill_type="solid")
+                severity_cell.font = Font(color="CC0000", bold=True)
+            else:
+                severity_cell.fill = PatternFill(start_color="FFF2D6", end_color="FFF2D6", fill_type="solid")
+                severity_cell.font = Font(color="FF8800", bold=True)
+            severity_cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        # 컬럼 너비 설정
+        ws.column_dimensions['A'].width = 10
+        ws.column_dimensions['B'].width = 15
+        ws.column_dimensions['C'].width = 50
+        ws.column_dimensions['D'].width = 10
+
+        # 파일명 생성
+        base_name = request.filename.rsplit(".", 1)[0]
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{base_name}_의심목록_{timestamp}.xlsx"
+
+        excel_buffer = BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 생성 실패: {str(e)}")

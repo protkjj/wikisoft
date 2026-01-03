@@ -52,10 +52,10 @@ app.add_middleware(
 )
 
 # Custom middleware (order matters - last added = first executed)
-# TODO: Fix middleware after dependency cleanup
-# app.add_middleware(AuditMiddleware)
-# app.add_middleware(RateLimitMiddleware)
-# app.add_middleware(AuthMiddleware)
+# Execution order: Auth → RateLimit → Audit → Handler
+app.add_middleware(AuditMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+app.add_middleware(AuthMiddleware)
 
 
 # Exception handlers

@@ -24,8 +24,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
         # Calculate duration
         duration_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
 
-        # Log the request (skip health checks)
-        if not path.startswith("/api/v4/health"):
+        # Log the request (skip health checks and high-frequency endpoints)
+        skip_paths = {"/api/v4/health", "/api/health", "/api/diagnostic-questions", "/api/windmill/latest"}
+        if not any(path.startswith(p) for p in skip_paths):
             from core.security import log_action, AuditAction
 
             log_action(
