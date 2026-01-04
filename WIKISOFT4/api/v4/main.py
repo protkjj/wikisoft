@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import health, validation, privacy, webhook, compat
+from .routes import health, validation, privacy, webhook, compat, auth
 # TODO: Fix migrated routes after dependency cleanup
 # from .routes import auto_validate, diagnostic_questions, export
 from .middleware.auth import AuthMiddleware
@@ -74,6 +74,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # Include routers
 app.include_router(health.router, prefix="/api/v4", tags=["Health"])
+app.include_router(auth.router, prefix="/api/v4", tags=["Authentication"])
 app.include_router(validation.router, prefix="/api/v4", tags=["Validation"])
 app.include_router(privacy.router, prefix="/api/v4", tags=["Privacy"])
 app.include_router(webhook.router, prefix="/api/v4", tags=["Webhook"])
