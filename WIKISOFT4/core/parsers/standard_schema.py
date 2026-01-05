@@ -109,9 +109,9 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
     "제도구분": {
         "type": "category",
         "description": "퇴직금 제도 구분 (DB/DC/혼합 등)",
-        "aliases": ["퇴직제도", "연금제도", "pension_type"],
+        "aliases": ["퇴직제도", "연금제도", "pension_type", "제도구분 (1,2,3)"],
         "examples": ["1", "2", "3", "DB", "DC"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "적용배수": {
@@ -119,7 +119,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "퇴직금 계산 시 적용되는 배수",
         "aliases": ["배수", "multiplier", "계산배수"],
         "examples": ["1", "1.5", "2"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "당년도퇴직금추계액": {
@@ -127,7 +127,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "현재 연도 기준 예상 퇴직금 금액",
         "aliases": ["퇴직금추계액", "퇴직금예상액", "퇴직금", "estimated_retirement", "당년도 퇴직금추계액"],
         "examples": ["10000000", "1000만원"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "차년도퇴직금추계액": {
@@ -135,7 +135,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "다음 연도 기준 예상 퇴직금 금액",
         "aliases": ["내년퇴직금", "차년도퇴직금", "차년도 퇴직금추계액"],
         "examples": ["11000000"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "퇴직일": {
@@ -184,7 +184,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "중간정산 기준일",
         "aliases": ["중간정산일", "정산기준일"],
         "examples": ["2020-12-31", "20201231"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "중간정산액": {
@@ -192,7 +192,7 @@ STANDARD_SCHEMA: Dict[str, Dict[str, Any]] = {
         "description": "중간정산 금액",
         "aliases": ["정산액", "중간정산금액"],
         "examples": ["10000000"],
-        "required": False,
+        "required": True,
         "sheet": "재직자",
     },
     "적용제도번호": {

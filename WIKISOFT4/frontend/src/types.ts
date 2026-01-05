@@ -10,6 +10,10 @@ export interface DiagnosticQuestion {
   validate_against?: string
   suggest_from?: string  // AI 기본값 제안용
   format?: string
+  condition?: {          // 조건부 질문 - 이전 질문 답변에 따라 표시
+    question_id: string  // 참조할 질문 ID
+    answer: string       // 이 답변일 때만 현재 질문 표시
+  }
 }
 
 export interface DiagnosticQuestionsResponse {

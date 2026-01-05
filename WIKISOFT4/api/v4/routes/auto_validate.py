@@ -328,12 +328,12 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
     tool_results = {}
     issues = []
     
-    # 인원수 비교
-    headcount_questions = ["q19", "q20", "q21", "q22", "q23"]
+    # 인원수 비교 - 새로운 질문 ID 구조 (q21-1, q21-2, q21-3)
+    employee_headcount_questions = ["q21-1", "q21-2", "q21-3"]  # 평가대상 인원 (임원/직원/계약직)
     total_reported = sum(
-        int(answers.get(q, 0)) 
-        for q in headcount_questions 
-        if str(answers.get(q, "")).isdigit()
+        int(answers.get(q, 0))
+        for q in employee_headcount_questions
+        if str(answers.get(q, "")).replace('.', '').isdigit()
     )
     if total_reported > 0:
         headcount_result = compare_headcount(total_reported, row_count)
@@ -341,7 +341,7 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
         if not headcount_result.get("match"):
             issues.append({
                 "severity": headcount_result.get("severity", "warning"),
-                "message": headcount_result["message"]
+                "message": f"진단 질문 인원({total_reported}명)과 파일 행 수({row_count}행)가 불일치합니다. " + headcount_result["message"]
             })
     
     # 중복 사원번호 체크

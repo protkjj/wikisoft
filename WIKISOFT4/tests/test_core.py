@@ -10,12 +10,12 @@ class TestValidators:
 
     def test_layer1_import(self):
         """Test Layer1 validator can be imported."""
-        from core.validators import validate_layer1
+        from core.validators.validation_layer1 import validate_layer1
         assert validate_layer1 is not None
 
     def test_layer2_import(self):
         """Test Layer2 validator can be imported."""
-        from core.validators import validate_layer2
+        from core.validators.validation_layer2 import validate_layer2
         assert validate_layer2 is not None
 
 
@@ -33,9 +33,9 @@ class TestSecurity:
 
     def test_auth_import(self):
         """Test auth module can be imported."""
-        from core.security.auth import create_jwt_token, verify_jwt_token
-        assert create_jwt_token is not None
-        assert verify_jwt_token is not None
+        from core.security.auth import create_access_token, verify_token
+        assert create_access_token is not None
+        assert verify_token is not None
 
     def test_encryption_import(self):
         """Test encryption module can be imported."""
@@ -45,8 +45,8 @@ class TestSecurity:
 
     def test_rbac_import(self):
         """Test RBAC module can be imported."""
-        from core.security.rbac import check_permission, Role
-        assert check_permission is not None
+        from core.security.rbac import has_permission, Role
+        assert has_permission is not None
         assert Role is not None
 
 
@@ -61,9 +61,10 @@ class TestPrivacy:
 
     def test_masker_import(self):
         """Test masker can be imported."""
-        from core.privacy.masker import mask_value, MaskingStrategy
+        from core.privacy.masker import mask_value
+        from core.privacy.detector import PIIType
         assert mask_value is not None
-        assert MaskingStrategy is not None
+        assert PIIType is not None
 
 
 class TestIntegrations:
@@ -71,13 +72,13 @@ class TestIntegrations:
 
     def test_webhook_import(self):
         """Test webhook module can be imported."""
-        from integrations.webhook.events import create_cloud_event
-        assert create_cloud_event is not None
+        from integrations.webhook.events import create_event
+        assert create_event is not None
 
     def test_n8n_import(self):
         """Test n8n adapter can be imported."""
-        from integrations.n8n.adapter import N8nWebhookAdapter
-        assert N8nWebhookAdapter is not None
+        from integrations.n8n.adapter import N8nAdapter
+        assert N8nAdapter is not None
 
 
 if __name__ == "__main__":

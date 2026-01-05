@@ -22,32 +22,26 @@ export const useValidationErrors = (
 
     const allResults: EditableError[] = []
 
-    // Errors from validation
+    // Errors from validation (행 번호 유무와 상관없이 모두 포함)
     validationResult.steps?.validation?.errors?.forEach((err) => {
-      // 행 번호가 있는 에러만 수정 가능
-      if (err.row !== undefined) {
-        allResults.push({
-          severity: 'error',
-          message: err.message || err.error || err.reason || '알 수 없는 오류',
-          row: err.row,
-          field: err.field || err.column,
-          emp_info: err.emp_info
-        })
-      }
+      allResults.push({
+        severity: 'error',
+        message: err.message || err.error || err.reason || '알 수 없는 오류',
+        row: err.row ?? undefined,  // null -> undefined로 변환
+        field: err.field || err.column,
+        emp_info: err.emp_info
+      })
     })
 
-    // Warnings from validation
+    // Warnings from validation (행 번호 유무와 상관없이 모두 포함)
     validationResult.steps?.validation?.warnings?.forEach((warn) => {
-      // 행 번호가 있는 경고만 표시
-      if (warn.row !== undefined) {
-        allResults.push({
-          severity: 'warning',
-          message: warn.message || warn.warning || warn.reason || '알 수 없는 경고',
-          row: warn.row,
-          field: warn.field || warn.column,
-          emp_info: warn.emp_info
-        })
-      }
+      allResults.push({
+        severity: 'warning',
+        message: warn.message || warn.warning || warn.reason || '알 수 없는 경고',
+        row: warn.row ?? undefined,  // null -> undefined로 변환
+        field: warn.field || warn.column,
+        emp_info: warn.emp_info
+      })
     })
 
     return allResults

@@ -344,6 +344,7 @@
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.4;
+  min-height: 3.6rem;  /* 2줄 기준 고정 높이 */
 }
 
 .answered-badge {
@@ -365,6 +366,8 @@
   border-radius: 10px;
   border: 1px solid var(--border-color);
   min-height: 100px;
+  flex-shrink: 0;  /* 크기 고정 */
+  margin-top: auto; /* 상단 여백 자동 */
 }
 
 /* 선택지 버튼 */

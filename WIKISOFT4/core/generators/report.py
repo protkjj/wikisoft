@@ -75,8 +75,14 @@ def generate_excel_report(
     # 2. 매칭 결과 시트
     ws_matching = wb.create_sheet("헤더 매칭")
     _create_matching_sheet(ws_matching, validation_result)
-    
-    # 3. 이상 탐지 시트
+
+    # 3. 인원/금액 비교 시트 (Layer 2)
+    layer2_data = validation_result.get("layer2_comparison")
+    if layer2_data and layer2_data.get("total_checks", 0) > 0:
+        ws_layer2 = wb.create_sheet("인원금액 비교")
+        _create_layer2_sheet(ws_layer2, layer2_data)
+
+    # 4. 이상 탐지 시트
     if validation_result.get("anomalies", {}).get("detected"):
         ws_anomalies = wb.create_sheet("이상 탐지")
         _create_anomalies_sheet(ws_anomalies, validation_result)
@@ -207,6 +213,113 @@ def _create_matching_sheet(ws, validation_result: Dict):
     ws.column_dimensions['C'].width = 12
     ws.column_dimensions['D'].width = 12
     ws.column_dimensions['E'].width = 15
+
+
+def _create_layer2_sheet(ws, layer2_data: Dict):
+    """인원/금액 비교 시트 (Layer 2 검증 결과)"""
+    from core.ai.diagnostic_questions import get_question_by_id
+
+    # 헤더
+    headers = ["항목", "사용자 입력", "명부 계산", "차이", "차이(%)", "결과"]
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = STYLE_HEADER
+        cell.font = FONT_HEADER
+        cell.border = BORDER_THIN
+        cell.alignment = ALIGN_CENTER
+
+    # 데이터
+    user_answers = layer2_data.get("user_answers", {})
+    calculated = layer2_data.get("calculated_aggregates", {})
+    warnings = layer2_data.get("warnings", [])
+
+    # 경고 정보를 question_id로 매핑
+    warning_map = {w.get("question_id"): w for w in warnings}
+
+    # 비교할 질문들 (q21, q22, q23, q27, q28)
+    comparison_questions = ["q21", "q22", "q23", "q27", "q28"]
+
+    row_idx = 2
+    for qid in comparison_questions:
+        user_val = user_answers.get(qid)
+        calc_val = calculated.get(qid)
+
+        # 둘 다 없으면 스킵
+        if user_val is None and calc_val is None:
+            continue
+
+        # 질문 텍스트 가져오기
+        question = get_question_by_id(qid)
+        # 질문 ID별 간단한 라벨
+        label_map = {
+            "q21": "임원 인원",
+            "q22": "직원 인원",
+            "q23": "계약직 인원",
+            "q27": "퇴직금 합계",
+            "q28": "중간정산 합계",
+        }
+        label = label_map.get(qid, question.get("question", qid)[:15] if question else qid)
+
+        # 값 변환
+        try:
+            user_num = float(user_val) if user_val is not None else None
+            calc_num = float(calc_val) if calc_val is not None else None
+        except (ValueError, TypeError):
+            user_num = None
+            calc_num = None
+
+        # 차이 계산
+        if user_num is not None and calc_num is not None:
+            diff = user_num - calc_num
+            diff_pct = abs(diff / calc_num * 100) if calc_num != 0 else 0
+            is_match = abs(diff) < 0.01 or diff_pct <= 5
+        else:
+            diff = None
+            diff_pct = None
+            is_match = None
+
+        # 포맷팅
+        unit = "명" if qid in ["q21", "q22", "q23"] else "원"
+        if unit == "원" and user_num:
+            user_display = f"{user_num:,.0f}원"
+            calc_display = f"{calc_num:,.0f}원" if calc_num else "-"
+            diff_display = f"{diff:+,.0f}원" if diff is not None else "-"
+        else:
+            user_display = f"{int(user_num)}명" if user_num is not None else "-"
+            calc_display = f"{int(calc_num)}명" if calc_num is not None else "-"
+            diff_display = f"{int(diff):+d}명" if diff is not None else "-"
+
+        # 셀 작성
+        ws.cell(row=row_idx, column=1, value=label).border = BORDER_THIN
+        ws.cell(row=row_idx, column=2, value=user_display).border = BORDER_THIN
+        ws.cell(row=row_idx, column=3, value=calc_display).border = BORDER_THIN
+        ws.cell(row=row_idx, column=4, value=diff_display).border = BORDER_THIN
+
+        pct_cell = ws.cell(row=row_idx, column=5, value=f"{diff_pct:.1f}%" if diff_pct is not None else "-")
+        pct_cell.border = BORDER_THIN
+
+        result_cell = ws.cell(row=row_idx, column=6)
+        result_cell.border = BORDER_THIN
+        result_cell.alignment = ALIGN_CENTER
+
+        if is_match is None:
+            result_cell.value = "⚪ 확인불가"
+        elif is_match:
+            result_cell.value = "✅ 일치"
+            result_cell.fill = STYLE_SUCCESS
+        else:
+            result_cell.value = "❌ 불일치"
+            result_cell.fill = STYLE_ERROR
+
+        row_idx += 1
+
+    # 컬럼 너비
+    ws.column_dimensions['A'].width = 20
+    ws.column_dimensions['B'].width = 18
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 15
+    ws.column_dimensions['E'].width = 12
+    ws.column_dimensions['F'].width = 12
 
 
 def _create_anomalies_sheet(ws, validation_result: Dict):

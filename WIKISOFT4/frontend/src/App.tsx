@@ -102,8 +102,17 @@ function App() {
       return
     }
 
-    // 필수 답변 체크 (0도 유효한 답변으로 처리)
-    const unansweredQuestions = questions.filter(q => answers[q.id] === undefined)
+    // 조건부 질문 필터링 - 보이는 질문만 체크
+    const visibleQuestions = questions.filter(q => {
+      if (!q.condition) return true
+      const { question_id, answer: requiredAnswer } = q.condition
+      const currentAnswer = answers[question_id]
+      if (currentAnswer === undefined) return false
+      return currentAnswer === requiredAnswer
+    })
+
+    // 필수 답변 체크 (0도 유효한 답변으로 처리) - 보이는 질문만!
+    const unansweredQuestions = visibleQuestions.filter(q => answers[q.id] === undefined)
     if (unansweredQuestions.length > 0) {
       alert(`${unansweredQuestions.length}개의 질문에 답변이 없습니다. 모든 질문에 답변해주세요.`)
       return
@@ -237,7 +246,7 @@ function App() {
         <>
           <header className="header">
             <div className="header-content">
-              <h1>🏢 WIKISOFT3</h1>
+              <h1>🤖 WIKI AGENT</h1>
               <p>퇴직급여채무 명부 AI 자동검증 시스템</p>
             </div>
             <ThemeToggle />
@@ -286,7 +295,7 @@ function App() {
       {currentStep === 'onboarding' && (
         <div className="onboarding">
           <header className="onboarding-header-bar">
-            <div className="onboarding-header-title">WIKISOFT</div>
+            <div className="onboarding-header-title">WIKI AGENT</div>
             <div className="header-right">
               <span className="version-badge">v4</span>
               <ThemeToggle />
@@ -294,7 +303,7 @@ function App() {
           </header>
           <div className="onboarding-header">
             <h1 className="onboarding-title">
-              <span className="title-wiki">WIKI</span><span className="title-soft">SOFT</span>
+              <span className="title-wiki">WIKI</span><span className="title-soft">AGENT</span>
             </h1>
             <p className="onboarding-subtitle">퇴직급여채무 AI 자동검증</p>
           </div>
@@ -441,6 +450,7 @@ function App() {
       {currentStep === 'questions' && !loading && questions.length > 0 && (
         <ChatBot
           questions={questions}
+          initialAnswers={answers}  // 기존 답변 전달
           onComplete={(completedAnswers) => {
             setAnswers(completedAnswers)
             setTimeout(() => setCurrentStep('upload'), 1000)
@@ -532,32 +542,37 @@ function App() {
             {/* 메트릭 카드들 */}
             <div className="result-summary">
               <div className={`result-stat ${validationResult.status === 'ok' ? 'success' : 'error'}`}>
-              <div className="result-stat-value">
-                {validationResult.status === 'ok' ? '완료' : '오류'}
+                <div className="result-stat-value">
+                  {validationResult.status === 'ok' ? '완료' : '오류'}
+                </div>
+                <div className="result-stat-label">검증 상태</div>
               </div>
-              <div className="result-stat-label">검증 상태</div>
-            </div>
-            <div className="result-stat success">
-              <div className="result-stat-value">
-                {(validationResult.confidence?.score * 100).toFixed(0)}%
+              <div className="result-stat success">
+                <div className="result-stat-value">
+                  {(() => {
+                    const matches = validationResult.steps?.matches?.matches || []
+                    const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
+                    const total = matches.length
+                    return `${mapped}/${total}`
+                  })()}
+                </div>
+                <div className="result-stat-label">컬럼 매핑</div>
               </div>
-              <div className="result-stat-label">정상 데이터 비율</div>
-            </div>
-            <div className="result-stat warning">
-              <div className="result-stat-value">
-                {(validationResult.anomalies?.anomalies?.length ?? 0) + 
-                 (validationResult.steps?.validation?.errors?.length ?? 0) + 
-                 (validationResult.steps?.validation?.warnings?.length ?? 0)}
+              <div className="result-stat warning">
+                <div className="result-stat-value">
+                  {(validationResult.anomalies?.anomalies?.length ?? 0) +
+                   (validationResult.steps?.validation?.errors?.length ?? 0) +
+                   (validationResult.steps?.validation?.warnings?.length ?? 0)}
+                </div>
+                <div className="result-stat-label">이상 탐지</div>
               </div>
-              <div className="result-stat-label">이상 탐지</div>
-            </div>
-            <div className="result-stat">
-              <div className="result-stat-value">
-                {validationResult.steps?.parsed_summary?.row_count ?? 0}
+              <div className="result-stat">
+                <div className="result-stat-value">
+                  {validationResult.steps?.parsed_summary?.row_count ?? 0}
+                </div>
+                <div className="result-stat-label">분석 행 수</div>
               </div>
-              <div className="result-stat-label">분석 행 수</div>
             </div>
-          </div>
 
           {/* 컬럼 매핑 테이블 */}
           {validationResult.steps?.matches && (
@@ -565,7 +580,13 @@ function App() {
               <div className="section-header collapsible" onClick={() => setShowMappingDetails(!showMappingDetails)}>
                 <h3>
                   <span className={`collapse-icon ${showMappingDetails ? 'expanded' : ''}`}>▶</span>
-                  컬럼 매핑 결과 ({(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || []).length}개)
+                  컬럼 매핑 결과 {(() => {
+                    const matches = currentMatches.length > 0 ? currentMatches : validationResult.steps?.matches?.matches || []
+                    const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
+                    const total = matches.length
+                    const percent = total > 0 ? Math.round((mapped / total) * 100) : 0
+                    return `(${mapped}/${total}, ${percent}% 성공)`
+                  })()}
                 </h3>
                 <button
                   className="btn-secondary"
@@ -632,7 +653,15 @@ function App() {
 
             // validation.errors & warnings (이미 상단에서 hook으로 계산됨)
             editableErrors.forEach((item, idx) => {
-              const msg = `${item.emp_info || `행 ${item.row}`}: ${item.field} - ${item.message}`;
+              // 행 번호가 없으면 "행 null" 표시 안함
+              const prefix = item.emp_info
+                ? item.emp_info
+                : item.row != null
+                  ? `행 ${item.row}`
+                  : '';
+              const msg = prefix
+                ? `${prefix}: ${item.field} - ${item.message}`
+                : `${item.field} - ${item.message}`;
               if (!seenMessages.has(msg)) {
                 seenMessages.add(msg);
                 allResults.push({
@@ -732,25 +761,9 @@ function App() {
                     </div>
                   ))}
                 </div>}
-                {validationResult.anomalies?.recommendation && (
-                  <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'var(--success-light)', borderRadius: 'var(--radius-md)', color: 'var(--success)' }}>
-                    💡 {validationResult.anomalies.recommendation}
-                  </div>
-                )}
               </div>
             );
           })()}
-
-          {/* 파싱 요약 */}
-          {validationResult.steps?.parsed_summary && (
-            <div style={{ marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>📊 파싱 정보</h3>
-              <p style={{ color: 'var(--text-secondary)' }}>
-                인식된 헤더: {validationResult.steps.parsed_summary.headers.slice(0, 5).join(', ')}
-                {validationResult.steps.parsed_summary.headers.length > 5 && ` 외 ${validationResult.steps.parsed_summary.headers.length - 5}개`}
-              </p>
-            </div>
-          )}
 
           <div className="actions">
             <button
@@ -821,10 +834,21 @@ function App() {
                   </tr>
                   <tr>
                     <td className="label">처리된 행</td>
-                    <td>{validationResult?.steps?.parsed_summary?.row_count ?? 0}</td>
+                    <td>{validationResult?.steps?.parsed_summary?.row_count ?? 0}행</td>
                   </tr>
                   <tr>
-                    <td className="label">헤더 매칭율</td>
+                    <td className="label">컬럼 매핑</td>
+                    <td>
+                      {(() => {
+                        const matches = validationResult?.steps?.matches?.matches || []
+                        const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
+                        const total = matches.length
+                        return `${mapped}/${total} 매핑됨`
+                      })()}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="label">매칭 신뢰도</td>
                     <td>{Math.round((validationResult?.steps?.matches?.matches?.reduce((sum: number, m: HeaderMatch) => sum + m.confidence, 0) ?? 0) / (validationResult?.steps?.matches?.matches?.length ?? 1) * 100)}%</td>
                   </tr>
                   <tr>

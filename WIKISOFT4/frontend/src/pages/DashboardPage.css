@@ -1,0 +1,233 @@
+.dashboard-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.action-btn {
+  padding: 10px 20px;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--primary-dark, #2563eb);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stat-card {
+  background: var(--card-bg, white);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.stat-card.success {
+  border-left: 4px solid #10b981;
+}
+
+.stat-card.warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.stat-card.danger {
+  border-left: 4px solid #ef4444;
+}
+
+.stat-icon {
+  font-size: 2rem;
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.confidence-card {
+  background: var(--card-bg, white);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.confidence-card h3 {
+  margin: 0 0 16px 0;
+  color: var(--text-primary, #111827);
+  font-size: 1rem;
+}
+
+.confidence-bar-container {
+  height: 12px;
+  background: var(--bg-secondary, #f3f4f6);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.confidence-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #3b82f6);
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.confidence-value {
+  text-align: right;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--primary-color, #3b82f6);
+}
+
+.recent-section {
+  background: var(--card-bg, white);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.recent-section h2 {
+  margin: 0 0 20px 0;
+  color: var(--text-primary, #111827);
+  font-size: 1.25rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.empty-state p {
+  color: var(--text-secondary, #6b7280);
+  margin-bottom: 16px;
+}
+
+.runs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.run-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-secondary, #f9fafb);
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.run-item:hover {
+  background: var(--hover-bg, #f3f4f6);
+}
+
+.run-icon {
+  font-size: 1.5rem;
+}
+
+.run-info {
+  flex: 1;
+}
+
+.run-message {
+  color: var(--text-primary, #111827);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.run-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.75rem;
+  color: var(--text-tertiary, #9ca3af);
+}
+
+.run-status {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.run-status.auto_approve {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.run-status.needs_review {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.run-status.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Dark mode */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .confidence-card,
+[data-theme="dark"] .recent-section {
+  background: var(--card-bg, #1f2937);
+  border-color: var(--border-color, #374151);
+}
+
+[data-theme="dark"] .run-item {
+  background: var(--bg-secondary, #374151);
+}
+
+[data-theme="dark"] .run-item:hover {
+  background: var(--hover-bg, #4b5563);
+}

@@ -13,6 +13,7 @@ def estimate_confidence(parsed: Dict[str, Any], matches: Dict[str, Any], validat
     계산 방식:
     - 전체 행 수 대비 에러가 없는 행의 비율
     - 에러가 있는 행을 제외한 비율 = 정상 데이터 비율
+    - 행 번호 없는 에러/경고도 페널티로 반영
     """
     total_rows = len(parsed.get("rows", []))
     if total_rows == 0:
@@ -29,13 +30,22 @@ def estimate_confidence(parsed: Dict[str, Any], matches: Dict[str, Any], validat
     # 에러/경고가 있는 행 수 계산
     errors = validation_l1.get("errors", []) if isinstance(validation_l1, dict) else []
     warnings = validation_l1.get("warnings", []) if isinstance(validation_l1, dict) else []
-    
-    error_rows = set(e.get("row") for e in errors if "row" in e)
-    warning_rows = set(w.get("row") for w in warnings if "row" in w)
-    
+
+    # 행 번호가 있는 에러/경고
+    error_rows = set(e.get("row") for e in errors if e.get("row") is not None)
+    warning_rows = set(w.get("row") for w in warnings if w.get("row") is not None)
+
+    # 행 번호 없는 에러/경고 (전체 파일 수준 이슈)
+    errors_without_row = len([e for e in errors if e.get("row") is None])
+    warnings_without_row = len([w for w in warnings if w.get("row") is None])
+
     # 정상 행 = 전체 - 에러 행
     normal_rows = total_rows - len(error_rows)
-    score = normal_rows / total_rows if total_rows > 0 else 1.0
+    base_score = normal_rows / total_rows if total_rows > 0 else 1.0
+
+    # 행 번호 없는 에러/경고에 대한 페널티 (에러당 5%, 경고당 2%)
+    penalty = (errors_without_row * 0.05) + (warnings_without_row * 0.02)
+    score = max(0.0, base_score - penalty)
 
     return {
         "score": max(0.0, min(1.0, score)),
@@ -44,6 +54,8 @@ def estimate_confidence(parsed: Dict[str, Any], matches: Dict[str, Any], validat
             "total_rows": total_rows,
             "error_rows": len(error_rows),
             "warning_rows": len(warning_rows),
+            "errors_without_row": errors_without_row,
+            "warnings_without_row": warnings_without_row,
             "normal_rows": normal_rows,
         },
     }

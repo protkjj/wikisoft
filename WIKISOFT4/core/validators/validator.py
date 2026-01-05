@@ -3,7 +3,9 @@ import logging
 import pandas as pd
 
 from core.validators.validation_layer1 import validate_layer1
+from core.validators.validation_layer2 import validate_layer2
 from core.validators.validation_layer_ai import validate_with_ai
+from core.validators.aggregator import get_aggregates_by_question_id
 from core.ai.knowledge_base import save_training_example
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,49 @@ def validate(
         checks.append({"name": "header_presence", "status": "pass"})
 
     checks.append({"name": "row_count", "status": "pass", "value": len(rows)})
-    
+
+    # 진단 질문 인원수 vs 실제 행 수 비교
+    if diagnostic_answers and rows:
+        # 평가대상 인원 합계 (q21-1: 임원, q21-2: 직원, q21-3: 계약직)
+        headcount_keys = ["q21-1", "q21-2", "q21-3"]
+        total_reported = 0
+        for key in headcount_keys:
+            val = diagnostic_answers.get(key)
+            if val is not None:
+                try:
+                    total_reported += int(float(val))
+                except (ValueError, TypeError):
+                    pass
+
+        actual_row_count = len(rows)
+
+        if total_reported > 0 and total_reported != actual_row_count:
+            diff = abs(total_reported - actual_row_count)
+            diff_percent = (diff / max(total_reported, actual_row_count)) * 100
+
+            severity = "error" if diff_percent > 10 else "warning"
+            message = f"진단 질문 인원({total_reported}명)과 파일 행 수({actual_row_count}행)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%)"
+
+            if severity == "error":
+                errors.append({
+                    "row": None,
+                    "field": "인원수",
+                    "message": message,
+                    "severity": "error"
+                })
+            else:
+                warnings.append({
+                    "row": None,
+                    "field": "인원수",
+                    "message": message,
+                    "warning": message,
+                    "severity": "warning"
+                })
+
+            checks.append({"name": "headcount_match", "status": "fail", "message": message})
+        elif total_reported > 0:
+            checks.append({"name": "headcount_match", "status": "pass"})
+
     # L1 검증 (형식 검사)
     if headers and rows:
         try:
@@ -105,7 +149,59 @@ def validate(
             
         except Exception as e:
             checks.append({"name": "layer1_validation", "status": "error", "error": str(e)})
-    
+
+    # L2 검증: 사용자 입력값 vs 명부 집계값 비교
+    layer2_result = None
+    if headers and rows and diagnostic_answers:
+        try:
+            # DataFrame이 없으면 생성
+            if df is None:
+                df = pd.DataFrame(rows, columns=headers)
+
+            # 명부에서 집계값 계산 (종업원구분별 인원수, 금액 합계)
+            calculated_aggregates = get_aggregates_by_question_id(df)
+
+            # Layer 2 검증 실행
+            layer2_result = validate_layer2(diagnostic_answers, calculated_aggregates)
+
+            # Layer 2 경고/오류를 메인 결과에 병합
+            for w in layer2_result.get("warnings", []):
+                severity = w.get("severity", "warning")
+                if severity == "high":
+                    errors.append({
+                        "row": None,
+                        "field": w.get("question", "인원수"),
+                        "message": w.get("message", ""),
+                        "user_input": w.get("user_input"),
+                        "calculated": w.get("calculated"),
+                        "severity": "error",
+                        "source": "layer2"
+                    })
+                elif severity != "info":
+                    warnings.append({
+                        "row": None,
+                        "field": w.get("question", ""),
+                        "message": w.get("message", ""),
+                        "user_input": w.get("user_input"),
+                        "calculated": w.get("calculated"),
+                        "source": "layer2"
+                    })
+
+            status = layer2_result.get("status", "passed")
+            checks.append({
+                "name": "layer2_validation",
+                "status": "pass" if status == "passed" else "warning" if status == "warnings" else "fail",
+                "total_checks": layer2_result.get("total_checks", 0),
+                "passed": layer2_result.get("passed", 0),
+            })
+
+            # Layer 2 비교 데이터 저장 (리포트용)
+            layer2_result["calculated_aggregates"] = calculated_aggregates
+            layer2_result["user_answers"] = diagnostic_answers
+        except Exception as e:
+            logger.warning(f"Layer 2 검증 실패: {e}", exc_info=True)
+            checks.append({"name": "layer2_validation", "status": "error", "error": str(e)})
+
     # AI 검증 (컨텍스트 기반)
     ai_reasoning = []
     if use_ai and headers and rows:
@@ -233,4 +329,5 @@ def validate(
         "ai_reasoning": ai_reasoning,
         "diagnostic_answers_received": bool(diagnostic_answers),
         "used_ai": used_ai,
+        "layer2_comparison": layer2_result,  # 리포트용 비교 데이터
     }

@@ -22,8 +22,12 @@ def validate_layer2(chatbot_answers: Dict[str, Any], calculated_aggregates: Dict
             continue
 
         results["total_checks"] += 1
-        validate_path = question.get("validate_against")
-        calculated_value = _extract_value(calculated_aggregates, validate_path) if validate_path else None
+        # 질문 ID로 직접 조회 (q21, q22, q23, q27, q28 등)
+        calculated_value = calculated_aggregates.get(qid)
+        # 기존 방식도 fallback으로 지원
+        if calculated_value is None:
+            validate_path = question.get("validate_against")
+            calculated_value = _extract_value(calculated_aggregates, validate_path) if validate_path else None
 
         if calculated_value is None:
             results["warnings"].append({

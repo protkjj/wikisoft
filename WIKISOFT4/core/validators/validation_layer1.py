@@ -145,6 +145,56 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             except Exception:
                 pass
 
+        # 중간정산 논리 검증
+        interim_date_col = None
+        for c in df.columns:
+            if "중간정산" in c and ("기준일" in c or "일자" in c or "날짜" in c):
+                interim_date_col = c
+                break
+        # 중간정산기준일 컬럼명이 정확히 "중간정산기준일"인 경우도 체크
+        if not interim_date_col and "중간정산기준일" in df.columns:
+            interim_date_col = "중간정산기준일"
+
+        interim_amt_col = None
+        for c in df.columns:
+            if "중간정산" in c and ("액" in c or "금" in c):
+                interim_amt_col = c
+                break
+        if not interim_amt_col and "중간정산액" in df.columns:
+            interim_amt_col = "중간정산액"
+
+        # 중간정산기준일 > 입사일 검증
+        if interim_date_col:
+            try:
+                interim_date_raw = row[interim_date_col]
+                interim_date_norm = normalize_date(interim_date_raw)
+                if interim_date_norm:
+                    interim_date = pd.to_datetime(interim_date_norm, format="%Y%m%d", errors="coerce")
+                    hire_col = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
+                    if hire_col and pd.notnull(interim_date):
+                        hire_norm = normalize_date(row[hire_col])
+                        if hire_norm:
+                            hire_date = pd.to_datetime(hire_norm, format="%Y%m%d", errors="coerce")
+                            if pd.notnull(hire_date) and interim_date < hire_date:
+                                errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": "중간정산기준일이 입사일보다 앞섬", "severity": "error"})
+            except Exception:
+                pass
+
+        # 중간정산액 > 0인데 중간정산기준일 없으면 경고
+        if interim_amt_col:
+            try:
+                interim_amt = float(row[interim_amt_col]) if not pd.isna(row[interim_amt_col]) else 0
+                if interim_amt > 0:
+                    has_interim_date = False
+                    if interim_date_col:
+                        interim_date_val = row[interim_date_col]
+                        if not pd.isna(interim_date_val) and str(interim_date_val).strip():
+                            has_interim_date = True
+                    if not has_interim_date:
+                        warnings.append({"row": idx, "emp_info": emp_info, "column": interim_amt_col, "warning": f"중간정산액 {interim_amt:,.0f}원 있으나 기준일 없음", "severity": "warning"})
+            except (ValueError, TypeError):
+                pass
+
         # 금액 음수 금지
         for amt_col in ["퇴직금", "전환금"]:
             if amt_col in df.columns:
@@ -163,8 +213,24 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                 break
         if gender_col:
             gender_val = str(row[gender_col]).strip()
-            if gender_val and gender_val not in ["1", "2", "1.0", "2.0", "남", "여", "M", "F", "nan"]:
+            if gender_val and gender_val not in ["1", "2", "1.0", "2.0", "남", "여", "녀", "남자", "여자", "M", "F", "male", "female", "Male", "Female", "nan"]:
                 errors.append({"row": idx, "emp_info": emp_info, "column": gender_col, "error": f"성별 값 오류: {gender_val}", "severity": "error"})
+
+        # 도메인 값: 종업원구분 (1:직원, 2:직원, 3:임원, 4:계약직)
+        emp_type_col = None
+        for c in df.columns:
+            if "종업원" in c or "직종" in c or "고용" in c:
+                emp_type_col = c
+                break
+        if emp_type_col:
+            emp_type_val = str(row[emp_type_col]).strip()
+            valid_emp_types = [
+                "1", "2", "3", "4", "1.0", "2.0", "3.0", "4.0",
+                "임원", "직원", "일반직원", "계약직", "정규직", "비정규직",
+                "nan", ""
+            ]
+            if emp_type_val and emp_type_val not in valid_emp_types:
+                errors.append({"row": idx, "emp_info": emp_info, "column": emp_type_col, "error": f"종업원구분 값 오류: {emp_type_val}", "severity": "error"})
 
     # 중복 검사 (최적화: O(n²) → O(n))
     if "사원번호" in df.columns:

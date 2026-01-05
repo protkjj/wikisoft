@@ -1,16 +1,43 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { SessionProvider } from './contexts/SessionContext'
+import { AuthProvider } from './contexts/AuthContext'
+
+// Layout and Pages
+import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import LoginPage from './pages/LoginPage'
+import DashboardPage from './pages/DashboardPage'
+import HistoryPage from './pages/HistoryPage'
+import App from './App' // Main validation page
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <SessionProvider>
-        <App />
-      </SessionProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <SessionProvider>
+            <Routes>
+              {/* Public route */}
+              <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected routes with layout */}
+              <Route element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route path="/" element={<App />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/history" element={<HistoryPage />} />
+              </Route>
+            </Routes>
+          </SessionProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>,
 )

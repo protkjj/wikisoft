@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import health, validation, privacy, webhook, compat, auth, learn, windmill
+from .routes import health, validation, privacy, webhook, compat, auth, learn, windmill, ifrs, report
 # TODO: Fix migrated routes after dependency cleanup
 # from .routes import auto_validate, diagnostic_questions, export
 from .middleware.auth import AuthMiddleware
@@ -85,6 +85,12 @@ app.include_router(compat.router, tags=["Compatibility"])
 # WIKISOFT3에서 마이그레이션된 라우터
 app.include_router(learn.router, prefix="/api/v4", tags=["Learning"])
 app.include_router(windmill.router, prefix="/api/v4", tags=["Windmill"])
+
+# IFRS 1019 퇴직급여 계산 라우터
+app.include_router(ifrs.router, prefix="/api/v4", tags=["IFRS 1019"])
+
+# 리포트 생성 라우터
+app.include_router(report.router, prefix="/api/v4", tags=["Report"])
 
 # TODO: 추가 마이그레이션 필요
 # app.include_router(auto_validate.router, tags=["Auto Validate"])
