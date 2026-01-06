@@ -541,3 +541,107 @@ async def download_final_data(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Excel 생성 오류: {str(e)}"
         )
+
+
+from pydantic import BaseModel
+from typing import List, Dict, Any
+
+class RevalidateRequest(BaseModel):
+    """재검증 요청"""
+    headers: List[str]
+    rows: List[List[Any]]
+    diagnostic_answers: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+
+
+@router.post("/revalidate")
+async def revalidate(request: RevalidateRequest) -> dict:
+    """
+    수정된 데이터로 재검증
+
+    - 프론트엔드에서 셀 수정 후 호출
+    - 파일 재업로드 없이 검증만 다시 실행
+    - 오류/경고 개수 재산정
+    """
+    import pandas as pd
+    from core.validators.validator import validate
+    from core.ai.matcher import match_headers
+    from core.validators.duplicate_detector import detect_duplicates
+
+    headers = request.headers
+    rows = request.rows
+    diagnostic_answers = request.diagnostic_answers or {}
+
+    if not headers or not rows:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="headers와 rows가 필요합니다."
+        )
+
+    secure_logger.info(f"재검증 요청: {len(rows)}행, 진단답변: {bool(diagnostic_answers)}")
+
+    # parsed 형태로 변환
+    parsed = {
+        "headers": headers,
+        "rows": rows,
+    }
+
+    # 1. 헤더 매칭 (캐시된 결과 사용 가능하면 사용)
+    matches = match_headers(parsed, sheet_type="재직자")
+
+    # 2. DataFrame 생성
+    df = pd.DataFrame(rows, columns=headers)
+
+    # 3. 검증 실행
+    validation = validate(
+        parsed=parsed,
+        matches=matches,
+        diagnostic_answers=diagnostic_answers,
+        use_ai=False,  # 재검증 시 AI 비활성화 (속도)
+        df=df
+    )
+
+    # 4. 중복 탐지
+    duplicates = detect_duplicates(
+        df=df,
+        headers=headers,
+        matches=matches.get("matches", [])
+    )
+
+    # 5. 신뢰도 재계산
+    confidence = estimate_confidence(parsed, matches, validation)
+
+    # 6. 이상치 탐지
+    anomalies = detect_anomalies(parsed, matches, validation)
+
+    # 중복을 anomalies에 추가
+    if duplicates.get("has_duplicates"):
+        for dup in duplicates.get("exact_duplicates", []):
+            anomalies["anomalies"].append({
+                "type": "duplicate",
+                "severity": "error",
+                "message": dup["message"]
+            })
+        anomalies["detected"] = True
+
+    # 에러/경고 카운트
+    errors = validation.get("errors", [])
+    warnings = validation.get("warnings", [])
+
+    result = {
+        "status": "ok",
+        "revalidated": True,
+        "confidence": confidence,
+        "errors": errors,
+        "warnings": warnings,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "duplicates": duplicates,
+        "anomalies": anomalies,
+        "validation": validation,
+        "layer2_comparison": validation.get("layer2_comparison"),
+    }
+
+    secure_logger.info(f"재검증 완료: 오류 {len(errors)}건, 경고 {len(warnings)}건")
+
+    return result

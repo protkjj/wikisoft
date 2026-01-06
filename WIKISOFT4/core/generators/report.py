@@ -111,7 +111,12 @@ def _create_summary_sheet(ws, validation_result: Dict, answers: Optional[Dict]):
     row = 3
     status = validation_result.get("status", "unknown")
     confidence = validation_result.get("confidence", {})
-    
+
+    # 에러/경고 개수 계산
+    validation_data = validation_result.get("steps", {}).get("validation", {})
+    error_count = len(validation_data.get("errors", []))
+    warning_count = len([w for w in validation_data.get("warnings", []) if isinstance(w, dict)])
+
     headers = ["항목", "값", "상태", "설명"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=row, column=col, value=header)
@@ -119,16 +124,29 @@ def _create_summary_sheet(ws, validation_result: Dict, answers: Optional[Dict]):
         cell.font = FONT_HEADER
         cell.border = BORDER_THIN
         cell.alignment = ALIGN_CENTER
-    
+
+    # status 이모지 결정
+    if status == "ok":
+        status_emoji = "✅"
+        status_desc = "검증 통과"
+    elif status == "warning":
+        status_emoji = "⚠️"
+        status_desc = "경고 있음"
+    else:
+        status_emoji = "❌"
+        status_desc = "오류 있음"
+
     # 데이터 행
     summary_data = [
-        ("검증 상태", status, "✅" if status == "ok" else "❌", "전체 검증 결과"),
-        ("신뢰도 점수", f"{confidence.get('score', 0) * 100:.1f}%", 
+        ("검증 상태", status, status_emoji, status_desc),
+        ("오류 개수", error_count, "❌" if error_count > 0 else "✅", "필수값 누락, 형식 오류 등"),
+        ("경고 개수", warning_count, "⚠️" if warning_count > 0 else "✅", "최저임금 미달, 중복 등"),
+        ("신뢰도 점수", f"{confidence.get('score', 0) * 100:.1f}%",
          "✅" if confidence.get('score', 0) >= 0.8 else "⚠️", confidence.get('grade', '')),
         ("분석 행 수", validation_result.get("steps", {}).get("parsed_summary", {}).get("row_count", 0),
          "✅", "파싱된 데이터 행 수"),
         ("이상 탐지", len(validation_result.get("anomalies", {}).get("anomalies", [])),
-         "⚠️" if validation_result.get("anomalies", {}).get("detected") else "✅", 
+         "⚠️" if validation_result.get("anomalies", {}).get("detected") else "✅",
          validation_result.get("anomalies", {}).get("recommendation", "")),
     ]
     
@@ -159,11 +177,72 @@ def _create_summary_sheet(ws, validation_result: Dict, answers: Optional[Dict]):
         row += 3
         ws.cell(row=row, column=1, value="📋 진단 답변").font = Font(bold=True, size=12)
         row += 1
-        
+
         for q_id, answer in answers.items():
             row += 1
             ws.cell(row=row, column=1, value=q_id)
             ws.cell(row=row, column=2, value=str(answer))
+
+    # 검증 이슈 목록 섹션 (errors + warnings)
+    validation = validation_result.get("steps", {}).get("validation", {})
+    errors = validation.get("errors", [])
+    warnings_list = validation.get("warnings", [])
+
+    if errors or warnings_list:
+        row += 3
+        ws.cell(row=row, column=1, value="🚨 검증 이슈 목록").font = Font(bold=True, size=12)
+        row += 1
+
+        # 이슈 테이블 헤더
+        issue_headers = ["구분", "행번호", "사원번호", "필드", "내용"]
+        for col, header in enumerate(issue_headers, 1):
+            cell = ws.cell(row=row, column=col, value=header)
+            cell.fill = STYLE_HEADER
+            cell.font = FONT_HEADER
+            cell.border = BORDER_THIN
+            cell.alignment = ALIGN_CENTER
+
+        # 오류 목록
+        for error in errors:
+            row += 1
+            ws.cell(row=row, column=1, value="❌ 오류").fill = STYLE_ERROR
+            ws.cell(row=row, column=1).border = BORDER_THIN
+
+            row_num = error.get("row", "")
+            ws.cell(row=row, column=2, value=row_num if row_num else "-").border = BORDER_THIN
+
+            emp_info = error.get("emp_info", "")
+            if emp_info and emp_info.startswith("사원번호 "):
+                emp_id = emp_info.replace("사원번호 ", "").split("(")[0].strip()
+            else:
+                emp_id = emp_info or "-"
+            ws.cell(row=row, column=3, value=emp_id).border = BORDER_THIN
+
+            ws.cell(row=row, column=4, value=error.get("field", error.get("column", ""))).border = BORDER_THIN
+            ws.cell(row=row, column=5, value=error.get("message", error.get("error", ""))).border = BORDER_THIN
+
+        # 경고 목록
+        for warning in warnings_list:
+            if isinstance(warning, dict):
+                row += 1
+                ws.cell(row=row, column=1, value="⚠️ 경고").fill = STYLE_WARNING
+                ws.cell(row=row, column=1).border = BORDER_THIN
+
+                row_num = warning.get("row", "")
+                ws.cell(row=row, column=2, value=row_num if row_num else "-").border = BORDER_THIN
+
+                emp_info = warning.get("emp_info", "")
+                if emp_info and emp_info.startswith("사원번호 "):
+                    emp_id = emp_info.replace("사원번호 ", "").split("(")[0].strip()
+                else:
+                    emp_id = emp_info or "-"
+                ws.cell(row=row, column=3, value=emp_id).border = BORDER_THIN
+
+                ws.cell(row=row, column=4, value=warning.get("field", warning.get("column", ""))).border = BORDER_THIN
+                ws.cell(row=row, column=5, value=warning.get("message", warning.get("warning", ""))).border = BORDER_THIN
+
+        # 컬럼 너비 재조정
+        ws.column_dimensions['E'].width = 60
 
 
 def _create_matching_sheet(ws, validation_result: Dict):

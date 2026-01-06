@@ -1,12 +1,52 @@
 import axios from 'axios'
-import type { DiagnosticQuestionsResponse, AutoValidateResult, ValidationRun } from './types'
+import type {
+  DiagnosticQuestionsResponse,
+  AutoValidateResult,
+  ValidationRun,
+  ValidationError,
+  ValidationWarningItem
+} from './types'
 import { API_BASE_URL } from './config/api'
+
+// 배치 처리 상태 응답
+export interface BatchStatusResponse {
+  job_id: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress?: number
+  result?: AutoValidateResult
+  error?: string
+}
+
+// 재검증 응답
+export interface RevalidateResponse {
+  errors: ValidationError[]
+  warnings: ValidationWarningItem[]
+  validation?: {
+    passed: boolean
+    errors?: ValidationError[]
+    warnings?: ValidationWarningItem[]
+    checks?: Array<{ check: string; passed: boolean; message?: string }>
+  }
+  confidence?: {
+    score: number
+    factors: {
+      match_confidence: number
+      error_count: number
+      warning_count: number
+    }
+  }
+  anomalies?: {
+    detected: boolean
+    anomalies: Array<{ type: string; severity: string; message: string; auto_fix?: string }>
+    recommendation: string
+  }
+}
 
 const API_BASE = API_BASE_URL
 
 export const api = {
 
-  // 13개 진단 질문 조회 (v3)
+  // 진단 질문 조회
   async getDiagnosticQuestions(): Promise<DiagnosticQuestionsResponse> {
     const response = await axios.get(`${API_BASE}/diagnostic-questions`)
     return response.data
@@ -50,8 +90,8 @@ export const api = {
     }
   },
 
-  // 배치 처리 상태 조회 (v3)
-  async getBatchStatus(jobId: string): Promise<any> {
+  // 배치 처리 상태 조회
+  async getBatchStatus(jobId: string): Promise<BatchStatusResponse> {
     const response = await axios.get(`${API_BASE}/batch-validate/${jobId}`)
     return response.data
   },
@@ -110,6 +150,20 @@ export const api = {
       errors
     }, {
       responseType: 'blob'
+    })
+    return response.data
+  },
+
+  // 수정된 데이터로 재검증
+  async revalidate(
+    headers: string[],
+    rows: string[][],
+    diagnosticAnswers?: Record<string, string | number> | null
+  ): Promise<RevalidateResponse> {
+    const response = await axios.post(`${API_BASE}/auto-validate/revalidate`, {
+      headers,
+      rows,
+      diagnostic_answers: diagnosticAnswers
     })
     return response.data
   }

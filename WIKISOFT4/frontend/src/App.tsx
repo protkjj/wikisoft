@@ -5,13 +5,11 @@ import ChatBot from './ChatBot'
 import FloatingChat, { FloatingChatHandle } from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
 import SheetEditorPro from './components/SheetEditorPro'
-// ValidationResults 컴포넌트는 현재 사용하지 않음
-// import ValidationResults from './ValidationResults'
 import ThemeToggle from './components/ThemeToggle'
 import { useSession } from './contexts/SessionContext'
 import { downloadBlob, generateTimestampedFilename } from './utils/download'
 import { getRequiredFieldLabels } from './constants/fields'
-import { handleError } from './utils/errorHandler'
+import { handleError, isRetryableError } from './utils/errorHandler'
 import { useValidationErrors } from './hooks/useValidationErrors'
 import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
@@ -33,7 +31,9 @@ function App() {
   const [file, setFile] = useState<File | null>(null)
   const [validationResult, setValidationResult] = useState<AutoValidateResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState<string>('처리 중...')
   const [error, setError] = useState<string>('')
+  const [lastAction, setLastAction] = useState<(() => void) | null>(null)
   const [showManualMapping, setShowManualMapping] = useState(false)
   const [currentMatches, setCurrentMatches] = useState<HeaderMatch[]>([])
 
@@ -60,17 +60,24 @@ function App() {
   }, [])
 
   const loadQuestions = async () => {
-    try {
-      setLoading(true)
-      const data = await api.getDiagnosticQuestions()
-      setQuestions(data.questions)
-      setError('')
-    } catch (err) {
-      const message = handleError('DiagnosticQuestions', err, '진단 질문을 불러오는데 실패했습니다. 서버가 실행 중인지 확인해주세요.')
-      setError(message)
-    } finally {
-      setLoading(false)
+    const doLoad = async () => {
+      try {
+        setLoading(true)
+        setLoadingMessage('📋 진단 질문 로딩 중...')
+        setLastAction(() => doLoad)
+        const data = await api.getDiagnosticQuestions()
+        setQuestions(data.questions)
+        setError('')
+        setLastAction(null)
+      } catch (err) {
+        const message = handleError('DiagnosticQuestions', err, '진단 질문을 불러오는데 실패했습니다.')
+        setError(message)
+        if (!isRetryableError(err)) setLastAction(null)
+      } finally {
+        setLoading(false)
+      }
     }
+    doLoad()
   }
 
   const loadLatestRuns = async () => {
@@ -118,105 +125,143 @@ function App() {
       return
     }
 
-    try {
-      setLoading(true)
-      setError('')
-      // 진단 질문 답변을 함께 전송하여 교차 검증
-      const { result, sessionId } = await api.validateWithRoster(file, answers)
-      if (sessionId) {
-        setSession(sessionId)
-      }
-      setValidationResult(result)
-      
-      // 매칭 결과 저장 (수동 매핑용)
-      if (result.steps?.matches?.matches) {
-        setCurrentMatches(result.steps.matches.matches)
-      }
-      
-      // 스프레드시트 데이터 저장 (수정용)
-      if (result.steps?.parsed_summary) {
-        const headers = result.steps.parsed_summary.headers || []
-        // API에서 all_rows 제공
-        const stepsAny = result.steps as any
-        const rows = stepsAny.all_rows || []
-        if (rows.length > 0) {
-          setSheetData([headers, ...rows.map((row: any) => 
-            headers.map((h: string) => String(row[h] ?? ''))
-          )])
+    const doValidate = async () => {
+      try {
+        setLoading(true)
+        setLoadingMessage('📄 파일 분석 중...')
+        setError('')
+        setLastAction(() => doValidate)
+
+        // 진단 질문 답변을 함께 전송하여 교차 검증
+        setLoadingMessage('🔍 데이터 검증 중...')
+        const { result, sessionId } = await api.validateWithRoster(file, answers)
+        if (sessionId) {
+          setSession(sessionId)
         }
+        setValidationResult(result)
+
+        // 매칭 결과 저장 (수동 매핑용)
+        setLoadingMessage('📊 결과 정리 중...')
+        if (result.steps?.matches?.matches) {
+          setCurrentMatches(result.steps.matches.matches)
+        }
+
+        // 스프레드시트 데이터 저장 (수정용)
+        if (result.steps?.parsed_summary) {
+          const headers = result.steps.parsed_summary.headers || []
+          const rows = result.steps.parsed_summary.all_rows || []
+          if (rows.length > 0) {
+            setSheetData([headers, ...rows.map((row) =>
+              headers.map((h) => String(row[h] ?? ''))
+            )])
+          }
+        }
+
+        setLastAction(null)
+        setCurrentStep('results')
+      } catch (err) {
+        const message = handleError('Validation', err, '검증 중 오류가 발생했습니다.')
+        setError(message)
+        if (!isRetryableError(err)) {
+          setLastAction(null)
+        }
+      } finally {
+        setLoading(false)
       }
-      
-      setCurrentStep('results')
-    } catch (err) {
-      const message = handleError('Validation', err, '검증 중 오류가 발생했습니다.')
-      setError(message)
-    } finally {
-      setLoading(false)
     }
+    doValidate()
   }
 
   const handleDownload = async () => {
     if (!validationResult || !session.sessionId) return
+    const sessionId = session.sessionId
 
-    try {
-      setLoading(true)
-      const blob = await api.downloadExcel(session.sessionId)
-      const filename = generateTimestampedFilename('검증리포트', 'xlsx')
-      downloadBlob(blob, filename)
-      setCurrentStep('download')
-    } catch (err) {
-      const message = handleError('DownloadExcel', err, 'Excel 리포트 다운로드에 실패했습니다.')
-      setError(message)
-    } finally {
-      setLoading(false)
+    const doDownload = async () => {
+      try {
+        setLoading(true)
+        setLoadingMessage('📥 리포트 생성 중...')
+        setError('')
+        setLastAction(() => doDownload)
+
+        const blob = await api.downloadExcel(sessionId)
+        const filename = generateTimestampedFilename('검증리포트', 'xlsx')
+        downloadBlob(blob, filename)
+        setLastAction(null)
+        setCurrentStep('download')
+      } catch (err) {
+        const message = handleError('DownloadExcel', err, 'Excel 리포트 다운로드에 실패했습니다.')
+        setError(message)
+        if (!isRetryableError(err)) setLastAction(null)
+      } finally {
+        setLoading(false)
+      }
     }
+    doDownload()
   }
 
   const handleDownloadFinalData = async () => {
     if (!validationResult || !session.sessionId) return
+    const sessionId = session.sessionId
 
-    try {
-      setLoading(true)
-      const blob = await api.downloadFinalData(session.sessionId)
-      const filename = generateTimestampedFilename('최종수정본', 'xlsx')
-      downloadBlob(blob, filename)
-    } catch (err) {
-      const message = handleError('DownloadFinalData', err, '최종 수정본 다운로드에 실패했습니다.')
-      setError(message)
-    } finally {
-      setLoading(false)
+    const doDownload = async () => {
+      try {
+        setLoading(true)
+        setLoadingMessage('📥 최종본 준비 중...')
+        setError('')
+        setLastAction(() => doDownload)
+
+        const blob = await api.downloadFinalData(sessionId)
+        const filename = generateTimestampedFilename('최종수정본', 'xlsx')
+        downloadBlob(blob, filename)
+        setLastAction(null)
+      } catch (err) {
+        const message = handleError('DownloadFinalData', err, '최종 수정본 다운로드에 실패했습니다.')
+        setError(message)
+        if (!isRetryableError(err)) setLastAction(null)
+      } finally {
+        setLoading(false)
+      }
     }
+    doDownload()
   }
 
   // 오류 목록만 다운로드
   const handleDownloadErrorsOnly = async () => {
     if (!validationResult || !file) return
 
-    try {
-      setLoading(true)
+    // editableErrors 사용 - error와 warning 모두 포함
+    const errorsToExport = editableErrors.map(err => ({
+      row: err.row ?? 0,
+      field: err.field ?? '',
+      message: err.message,
+      severity: err.severity
+    }))
 
-      // editableErrors 사용 - error와 warning 모두 포함
-      const errorsToExport = editableErrors.map(err => ({
-        row: err.row ?? 0,
-        field: err.field ?? '',
-        message: err.message,
-        severity: err.severity
-      }))
-
-      if (errorsToExport.length === 0) {
-        alert('다운로드할 항목이 없습니다.')
-        return
-      }
-
-      const blob = await api.downloadErrorsExcel(file.name, errorsToExport)
-      const filename = generateTimestampedFilename('의심목록', 'xlsx')
-      downloadBlob(blob, filename)
-    } catch (err) {
-      const message = handleError('DownloadErrors', err, '의심 목록 다운로드에 실패했습니다.')
-      setError(message)
-    } finally {
-      setLoading(false)
+    if (errorsToExport.length === 0) {
+      alert('다운로드할 항목이 없습니다.')
+      return
     }
+
+    const doDownload = async () => {
+      try {
+        setLoading(true)
+        setLoadingMessage('📥 의심 목록 생성 중...')
+        setError('')
+        setLastAction(() => doDownload)
+
+        const blob = await api.downloadErrorsExcel(file.name, errorsToExport)
+        const filename = generateTimestampedFilename('의심목록', 'xlsx')
+        downloadBlob(blob, filename)
+        setLastAction(null)
+      } catch (err) {
+        const message = handleError('DownloadErrors', err, '의심 목록 다운로드에 실패했습니다.')
+        setError(message)
+        if (!isRetryableError(err)) setLastAction(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+    doDownload()
   }
 
   const getStepStatus = (step: Step): 'active' | 'completed' | 'pending' => {
@@ -257,7 +302,7 @@ function App() {
         <div className={`step ${getStepStatus('questions')}`}>
           <div className="step-number">1</div>
           <h3>진단 질문</h3>
-          <p>13개 질문에 답변</p>
+          <p>명부관련 질문에 답변</p>
         </div>
         <div className={`step ${getStepStatus('upload')}`}>
           <div className="step-number">2</div>
@@ -279,15 +324,41 @@ function App() {
       )}
 
       {error && (
-        <div className="content-section" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444' }}>
-          <p style={{ color: '#ef4444', fontSize: '1.1rem' }}>❌ {error}</p>
+        <div className="content-section error-section" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444' }}>
+          <p style={{ color: '#ef4444', fontSize: '1.1rem', marginBottom: lastAction ? '1rem' : 0 }}>
+            ❌ {error}
+          </p>
+          {lastAction && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  setError('')
+                  lastAction()
+                }}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                🔄 다시 시도
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setError('')
+                  setLastAction(null)
+                }}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                취소
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {loading && currentStep !== 'upload' && (
         <div className="loading">
           <div className="spinner"></div>
-          <p>처리 중입니다...</p>
+          <p>{loadingMessage}</p>
         </div>
       )}
 
@@ -503,7 +574,7 @@ function App() {
             {loading && (
               <div className="file-processing">
                 <div className="spinner-small"></div>
-                <span>처리 중...</span>
+                <span>{loadingMessage}</span>
               </div>
             )}
           </div>
@@ -539,103 +610,73 @@ function App() {
               <h2 className="results-title">✅ 검증 결과</h2>
             </div>
 
-            {/* 메트릭 카드들 */}
-            <div className="result-summary">
-              <div className={`result-stat ${validationResult.status === 'ok' ? 'success' : 'error'}`}>
-                <div className="result-stat-value">
-                  {validationResult.status === 'ok' ? '완료' : '오류'}
-                </div>
-                <div className="result-stat-label">검증 상태</div>
-              </div>
-              <div className="result-stat success">
-                <div className="result-stat-value">
-                  {(() => {
-                    const matches = validationResult.steps?.matches?.matches || []
-                    const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
-                    const total = matches.length
-                    return `${mapped}/${total}`
-                  })()}
-                </div>
-                <div className="result-stat-label">컬럼 매핑</div>
-              </div>
-              <div className="result-stat warning">
-                <div className="result-stat-value">
-                  {(validationResult.anomalies?.anomalies?.length ?? 0) +
-                   (validationResult.steps?.validation?.errors?.length ?? 0) +
-                   (validationResult.steps?.validation?.warnings?.length ?? 0)}
-                </div>
-                <div className="result-stat-label">이상 탐지</div>
-              </div>
-              <div className="result-stat">
-                <div className="result-stat-value">
-                  {validationResult.steps?.parsed_summary?.row_count ?? 0}
-                </div>
-                <div className="result-stat-label">분석 행 수</div>
-              </div>
-            </div>
 
-          {/* 컬럼 매핑 테이블 */}
-          {validationResult.steps?.matches && (
-            <div className="mapping-section">
-              <div className="section-header collapsible" onClick={() => setShowMappingDetails(!showMappingDetails)}>
-                <h3>
-                  <span className={`collapse-icon ${showMappingDetails ? 'expanded' : ''}`}>▶</span>
-                  컬럼 매핑 결과 {(() => {
-                    const matches = currentMatches.length > 0 ? currentMatches : validationResult.steps?.matches?.matches || []
-                    const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
-                    const total = matches.length
-                    const percent = total > 0 ? Math.round((mapped / total) * 100) : 0
-                    return `(${mapped}/${total}, ${percent}% 성공)`
-                  })()}
-                </h3>
-                <button
-                  className="btn-secondary"
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
-                  onClick={(e) => { e.stopPropagation(); setShowManualMapping(true); }}
-                >
-                  수동 매핑
-                </button>
+          {/* 컬럼 매핑 테이블 - 100% 성공 시 숨김 */}
+          {validationResult.steps?.matches && (() => {
+            const matches = currentMatches.length > 0 ? currentMatches : validationResult.steps?.matches?.matches || []
+            const mapped = matches.filter((m: HeaderMatch) => m.target && !m.skipped).length
+            const total = matches.length
+            const percent = total > 0 ? Math.round((mapped / total) * 100) : 0
+
+            // 100% 매핑 성공 시 섹션 숨김
+            if (percent >= 100) return null
+
+            const requiredFields = getRequiredFieldLabels()
+            const sortedMatches = [...matches].sort((a: HeaderMatch, b: HeaderMatch) => {
+              const aRequired = requiredFields.includes(a.target || '')
+              const bRequired = requiredFields.includes(b.target || '')
+              if (aRequired && !bRequired) return -1
+              if (!aRequired && bRequired) return 1
+              return 0
+            })
+
+            return (
+              <div className="mapping-section">
+                <div className="section-header collapsible" onClick={() => setShowMappingDetails(!showMappingDetails)}>
+                  <h3>
+                    <span className={`collapse-icon ${showMappingDetails ? 'expanded' : ''}`}>▶</span>
+                    컬럼 매핑 결과 ({mapped}/{total}, {percent}% 성공)
+                  </h3>
+                  <button
+                    className="btn-secondary"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                    onClick={(e) => { e.stopPropagation(); setShowManualMapping(true); }}
+                  >
+                    수동 매핑
+                  </button>
+                </div>
+                {showMappingDetails && (
+                  <table className="mapping-table">
+                    <thead>
+                      <tr>
+                        <th>소스 헤더</th>
+                        <th></th>
+                        <th>타겟 필드</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedMatches.map((match: HeaderMatch, idx: number) => {
+                        const isRequired = requiredFields.includes(match.target || '')
+                        return (
+                          <tr key={idx}>
+                            <td>{match.source}</td>
+                            <td className="arrow">→</td>
+                            <td>
+                              {match.target ? (
+                                <span className={isRequired ? 'required-field' : 'optional-field'}>
+                                  {match.target} {isRequired ? '(필수)' : '[선택]'}
+                                </span>
+                              ) : '-'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
-              {showMappingDetails && <table className="mapping-table">
-                <thead>
-                  <tr>
-                    <th>소스 헤더</th>
-                    <th></th>
-                    <th>타겟 필드</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(currentMatches.length > 0 ? currentMatches : validationResult.steps.matches.matches || [])
-                    .sort((a: HeaderMatch, b: HeaderMatch) => {
-                      // 필수 필드 먼저 표시
-                      const requiredFields = getRequiredFieldLabels();
-                      const aRequired = requiredFields.includes(a.target || '');
-                      const bRequired = requiredFields.includes(b.target || '');
-                      if (aRequired && !bRequired) return -1;
-                      if (!aRequired && bRequired) return 1;
-                      return 0;
-                    })
-                    .map((match: HeaderMatch, idx: number) => {
-                      const requiredFields = getRequiredFieldLabels();
-                      const isRequired = requiredFields.includes(match.target || '');
-                      return (
-                    <tr key={idx}>
-                      <td>{match.source}</td>
-                      <td className="arrow">→</td>
-                      <td>
-                        {match.target ? (
-                          <span className={isRequired ? 'required-field' : 'optional-field'}>
-                            {match.target} {isRequired ? '(필수)' : '[선택]'}
-                          </span>
-                        ) : '-'}
-                      </td>
-                    </tr>
-                      );
-                    })}
-                </tbody>
-              </table>}
-            </div>
-          )}
+            )
+          })()}
 
           {/* 통합 검증 결과 (validation + anomalies 합쳐서 중복 제거) */}
           {(() => {
@@ -677,7 +718,7 @@ function App() {
             });
 
             // anomalies (중복 체크)
-            validationResult.anomalies?.anomalies?.forEach((a: any, idx: number) => {
+            validationResult.anomalies?.anomalies?.forEach((a, idx) => {
               const msg = a.message;
               // 이미 유사한 메시지가 있으면 스킵 (예: "중복 사원번호 2건"이 이미 상세 정보로 있으면)
               const isDuplicate = Array.from(seenMessages).some(seen => 
@@ -929,9 +970,9 @@ function App() {
                   ...validationResult.steps?.parsed_summary,
                   headers: newData[0],
                   all_rows: newData.slice(1).map(row => {
-                    const obj: any = {};
+                    const obj: Record<string, string | number | null> = {};
                     (newData[0] || []).forEach((header, idx) => {
-                      obj[header] = row[idx];
+                      obj[header] = row[idx] ?? null;
                     });
                     return obj;
                   })
@@ -948,25 +989,49 @@ function App() {
         onRevalidate={async (updatedData) => {
           // 수정된 데이터로 재검증 API 호출
           try {
-            // 현재는 간단히 빈 배열 반환 (실제 구현 필요)
-            // TODO: 백엔드에 수정된 데이터 전송하여 재검증
+            const headers = updatedData[0];
+            const rows = updatedData.slice(1);
 
-            // 임시: 수정된 셀의 에러만 제거
-            const newErrors = editableErrors.filter(err => {
-              // 수정된 행/필드가 있으면 해당 에러 제거
-              const headers = updatedData[0];
-              const colIdx = headers.indexOf(err.field || '');
-              if (colIdx === -1 || !err.row) return true;
+            const result = await api.revalidate(
+              headers,
+              rows,
+              Object.keys(answers).length > 0 ? answers : null
+            );
 
-              const dataRowIdx = err.row - 2; // API row → 데이터 인덱스
-              if (dataRowIdx < 0 || dataRowIdx >= updatedData.length - 1) return true;
+            // 에러/경고 합치기 (ValidationItem 형식으로 변환)
+            const newErrors = [
+              ...(result.errors || []).map((e) => ({
+                severity: 'error' as const,
+                message: e.message || e.error || e.reason || '오류',
+                row: e.row,
+                field: e.field,
+                emp_info: e.emp_info,
+              })),
+              ...(result.warnings || []).map((w) => ({
+                severity: 'warning' as const,
+                message: w.message || w.warning || w.reason || '경고',
+                row: w.row,
+                field: w.field,
+                emp_info: w.emp_info,
+              })),
+            ];
 
-              // 값이 변경되었으면 에러 제거 (실제로는 재검증 필요)
-              return false;
-            });
+            // 부모 상태 업데이트
+            if (validationResult) {
+              setValidationResult({
+                ...validationResult,
+                steps: {
+                  ...validationResult.steps,
+                  ...(result.validation && { validation: result.validation }),
+                },
+                ...(result.confidence && { confidence: result.confidence }),
+                ...(result.anomalies && { anomalies: result.anomalies }),
+              });
+            }
 
             return newErrors;
           } catch (error) {
+            console.error('재검증 오류:', error);
             return editableErrors;
           }
         }}

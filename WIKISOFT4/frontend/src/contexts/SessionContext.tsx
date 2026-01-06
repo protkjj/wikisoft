@@ -21,7 +21,7 @@ const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<Session>(() => {
     // localStorage에서 세션 복원
-    const stored = localStorage.getItem('wikisoft3_session')
+    const stored = localStorage.getItem('wikisoft4_session')
     if (stored) {
       try {
         const parsed: Session = JSON.parse(stored)
@@ -39,9 +39,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // 세션이 변경될 때마다 localStorage 동기화
   useEffect(() => {
     if (session.sessionId) {
-      localStorage.setItem('wikisoft3_session', JSON.stringify(session))
+      localStorage.setItem('wikisoft4_session', JSON.stringify(session))
     } else {
-      localStorage.removeItem('wikisoft3_session')
+      localStorage.removeItem('wikisoft4_session')
     }
   }, [session])
 

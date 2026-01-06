@@ -39,7 +39,6 @@ def mask_value(value: str, pii_type: PIIType | None = None) -> str:
         PIIType.PHONE_KR: mask_phone,
         PIIType.PHONE: mask_phone,
         PIIType.EMAIL: mask_email,
-        PIIType.NAME: mask_name,
         PIIType.CARD_NUMBER: _mask_card,
         PIIType.BANK_ACCOUNT: _mask_bank_account,
         PIIType.BIRTH_DATE: mask_birth_date,
@@ -51,49 +50,6 @@ def mask_value(value: str, pii_type: PIIType | None = None) -> str:
         return masker(value)
 
     return value
-
-
-def mask_name(name: str) -> str:
-    """
-    Mask a Korean or English name.
-
-    Examples:
-        김철수 → 김*수
-        홍길동 → 홍*동
-        John Smith → J*** S****
-
-    Args:
-        name: Name to mask
-
-    Returns:
-        Masked name
-    """
-    if not name:
-        return name
-
-    # Check if Korean name
-    if re.match(r'^[가-힣]+$', name):
-        if len(name) == 2:
-            return name[0] + "*"
-        elif len(name) >= 3:
-            return name[0] + "*" * (len(name) - 2) + name[-1]
-        return "*"
-
-    # English name (first last)
-    parts = name.split()
-    if len(parts) >= 2:
-        masked_parts = []
-        for part in parts:
-            if len(part) <= 1:
-                masked_parts.append("*")
-            else:
-                masked_parts.append(part[0] + "*" * (len(part) - 1))
-        return " ".join(masked_parts)
-
-    # Single word name
-    if len(name) <= 1:
-        return "*"
-    return name[0] + "*" * (len(name) - 1)
 
 
 def mask_phone(phone: str) -> str:

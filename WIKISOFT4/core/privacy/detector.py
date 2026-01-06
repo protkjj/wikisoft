@@ -17,13 +17,8 @@ class PIIType(str, Enum):
     # Korean-specific
     SSN = "ssn"                    # 주민등록번호
     PHONE_KR = "phone_kr"          # 한국 전화번호
-    CARD_NUMBER = "card_number"    # 카드번호
-
     # Universal
-    EMAIL = "email"
     PHONE = "phone"
-    NAME = "name"
-    ADDRESS = "address"
     BIRTH_DATE = "birth_date"
     BANK_ACCOUNT = "bank_account"
 
@@ -53,13 +48,6 @@ PHONE_KR_PATTERNS = [
     re.compile(r'0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}'),     # Landline
 ]
 
-# Email pattern
-EMAIL_PATTERN = re.compile(
-    r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-)
-
-# Card number pattern (16 digits with optional separators)
-CARD_PATTERN = re.compile(r'\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}')
 
 # Bank account patterns (Korean banks)
 BANK_ACCOUNT_PATTERNS = [
@@ -72,10 +60,6 @@ DATE_PATTERNS = [
     re.compile(r'\d{2}[-./]\d{2}[-./]\d{4}'),  # DD-MM-YYYY
     re.compile(r'\d{8}'),                       # YYYYMMDD
 ]
-
-# Korean name pattern (2-4 Korean characters)
-KOREAN_NAME_PATTERN = re.compile(r'[가-힣]{2,4}')
-
 
 def _mask_ssn(value: str) -> str:
     """Mask SSN: 850101-1234567 → 850101-*******"""
@@ -91,33 +75,6 @@ def _mask_phone(value: str) -> str:
     elif len(clean) == 10:
         return f"{clean[:3]}-***-{clean[-4:]}"
     return clean[:3] + "*" * (len(clean) - 7) + clean[-4:]
-
-
-def _mask_email(value: str) -> str:
-    """Mask email: test@example.com → t***@example.com"""
-    if "@" not in value:
-        return "***"
-    local, domain = value.split("@", 1)
-    if len(local) <= 1:
-        masked = "*"
-    else:
-        masked = local[0] + "*" * (len(local) - 1)
-    return f"{masked}@{domain}"
-
-
-def _mask_card(value: str) -> str:
-    """Mask card: 1234-5678-9012-3456 → 1234-****-****-3456"""
-    clean = re.sub(r'[-\s]', '', value)
-    return f"{clean[:4]}-****-****-{clean[-4:]}"
-
-
-def _mask_name(value: str) -> str:
-    """Mask Korean name: 김철수 → 김*수"""
-    if len(value) == 2:
-        return value[0] + "*"
-    elif len(value) >= 3:
-        return value[0] + "*" * (len(value) - 2) + value[-1]
-    return "*"
 
 
 def detect_pii(value: str, field_name: str | None = None) -> list[PIIMatch]:
@@ -268,8 +225,6 @@ def get_pii_field_suggestions(field_name: str) -> list[PIIType]:
         suggestions.append(PIIType.PHONE_KR)
     if any(kw in field_lower for kw in ['이메일', 'email', 'mail']):
         suggestions.append(PIIType.EMAIL)
-    if any(kw in field_lower for kw in ['이름', 'name', '성명']):
-        suggestions.append(PIIType.NAME)
     if any(kw in field_lower for kw in ['주소', 'address', 'addr']):
         suggestions.append(PIIType.ADDRESS)
     if any(kw in field_lower for kw in ['생년월일', 'birth', 'birthday', '생일']):

@@ -17,6 +17,8 @@ from pydantic import BaseModel
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
+from core.memory.session_store import session_store
+
 router = APIRouter()
 
 # 퇴직급여 검증용 질문 목록 (23개)
@@ -134,8 +136,8 @@ async def auto_validate(
 ):
     """파일 업로드 및 자동 검증 (WIKISOFT3 호환)"""
 
-    # 세션 ID 생성
-    session_id = x_session_id or str(uuid4())
+    # 세션 ID 생성 또는 재사용
+    session_id = session_store.get_or_create(x_session_id)
 
     # 파일 검증
     if not file.filename:
@@ -214,8 +216,18 @@ async def auto_validate(
             for row in rows_data
         ]
 
+        # status 동적 설정: errors 있으면 "error", warnings만 있으면 "warning", 둘 다 없으면 "ok"
+        errors = validation.get("errors", [])
+        warnings_list = validation.get("warnings", [])
+        if errors:
+            status = "error"
+        elif warnings_list:
+            status = "warning"
+        else:
+            status = "ok"
+
         result = {
-            "status": "ok",
+            "status": status,
             "session_id": session_id,
             "confidence": confidence,
             "anomalies": anomalies,
@@ -232,6 +244,12 @@ async def auto_validate(
                 "report": report,
             },
         }
+
+        # 세션에 결과 저장 (리포트 다운로드용)
+        session_store.set(session_id, "validation_result", result)
+        session_store.set(session_id, "parsed_data", parsed)
+        session_store.set(session_id, "diagnostic_answers", diagnostic_answers)
+        session_store.set(session_id, "filename", file.filename)
 
         return result
 
@@ -261,6 +279,212 @@ async def auto_validate(
             status_code=500,
             detail=f"검증 오류: {str(e)}"
         )
+
+
+# ========================================
+# 재검증 API
+# ========================================
+
+class RevalidateRequest(BaseModel):
+    """재검증 요청"""
+    headers: List[str]
+    rows: List[List[Any]]
+    diagnostic_answers: Optional[Dict[str, Any]] = None
+
+
+@router.post("/api/auto-validate/revalidate")
+async def revalidate(request: RevalidateRequest):
+    """수정된 데이터로 재검증 수행
+
+    사용자가 UI에서 데이터를 수정한 후 재검증 버튼을 누르면 호출됨.
+    Layer 1(형식), Layer 2(집계), AI 검증을 다시 실행하여
+    오류/경고 개수를 재산정함.
+    """
+    try:
+        from core.validators.validator import validate
+        from core.ai.matcher import match_headers
+        from core.agent.confidence import estimate_confidence, detect_anomalies
+        from core.validators.duplicate_detector import detect_duplicates
+        import pandas as pd
+
+        headers = request.headers
+        rows = request.rows
+        diagnostic_answers = request.diagnostic_answers or {}
+
+        # parsed 형식으로 변환
+        parsed = {
+            "headers": headers,
+            "rows": [dict(zip(headers, row)) for row in rows]
+        }
+
+        # DataFrame 생성
+        df = pd.DataFrame(rows, columns=headers)
+
+        # 헤더 재매칭
+        matches = match_headers(parsed, sheet_type="재직자")
+
+        # 검증 재실행
+        validation = validate(
+            parsed=parsed,
+            matches=matches,
+            diagnostic_answers=diagnostic_answers,
+            df=df
+        )
+
+        # 신뢰도/이상치 재분석
+        confidence = estimate_confidence(parsed, matches, validation)
+        anomalies = detect_anomalies(parsed, matches, validation)
+
+        # 중복 재탐지
+        duplicates = detect_duplicates(
+            df=df,
+            headers=headers,
+            matches=matches.get("matches", [])
+        )
+
+        errors = validation.get("errors", [])
+        warnings = validation.get("warnings", [])
+
+        # status 동적 설정
+        if errors:
+            status = "error"
+        elif warnings:
+            status = "warning"
+        else:
+            status = "ok"
+
+        return {
+            "status": status,
+            "revalidated": True,
+            "confidence": confidence,
+            "anomalies": anomalies,
+            "duplicates": duplicates,
+            "errors": errors,
+            "warnings": warnings,
+            "error_count": len(errors),
+            "warning_count": len(warnings),
+            "checks": validation.get("checks", []),
+            "ai_reasoning": validation.get("ai_reasoning", []),
+            "layer2_comparison": validation.get("layer2_comparison"),
+            # 프론트엔드 호환성을 위해 validation 객체도 포함
+            "validation": validation,
+        }
+
+    except ImportError as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Core 모듈 로딩 실패: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"재검증 오류: {str(e)}"
+        )
+
+
+# ========================================
+# 검증 리포트 다운로드 API
+# ========================================
+
+@router.get("/api/auto-validate/download-excel")
+async def download_excel_report(x_session_id: Optional[str] = Header(None)):
+    """검증 결과를 Excel 리포트로 다운로드"""
+    if not x_session_id:
+        raise HTTPException(status_code=400, detail="세션 ID가 필요합니다")
+
+    # 세션에서 데이터 조회
+    validation_result = session_store.get(x_session_id, "validation_result")
+    parsed_data = session_store.get(x_session_id, "parsed_data")
+    diagnostic_answers = session_store.get(x_session_id, "diagnostic_answers")
+    filename = session_store.get(x_session_id, "filename") or "검증결과"
+
+    if not validation_result:
+        raise HTTPException(status_code=404, detail="세션 데이터가 없거나 만료되었습니다")
+
+    try:
+        from core.generators.report import generate_excel_report
+
+        # Excel 리포트 생성
+        excel_bytes = generate_excel_report(
+            validation_result=validation_result,
+            original_data=parsed_data,
+            answers=diagnostic_answers
+        )
+
+        # 파일명 생성
+        base_name = filename.rsplit(".", 1)[0] if "." in filename else filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{base_name}_검증리포트_{timestamp}.xlsx"
+
+        return StreamingResponse(
+            BytesIO(excel_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"}
+        )
+
+    except ImportError as e:
+        raise HTTPException(status_code=500, detail=f"리포트 생성 모듈 로딩 실패: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"리포트 생성 오류: {str(e)}")
+
+
+@router.get("/api/auto-validate/download-final-data")
+async def download_final_data(x_session_id: Optional[str] = Header(None)):
+    """최종 수정본 다운로드 (매핑된 데이터)"""
+    if not x_session_id:
+        raise HTTPException(status_code=400, detail="세션 ID가 필요합니다")
+
+    # 세션에서 데이터 조회
+    parsed_data = session_store.get(x_session_id, "parsed_data")
+    filename = session_store.get(x_session_id, "filename") or "최종수정본"
+
+    if not parsed_data:
+        raise HTTPException(status_code=404, detail="세션 데이터가 없거나 만료되었습니다")
+
+    try:
+        headers = parsed_data.get("headers", [])
+        rows = parsed_data.get("rows", [])
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "재직자명부"
+
+        # 헤더 스타일
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True, size=11)
+
+        # 헤더 작성
+        for col_idx, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+
+        # 데이터 작성
+        for row_idx, row in enumerate(rows, start=2):
+            if isinstance(row, dict):
+                for col_idx, header in enumerate(headers, start=1):
+                    ws.cell(row=row_idx, column=col_idx, value=row.get(header, ""))
+            else:
+                for col_idx, value in enumerate(row, start=1):
+                    ws.cell(row=row_idx, column=col_idx, value=value)
+
+        # 파일명 생성
+        base_name = filename.rsplit(".", 1)[0] if "." in filename else filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{base_name}_최종수정본_{timestamp}.xlsx"
+
+        excel_buffer = BytesIO()
+        wb.save(excel_buffer)
+        excel_buffer.seek(0)
+
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(output_filename)}"}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 생성 오류: {str(e)}")
 
 
 @router.get("/api/windmill/latest")
@@ -368,7 +592,7 @@ async def export_errors(request: ExportErrorsRequest):
         header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
         # 헤더 작성
-        headers = ["행번호", "필드명", "오류 내용", "심각도"]
+        headers = ["행번호", "사원번호", "필드명", "오류 내용", "심각도"]
         for col_idx, header in enumerate(headers, start=1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.fill = header_fill
@@ -378,13 +602,24 @@ async def export_errors(request: ExportErrorsRequest):
         # 데이터 작성
         for row_idx, error in enumerate(request.errors, start=2):
             ws.cell(row=row_idx, column=1, value=error.get('row', ''))
-            ws.cell(row=row_idx, column=2, value=error.get('field', ''))
 
-            message_cell = ws.cell(row=row_idx, column=3, value=error.get('message', ''))
+            # 사원번호 추출 (emp_info에서 "사원번호 xxx" 형식 처리)
+            emp_info = error.get('emp_info', '')
+            if emp_info and emp_info.startswith('사원번호 '):
+                emp_id = emp_info.replace('사원번호 ', '').split('(')[0].strip()
+            elif emp_info and emp_info.startswith('행 '):
+                emp_id = ''  # 사원번호 없이 행 번호만 있는 경우
+            else:
+                emp_id = emp_info  # 그대로 사용
+            ws.cell(row=row_idx, column=2, value=emp_id)
+
+            ws.cell(row=row_idx, column=3, value=error.get('field', ''))
+
+            message_cell = ws.cell(row=row_idx, column=4, value=error.get('message', ''))
             message_cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
             severity = error.get('severity', 'warning')
-            severity_cell = ws.cell(row=row_idx, column=4, value=severity)
+            severity_cell = ws.cell(row=row_idx, column=5, value=severity)
             if severity == 'error':
                 severity_cell.fill = PatternFill(start_color="FFD6D6", end_color="FFD6D6", fill_type="solid")
                 severity_cell.font = Font(color="CC0000", bold=True)
@@ -394,10 +629,11 @@ async def export_errors(request: ExportErrorsRequest):
             severity_cell.alignment = Alignment(horizontal="center", vertical="center")
 
         # 컬럼 너비 설정
-        ws.column_dimensions['A'].width = 10
-        ws.column_dimensions['B'].width = 15
-        ws.column_dimensions['C'].width = 50
-        ws.column_dimensions['D'].width = 10
+        ws.column_dimensions['A'].width = 10   # 행번호
+        ws.column_dimensions['B'].width = 15   # 사원번호
+        ws.column_dimensions['C'].width = 15   # 필드명
+        ws.column_dimensions['D'].width = 50   # 오류 내용
+        ws.column_dimensions['E'].width = 10   # 심각도
 
         # 파일명 생성
         base_name = request.filename.rsplit(".", 1)[0]

@@ -68,6 +68,26 @@ export interface ValidationCheck {
   message?: string
 }
 
+// 검증 단계별 결과 타입
+export interface ValidationSteps {
+  parsed_summary?: {
+    headers: string[]
+    row_count: number
+    all_rows?: Record<string, string | number | null>[]
+  }
+  matches?: MappingResult
+  validation?: {
+    passed: boolean
+    errors?: ValidationError[]
+    warnings?: ValidationWarningItem[]
+    checks?: ValidationCheck[]
+  }
+  report?: {
+    summary?: string
+    details?: Record<string, string | number | boolean>
+  }
+}
+
 export interface ValidationResult {
   status: string
   confidence?: {
@@ -79,12 +99,7 @@ export interface ValidationResult {
     anomalies: Array<{ type: string; severity: string; message: string }>
     recommendation: string
   }
-  steps?: {
-    parsed_summary?: { headers: string[]; row_count: number }
-    matches?: any
-    validation?: any
-    report?: any
-  }
+  steps?: ValidationSteps
 }
 
 export interface AutoValidateResult {
@@ -112,18 +127,18 @@ export interface AutoValidateResult {
     parsed_summary: {
       headers: string[]
       row_count: number
-      all_rows?: Record<string, any>[]  // 행 데이터는 동적이므로 any 허용
+      all_rows?: Record<string, string | number | null>[]
     }
-    matches: MappingResult  // any → MappingResult
+    matches: MappingResult
     validation: {
       passed: boolean
-      errors?: ValidationError[]      // any[] → ValidationError[]
-      warnings?: ValidationWarningItem[]  // any[] → ValidationWarningItem[]
-      checks?: ValidationCheck[]      // any[] → ValidationCheck[]
+      errors?: ValidationError[]
+      warnings?: ValidationWarningItem[]
+      checks?: ValidationCheck[]
     }
-    report: {  // any → 구체적 타입
+    report: {
       summary?: string
-      details?: Record<string, any>
+      details?: Record<string, string | number | boolean>
     }
   }
 }
@@ -169,7 +184,7 @@ export interface AnomalyItem {
   message: string
   field?: string
   row?: number
-  value?: any
+  value?: string | number | boolean | null
   auto_fix?: string
 }
 
@@ -183,6 +198,15 @@ export interface AgentReasoningStep {
   error?: string
 }
 
+// 동적 질문 컨텍스트
+export interface DynamicQuestionContext {
+  header?: string
+  row?: number
+  field?: string
+  value?: string | number | null
+  suggestion?: string
+}
+
 // 동적 질문
 export interface DynamicQuestion {
   id: string
@@ -192,7 +216,7 @@ export interface DynamicQuestion {
   options: Array<{ value: string; label: string }>
   dynamic: boolean
   required?: boolean
-  context?: any
+  context?: DynamicQuestionContext
   reason?: string
 }
 

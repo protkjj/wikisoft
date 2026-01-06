@@ -3,7 +3,7 @@ Layer 1 검증 (코드 룰 기반) - v2에서 이식
 """
 import re
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -27,28 +27,57 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             return f"사원번호 {mask_emp_id(emp_id)}"
         return f"행 {idx+2}"
 
-    # 필수 필드 존재 확인 (경고만, 행별 검사는 계속 진행)
-    base_required = ["생년월일", "사원번호", "기준급여"]  # 핵심 필드만
-    optional_fields = ["이름", "제도구분"]  # 선택적
-    
-    for col in base_required:
-        if col not in df.columns:
-            warnings.append({"column": col, "warning": f"권장 필드 없음: {col}", "severity": "warning"})
+    # 필수 필드 8개 (값이 반드시 있어야 함)
+    REQUIRED_FIELDS = [
+        ("사원번호", ["사원번호", "사번"]),
+        ("생년월일", ["생년월일"]),
+        ("성별", ["성별"]),
+        ("입사일자", ["입사일자", "입사일"]),
+        ("기준급여", ["기준급여", "급여"]),
+        ("당년도퇴직금추계액", ["당년도퇴직금추계액", "당년도 퇴직금추계액", "퇴직금추계액"]),
+        ("차년도퇴직금추계액", ["차년도퇴직금추계액", "차년도 퇴직금추계액"]),
+        ("종업원구분", ["종업원구분", "종업원 구분", "직종구분"]),
+    ]
 
-    has_hire_date = ("입사일" in df.columns) or ("입사일자" in df.columns)
-    if not has_hire_date:
-        warnings.append({"column": "입사일|입사일자", "warning": "권장 필드 없음: 입사일", "severity": "warning"})
+    # 선택적 필드 4개 (값이 없어도 됨)
+    OPTIONAL_FIELDS = [
+        ("중간정산기준일", ["중간정산기준일", "중간정산 기준일"]),
+        ("중간정산액", ["중간정산액", "중간정산금액"]),
+        ("제도구분", ["제도구분", "제도 구분"]),
+        ("적용배수", ["적용배수", "배수"]),
+    ]
+
+    # 필드명 → 실제 컬럼명 매핑
+    def find_column(field_aliases: list) -> Optional[str]:
+        for alias in field_aliases:
+            if alias in df.columns:
+                return alias
+        return None
+
+    required_col_map = {}  # {"사원번호": "사번", ...} 실제 컬럼명 매핑
+    for field_name, aliases in REQUIRED_FIELDS:
+        found_col = find_column(aliases)
+        if found_col:
+            required_col_map[field_name] = found_col
+        else:
+            warnings.append({"column": field_name, "warning": f"필수 필드 없음: {field_name}", "severity": "warning"})
+
+    # 선택적 필드도 매핑 (검증용, 경고 없음)
+    optional_col_map = {}
+    for field_name, aliases in OPTIONAL_FIELDS:
+        found_col = find_column(aliases)
+        if found_col:
+            optional_col_map[field_name] = found_col
 
     # 행별 검사 (항상 실행)
     for idx, row in df.iterrows():
         emp_info = get_emp_info(row, idx)
-        
-        # 필수 값 누락 (존재하는 컬럼만 검사)
-        for req_col in ["사원번호", "생년월일", "기준급여"]:
-            if req_col in df.columns:
-                val = row.get(req_col)
-                if pd.isna(val) or str(val).strip() == "":
-                    errors.append({"row": idx, "emp_info": emp_info, "column": req_col, "error": "필수 값 누락", "severity": "error"})
+
+        # 필수 값 누락 (필수 필드만 검사)
+        for field_name, actual_col in required_col_map.items():
+            val = row.get(actual_col)
+            if pd.isna(val) or str(val).strip() == "":
+                errors.append({"row": idx, "emp_info": emp_info, "column": actual_col, "error": f"{field_name} 필수 값 누락", "severity": "error"})
 
         # 전화번호 형식
         phone_aliases = get_all_aliases("전화번호")

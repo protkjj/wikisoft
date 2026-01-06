@@ -41,7 +41,7 @@ def validate(
 
     checks.append({"name": "row_count", "status": "pass", "value": len(rows)})
 
-    # 진단 질문 인원수 vs 실제 행 수 비교
+    # 진단 질문 인원수 vs 실제 유니크 인원 수 비교
     if diagnostic_answers and rows:
         # 평가대상 인원 합계 (q21-1: 임원, q21-2: 직원, q21-3: 계약직)
         headcount_keys = ["q21-1", "q21-2", "q21-3"]
@@ -54,14 +54,41 @@ def validate(
                 except (ValueError, TypeError):
                     pass
 
-        actual_row_count = len(rows)
+        # 유니크 사원 수 계산 (중복 제외)
+        total_row_count = len(rows)
+        unique_emp_count = total_row_count  # 기본값: 전체 행 수
+        duplicate_count = 0
 
-        if total_reported > 0 and total_reported != actual_row_count:
-            diff = abs(total_reported - actual_row_count)
-            diff_percent = (diff / max(total_reported, actual_row_count)) * 100
+        # 사원번호 컬럼 찾기
+        emp_col = None
+        for col_name in ["사원번호", "사번"]:
+            if col_name in headers:
+                emp_col = col_name
+                break
+
+        if emp_col:
+            # rows가 dict 형식인지 확인
+            if rows and isinstance(rows[0], dict):
+                emp_ids = [row.get(emp_col) for row in rows if row.get(emp_col)]
+            else:
+                # list 형식인 경우
+                emp_col_idx = headers.index(emp_col)
+                emp_ids = [row[emp_col_idx] for row in rows if len(row) > emp_col_idx]
+
+            unique_emp_count = len(set(emp_ids))
+            duplicate_count = total_row_count - unique_emp_count
+
+        if total_reported > 0 and total_reported != unique_emp_count:
+            diff = abs(total_reported - unique_emp_count)
+            diff_percent = (diff / max(total_reported, unique_emp_count)) * 100
 
             severity = "error" if diff_percent > 10 else "warning"
-            message = f"진단 질문 인원({total_reported}명)과 파일 행 수({actual_row_count}행)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%)"
+
+            # 메시지에 중복 정보 포함
+            if duplicate_count > 0:
+                message = f"진단 질문 인원({total_reported}명)과 유니크 사원 수({unique_emp_count}명)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%) [전체 {total_row_count}행 중 중복 {duplicate_count}건 제외]"
+            else:
+                message = f"진단 질문 인원({total_reported}명)과 파일 행 수({unique_emp_count}행)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%)"
 
             if severity == "error":
                 errors.append({
