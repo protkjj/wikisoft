@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-01-07T12:54:18.928453",
+  "category": "layer1_error",
+  "input": {
+    "error_type": "성별",
+    "error_message": "성별 값 오류: 3",
+    "row_sample": [
+      "EMP003",
+      "2015-01-01",
+      "3",
+      "2020-03-01",
+      0,
+      2000000,
+      2200000,
+      "5",
+      "",
+      0
+    ]
+  },
+  "ai_response": {
+    "detected": false,
+    "source": "layer1"
+  },
+  "human_correction": {
+    "should_detect": true,
+    "rule": "성별 값 오류: 3"
+  },
+  "is_correct": false
+}

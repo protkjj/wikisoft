@@ -140,6 +140,36 @@ def mask_ssn(ssn: str) -> str:
     return "*" * len(clean)
 
 
+def mask_name(name: str) -> str:
+    """
+    Mask a Korean name.
+
+    Examples:
+        김철수 → 김*수
+        홍길동 → 홍*동
+        이영희 → 이*희
+        Michael → M*****l
+
+    Args:
+        name: Name to mask
+
+    Returns:
+        Masked name
+    """
+    if not name or len(name) < 2:
+        return name
+
+    name = name.strip()
+
+    if len(name) == 2:
+        return name[0] + "*"
+    elif len(name) == 3:
+        return name[0] + "*" + name[-1]
+    else:
+        # Longer names: keep first and last, mask middle
+        return name[0] + "*" * (len(name) - 2) + name[-1]
+
+
 def _mask_card(card: str) -> str:
     """Mask a credit card number."""
     clean = re.sub(r'[-\s]', '', card)

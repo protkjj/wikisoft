@@ -50,17 +50,17 @@ def calculate_aggregates(df: pd.DataFrame) -> Dict[str, Any]:
     if emp_type_col:
         counts = _count_by_employee_type(df, emp_type_col)
         result["headcount"] = {
-            "임원인원": counts.get("임원", 0),
-            "일반직원인원": counts.get("직원", 0),
-            "계약직인원": counts.get("계약직", 0),
-            "전체인원": len(df),
+            "임원인원": int(counts.get("임원", 0)),
+            "일반직원인원": int(counts.get("직원", 0)),
+            "계약직인원": int(counts.get("계약직", 0)),
+            "전체인원": int(len(df)),
         }
     else:
         result["headcount"] = {
             "임원인원": None,
             "일반직원인원": None,
             "계약직인원": None,
-            "전체인원": len(df),
+            "전체인원": int(len(df)),
         }
 
     # 2. 금액 합계 계산
@@ -86,7 +86,7 @@ def calculate_aggregates(df: pd.DataFrame) -> Dict[str, Any]:
 
     # 3. 요약 정보
     result["summary"] = {
-        "total_rows": len(df),
+        "total_rows": int(len(df)),
         "columns_found": list(df.columns),
     }
 
@@ -120,7 +120,9 @@ def _count_by_employee_type(df: pd.DataFrame, col: str) -> Dict[str, int]:
 def _sum_column(df: pd.DataFrame, col: str) -> float:
     """컬럼 합계 계산 (숫자가 아닌 값은 무시)"""
     try:
-        return pd.to_numeric(df[col], errors='coerce').sum()
+        result = pd.to_numeric(df[col], errors='coerce').sum()
+        # numpy.float64 → Python float 변환 (JSON 직렬화 호환)
+        return float(result) if pd.notna(result) else 0.0
     except Exception:
         return 0.0
 
@@ -164,20 +166,20 @@ def get_aggregates_by_question_id(df: pd.DataFrame) -> Dict[str, float]:
 
     result = {}
 
-    # 인원 집계
+    # 인원 집계 (int 보장)
     headcount = aggregates.get("headcount", {})
     if headcount.get("임원인원") is not None:
-        result["q21"] = headcount["임원인원"]
+        result["q21"] = int(headcount["임원인원"])
     if headcount.get("일반직원인원") is not None:
-        result["q22"] = headcount["일반직원인원"]
+        result["q22"] = int(headcount["일반직원인원"])
     if headcount.get("계약직인원") is not None:
-        result["q23"] = headcount["계약직인원"]
+        result["q23"] = int(headcount["계약직인원"])
 
-    # 금액 집계
+    # 금액 집계 (float 보장)
     amount = aggregates.get("amount", {})
     if amount.get("당년도퇴직금합계") is not None:
-        result["q27"] = amount["당년도퇴직금합계"]
+        result["q27"] = float(amount["당년도퇴직금합계"])
     if amount.get("중간정산합계") is not None:
-        result["q28"] = amount["중간정산합계"]
+        result["q28"] = float(amount["중간정산합계"])
 
     return result
