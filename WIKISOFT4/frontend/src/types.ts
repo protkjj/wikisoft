@@ -1,19 +1,31 @@
-// API 타입 정의 (v3)
+// API 타입 정의 (v4)
 export interface DiagnosticQuestion {
   id: string
   category: string
   question: string
-  type: 'number' | 'text' | 'choice'
+  type: 'number' | 'text' | 'choice' | 'date' | 'multiselect' | 'textarea' | 'group'
   unit?: string
   choices?: string[]
   mapping?: string
   validate_against?: string
   suggest_from?: string  // AI 기본값 제안용
   format?: string
+  parent?: string        // 상위 질문 ID (하위 항목일 경우)
+  subcategory?: string   // 세부 분류
+  calculated?: boolean   // 자동 계산 여부 (group 타입일 때)
   condition?: {          // 조건부 질문 - 이전 질문 답변에 따라 표시
     question_id: string  // 참조할 질문 ID
     answer: string       // 이 답변일 때만 현재 질문 표시
   }
+}
+
+// 섹션 정의
+export interface DiagnosticSection {
+  id: number
+  title: string
+  description: string
+  icon: string
+  categories: string[]  // 이 섹션에 포함되는 category 목록
 }
 
 export interface DiagnosticQuestionsResponse {

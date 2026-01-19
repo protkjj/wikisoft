@@ -774,7 +774,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
             {messages.map((msg, idx) => (
               <div key={idx} className={`message ${msg.role}`}>
                 <div className="message-avatar">
-                  {msg.role === 'user' ? '👤' : '🤖'}
+                  {msg.role === 'user' ? '👤' : 'AI'}
                 </div>
                 <div className="message-content">
                   {msg.cellRef && (
@@ -794,7 +794,7 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
             
             {isThinking && (
               <div className="message assistant">
-                <div className="message-avatar">🤖</div>
+                <div className="message-avatar">AI</div>
                 <div className="message-content">
                   <div className="message-bubble thinking">
                     <span className="dot" />

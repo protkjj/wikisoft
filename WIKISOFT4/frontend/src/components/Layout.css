@@ -27,8 +27,17 @@
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--primary-color, #3b82f6);
+  color: #0B1426;
   text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.logo:hover {
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .logo {
+  color: #E2E8F0;
 }
 
 .logo .version {
@@ -65,7 +74,19 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.version-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted, #94A3B8);
+  background: var(--bg-secondary, #f1f5f9);
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-right: 8px;
 }
 
 .user-menu {
@@ -129,13 +150,74 @@
   margin: 0;
 }
 
-/* Dark mode support */
+/* Dark mode support - 개선된 가독성 */
 [data-theme="dark"] .layout-header {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: #1E293B;
+  border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .layout-main {
+  background: #0F172A;
 }
 
 [data-theme="dark"] .layout-footer {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: #1E293B;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .logo {
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .logo .version {
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .nav-links a {
+  color: #CBD5E1;
+}
+
+[data-theme="dark"] .nav-links a:hover {
+  background: #334155;
+  color: #FFFFFF;
+}
+
+[data-theme="dark"] .nav-links a.active {
+  background: rgba(91, 138, 138, 0.2);
+  color: #7BA3A3;
+}
+
+[data-theme="dark"] .username {
+  color: #CBD5E1;
+}
+
+[data-theme="dark"] .logout-btn {
+  border-color: #334155;
+  color: #CBD5E1;
+}
+
+[data-theme="dark"] .logout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #EF4444;
+  color: #EF4444;
+}
+
+[data-theme="dark"] .login-link {
+  background: #5B8A8A;
+  color: #FFFFFF;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .login-link:hover {
+  background: #4A7373;
+}
+
+[data-theme="dark"] .layout-footer p {
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .version-tag {
+  background: #334155;
+  color: #94A3B8;
 }

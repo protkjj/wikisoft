@@ -160,26 +160,31 @@ def get_aggregates_by_question_id(df: pd.DataFrame) -> Dict[str, float]:
     DataFrame에서 집계값을 계산하여 질문 ID로 매핑된 딕셔너리 반환
 
     Layer 2 검증에서 직접 사용하는 형태:
-    {"q21": 10, "q22": 50, "q23": 5, "q27": 1000000, ...}
+    {"2-a.1": 10, "2-a.2": 50, "2-a.3": 5, ...}
+
+    프론트엔드 질문 ID (compat.py ROSTER_QUESTIONS 기준):
+    - 2-a.1: 재직자수 임원
+    - 2-a.2: 재직자수 직원
+    - 2-a.3: 재직자수 계약직
     """
     aggregates = calculate_aggregates(df)
 
     result = {}
 
-    # 인원 집계 (int 보장)
+    # 인원 집계 (int 보장) - 프론트엔드 질문 ID 사용
     headcount = aggregates.get("headcount", {})
     if headcount.get("임원인원") is not None:
-        result["q21"] = int(headcount["임원인원"])
+        result["2-a.1"] = int(headcount["임원인원"])
     if headcount.get("일반직원인원") is not None:
-        result["q22"] = int(headcount["일반직원인원"])
+        result["2-a.2"] = int(headcount["일반직원인원"])
     if headcount.get("계약직인원") is not None:
-        result["q23"] = int(headcount["계약직인원"])
+        result["2-a.3"] = int(headcount["계약직인원"])
 
-    # 금액 집계 (float 보장)
+    # 금액 집계 (float 보장) - 추후 프론트엔드 ID로 매핑 필요
     amount = aggregates.get("amount", {})
     if amount.get("당년도퇴직금합계") is not None:
-        result["q27"] = float(amount["당년도퇴직금합계"])
+        result["2-d"] = float(amount["당년도퇴직금합계"])  # 퇴직금 추계액 합계
     if amount.get("중간정산합계") is not None:
-        result["q28"] = float(amount["중간정산합계"])
+        result["2-e.A.2"] = float(amount["중간정산합계"])  # 중간정산금액
 
     return result

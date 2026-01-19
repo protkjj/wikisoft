@@ -20,22 +20,21 @@ BASIC_QUESTIONS = [
     {"id": "q14", "type": "choice", "category": "data_quality", "question": "퇴직자명부 - 평가기준일 퇴사자를 포함하셨습니까?", "choices": ["예", "아니오"], "mapping": "퇴직자명부포함"},
 ]
 
-# 인원 집계
+# 인원 집계 (프론트엔드 질문 ID 기준 - compat.py ROSTER_QUESTIONS와 일치)
 HEADCOUNT_AGGREGATES = [
-    {"id": "q21", "type": "number", "category": "headcount_aggregates", "question": "임원 인원은 몇 명인가요?", "mapping": "임원인원", "unit": "명", "validate_against": "headcount"},
-    {"id": "q22", "type": "number", "category": "headcount_aggregates", "question": "일반직원 인원은 몇 명인가요?", "mapping": "일반직원인원", "unit": "명", "validate_against": "headcount"},
-    {"id": "q23", "type": "number", "category": "headcount_aggregates", "question": "계약직 인원은 몇 명인가요?", "mapping": "계약직인원", "unit": "명", "validate_against": "headcount"},
-    {"id": "q24", "type": "number", "category": "headcount_aggregates", "question": "퇴직자 중 임원 인원은 몇 명인가요?", "mapping": "퇴직임원인원", "unit": "명", "validate_against": "headcount"},
-    {"id": "q25", "type": "number", "category": "headcount_aggregates", "question": "퇴직자 중 일반직원 인원은 몇 명인가요?", "mapping": "퇴직직원인원", "unit": "명", "validate_against": "headcount"},
-    {"id": "q26", "type": "number", "category": "headcount_aggregates", "question": "퇴직자 중 계약직 인원은 몇 명인가요?", "mapping": "퇴직계약직인원", "unit": "명", "validate_against": "headcount"},
+    {"id": "2-a.1", "type": "number", "category": "headcount_aggregates", "question": "재직자수 - 임원", "mapping": "재직자수_임원", "unit": "명", "validate_against": "headcount"},
+    {"id": "2-a.2", "type": "number", "category": "headcount_aggregates", "question": "재직자수 - 직원", "mapping": "재직자수_직원", "unit": "명", "validate_against": "headcount"},
+    {"id": "2-a.3", "type": "number", "category": "headcount_aggregates", "question": "재직자수 - 계약직", "mapping": "재직자수_계약직", "unit": "명", "validate_against": "headcount"},
+    {"id": "2-b.1", "type": "number", "category": "headcount_aggregates", "question": "퇴직자수 - 임원", "mapping": "퇴직자수_임원", "unit": "명"},
+    {"id": "2-b.2", "type": "number", "category": "headcount_aggregates", "question": "퇴직자수 - 직원", "mapping": "퇴직자수_직원", "unit": "명"},
+    {"id": "2-b.3", "type": "number", "category": "headcount_aggregates", "question": "퇴직자수 - 계약직", "mapping": "퇴직자수_계약직", "unit": "명"},
 ]
 
-# 금액 집계
+# 금액 집계 (프론트엔드 질문 ID 기준 - compat.py ROSTER_QUESTIONS와 일치)
 AMOUNT_AGGREGATES = [
-    {"id": "q27", "type": "number", "category": "amount_aggregates", "question": "현재 퇴직급여채무 합계는 얼마인가요?", "mapping": "퇴직금채무합계", "unit": "원", "validate_against": "amount", "format": "currency"},
-    {"id": "q28", "type": "number", "category": "amount_aggregates", "question": "중간정산 합계는 얼마인가요?", "mapping": "중간정산합계", "unit": "원", "validate_against": "amount", "format": "currency"},
-    {"id": "q29", "type": "number", "category": "amount_aggregates", "question": "DC전환금 합계는 얼마인가요?", "mapping": "DC전환합계", "unit": "원", "validate_against": "amount", "format": "currency"},
-    {"id": "q30", "type": "number", "category": "amount_aggregates", "question": "기타 반환금 합계는 얼마인가요?", "mapping": "기타반환합계", "unit": "원", "validate_against": "amount", "format": "currency"},
+    {"id": "2-d", "type": "number", "category": "amount_aggregates", "question": "퇴직금 추계액 합계", "mapping": "퇴직금추계액합계", "unit": "원", "validate_against": "amount", "format": "currency"},
+    {"id": "2-e.A.2", "type": "number", "category": "amount_aggregates", "question": "중간정산금액", "mapping": "중간정산합계", "unit": "원", "validate_against": "amount", "format": "currency"},
+    {"id": "2-e.A.3", "type": "number", "category": "amount_aggregates", "question": "DC전환금", "mapping": "DC전환합계", "unit": "원", "validate_against": "amount", "format": "currency"},
 ]
 
 ALL_QUESTIONS: List[Dict[str, Any]] = BASIC_QUESTIONS + HEADCOUNT_AGGREGATES + AMOUNT_AGGREGATES
@@ -77,11 +76,12 @@ QUESTION_SUMMARY = {
 }
 
 
-# 재직자 명부 검증용 13개 질문 ID (퇴직자/추계액 제외)
+# 재직자 명부 검증용 질문 ID (퇴직자/추계액 제외)
+# 프론트엔드 질문 ID 기준 (compat.py ROSTER_QUESTIONS와 일치)
 ROSTER_QUESTION_IDS = [
     "q1", "q2", "q3", "q4", "q6", "q7", "q8",  # 정책/제도 7개
     "q10", "q12", "q13",  # 데이터 품질 3개
-    "q21", "q22", "q23",  # 인원 집계 3개
+    "2-a.1", "2-a.2", "2-a.3",  # 인원 집계 3개 (재직자수: 임원/직원/계약직)
 ]
 
 

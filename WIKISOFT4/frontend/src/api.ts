@@ -72,11 +72,13 @@ export const api = {
   // 명부 파일 + 챗봇 답변으로 교차 검증
   async validateWithRoster(
     file: File,
-    chatbotAnswers: Record<string, string | number>
+    chatbotAnswers: Record<string, string | number | string[]>,
+    validationMode: 'roster' | 'full' = 'full'
   ): Promise<{ result: AutoValidateResult; sessionId: string | null }> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('chatbot_answers', JSON.stringify(chatbotAnswers))
+    formData.append('validation_mode', validationMode)
 
     const response = await axios.post(`${API_BASE}/auto-validate`, formData, {
       headers: {
@@ -158,7 +160,7 @@ export const api = {
   async revalidate(
     headers: string[],
     rows: string[][],
-    diagnosticAnswers?: Record<string, string | number> | null
+    diagnosticAnswers?: Record<string, string | number | string[]> | null
   ): Promise<RevalidateResponse> {
     const response = await axios.post(`${API_BASE}/auto-validate/revalidate`, {
       headers,

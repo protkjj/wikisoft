@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import './App.css'
 import { api } from './api'
-import ChatBot from './ChatBot'
+import DiagnosticWizard from './components/DiagnosticWizard'
 import FloatingChat, { FloatingChatHandle } from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
 import SheetEditorPro from './components/SheetEditorPro'
-import ThemeToggle from './components/ThemeToggle'
 import { useSession } from './contexts/SessionContext'
 import { downloadBlob, generateTimestampedFilename } from './utils/download'
 import { getRequiredFieldLabels } from './constants/fields'
@@ -14,6 +14,17 @@ import { useValidationErrors } from './hooks/useValidationErrors'
 import type { DiagnosticQuestion, AutoValidateResult, HeaderMatch, ValidationRun } from './types'
 
 type Step = 'onboarding' | 'questions' | 'upload' | 'results' | 'download'
+type ValidationMode = 'roster' | 'full'  // 명부만 / 전체 검증
+
+// 명부만 모드에서 보여줄 질문 ID 목록
+const ROSTER_MODE_QUESTION_IDS = [
+  // 섹션 1: 일반사항 전체
+  '1-1', '1-2', '1-3', '1-4', '1-5', '1-6',
+  // 섹션 2: 작성기준일, 재직자수 개별 항목 (그룹 헤더 제외)
+  '2-0', '2-a.1', '2-a.2', '2-a.3',
+  // 섹션 4: 정년퇴직연령
+  '4-1',
+]
 
 // 수정할 에러 정보
 interface EditTarget {
@@ -24,10 +35,42 @@ interface EditTarget {
 
 function App() {
   const { session, setSession, clearSession } = useSession()
+  const location = useLocation()
 
-  const [currentStep, setCurrentStep] = useState<Step>('onboarding')
+  // localStorage에서 초기 상태 복원
+  const [currentStep, setCurrentStep] = useState<Step>(() => {
+    const savedStep = sessionStorage.getItem('currentStep') as Step | null
+    return savedStep || 'onboarding'
+  })
+  const [validationMode, setValidationMode] = useState<ValidationMode>(() => {
+    const savedMode = localStorage.getItem('validationMode') as ValidationMode | null
+    return savedMode || 'full'
+  })
+
+  // 로그인 페이지에서 넘어올 때 모드 확인 (새로 로그인한 경우)
+  useEffect(() => {
+    const newLogin = sessionStorage.getItem('newLogin')
+    if (newLogin) {
+      sessionStorage.removeItem('newLogin')
+      const savedMode = localStorage.getItem('validationMode') as ValidationMode | null
+      if (savedMode) {
+        setValidationMode(savedMode)
+        // 온보딩 화면부터 시작 (사용자가 "검증 시작" 클릭 후 진행)
+        setCurrentStep('onboarding')
+      }
+    }
+  }, [location.key])
+
+  // currentStep 변경 시 sessionStorage에 저장 (새로고침 시 복원용)
+  useEffect(() => {
+    if (currentStep !== 'onboarding') {
+      sessionStorage.setItem('currentStep', currentStep)
+    } else {
+      sessionStorage.removeItem('currentStep')
+    }
+  }, [currentStep])
   const [questions, setQuestions] = useState<DiagnosticQuestion[]>([])
-  const [answers, setAnswers] = useState<Record<string, string | number>>({})
+  const [answers, setAnswers] = useState<Record<string, string | number | string[]>>({})
   const [file, setFile] = useState<File | null>(null)
   const [validationResult, setValidationResult] = useState<AutoValidateResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,10 +91,30 @@ function App() {
   const [showMappingDetails, setShowMappingDetails] = useState(false)
   const [showValidationDetails, setShowValidationDetails] = useState(false)
 
+  // 다시 검증 다이얼로그
+  const [showRetryDialog, setShowRetryDialog] = useState(false)
+
+  // 고객이 "문제없음"으로 확인한 항목들 (key: "row-field-message")
+  const [dismissedItems, setDismissedItems] = useState<Set<string>>(new Set())
+
   // 검증 결과에서 수정 가능한 에러/경고만 추출
-  const editableErrors = useValidationErrors(validationResult)
+  const allEditableErrors = useValidationErrors(validationResult)
+
+  // 고객이 확인한 항목 제외
+  const editableErrors = allEditableErrors.filter(err => {
+    const key = `${err.row}-${err.field}-${err.message}`
+    return !dismissedItems.has(key)
+  })
 
   const chatRef = useRef<FloatingChatHandle>(null)
+
+  // 검증 모드에 따라 질문 필터링
+  const filteredQuestions = useMemo(() => {
+    if (validationMode === 'roster') {
+      return questions.filter(q => ROSTER_MODE_QUESTION_IDS.includes(q.id))
+    }
+    return questions
+  }, [questions, validationMode])
 
   // 초기 로드: 진단 질문 조회
   useEffect(() => {
@@ -103,26 +166,32 @@ function App() {
     }
   }
 
-  const handleValidate = async () => {
+  const handleValidate = async (overrideAnswers?: Record<string, string | number | string[]>) => {
     if (!file) {
       alert('명부 파일을 선택해주세요')
       return
     }
 
-    // 조건부 질문 필터링 - 보이는 질문만 체크
-    const visibleQuestions = questions.filter(q => {
-      if (!q.condition) return true
-      const { question_id, answer: requiredAnswer } = q.condition
-      const currentAnswer = answers[question_id]
-      if (currentAnswer === undefined) return false
-      return currentAnswer === requiredAnswer
-    })
+    // 전달받은 answers 또는 현재 상태의 answers 사용
+    const currentAnswers = overrideAnswers ?? answers
 
-    // 필수 답변 체크 (0도 유효한 답변으로 처리) - 보이는 질문만!
-    const unansweredQuestions = visibleQuestions.filter(q => answers[q.id] === undefined)
-    if (unansweredQuestions.length > 0) {
-      alert(`${unansweredQuestions.length}개의 질문에 답변이 없습니다. 모든 질문에 답변해주세요.`)
-      return
+    // 명부만 검증 모드가 아닐 때만 진단 질문 답변 체크
+    if (validationMode === 'full') {
+      // 조건부 질문 필터링 - 보이는 질문만 체크
+      const visibleQuestions = questions.filter(q => {
+        if (!q.condition) return true
+        const { question_id, answer: requiredAnswer } = q.condition
+        const currentAnswer = currentAnswers[question_id]
+        if (currentAnswer === undefined) return false
+        return currentAnswer === requiredAnswer
+      })
+
+      // 필수 답변 체크 (0도 유효한 답변으로 처리) - 보이는 질문만!
+      const unansweredQuestions = visibleQuestions.filter(q => currentAnswers[q.id] === undefined)
+      if (unansweredQuestions.length > 0) {
+        alert(`${unansweredQuestions.length}개의 질문에 답변이 없습니다. 모든 질문에 답변해주세요.`)
+        return
+      }
     }
 
     const doValidate = async () => {
@@ -132,9 +201,14 @@ function App() {
         setError('')
         setLastAction(() => doValidate)
 
-        // 진단 질문 답변을 함께 전송하여 교차 검증
-        setLoadingMessage('🔍 데이터 검증 중...')
-        const { result, sessionId } = await api.validateWithRoster(file, answers)
+        // 명부만 검증: 명부 관련 답변만 / 전체 검증: 모든 진단 질문 답변 포함
+        const answersToSend = validationMode === 'roster'
+          ? Object.fromEntries(
+              Object.entries(currentAnswers).filter(([key]) => ROSTER_MODE_QUESTION_IDS.includes(key))
+            )
+          : currentAnswers
+        setLoadingMessage(validationMode === 'roster' ? '📋 명부 검증 중...' : '🔍 데이터 검증 중...')
+        const { result, sessionId } = await api.validateWithRoster(file, answersToSend, validationMode)
         if (sessionId) {
           setSession(sessionId)
         }
@@ -149,7 +223,8 @@ function App() {
         // 스프레드시트 데이터 저장 (수정용)
         if (result.steps?.parsed_summary) {
           const headers = result.steps.parsed_summary.headers || []
-          const rows = result.steps.parsed_summary.all_rows || []
+          // all_rows는 steps.all_rows에 있음 (parsed_summary 바깥)
+          const rows = result.steps.all_rows || result.steps.parsed_summary.all_rows || []
           if (rows.length > 0) {
             setSheetData([headers, ...rows.map((row) =>
               headers.map((h) => String(row[h] ?? ''))
@@ -265,10 +340,13 @@ function App() {
   }
 
   const getStepStatus = (step: Step): 'active' | 'completed' | 'pending' => {
-    const steps: Step[] = ['questions', 'upload', 'results', 'download']
+    // 파일 업로드는 온보딩에서 완료됨
+    if (step === 'onboarding') return 'completed'
+
+    const steps: Step[] = ['questions', 'results', 'download']
     const currentIndex = steps.indexOf(currentStep)
     const stepIndex = steps.indexOf(step)
-    
+
     if (stepIndex < currentIndex) return 'completed'
     if (stepIndex === currentIndex) return 'active'
     return 'pending'
@@ -291,33 +369,50 @@ function App() {
         <>
           <header className="header">
             <div className="header-content">
-              <h1>🤖 WIKI AGENT</h1>
+              <h1
+                className="header-logo"
+                onClick={() => {
+                  setCurrentStep('onboarding')
+                  setAnswers({})
+                  setFile(null)
+                  setValidationResult(null)
+                  setCurrentMatches([])
+                  setDismissedItems(new Set())
+                  sessionStorage.removeItem('currentStep')
+                  const input = document.getElementById('onboarding-file-input') as HTMLInputElement
+                  if (input) input.value = ''
+                }}
+              >
+                WIKI AGENT
+                <span className={`mode-badge ${validationMode}`}>
+                  {validationMode === 'roster' ? 'Basic' : 'Complete'}
+                </span>
+              </h1>
               <p>퇴직급여채무 명부 AI 자동검증 시스템</p>
             </div>
-            <ThemeToggle />
           </header>
 
           {/* 진행 단계 표시 */}
           <div className="steps">
-        <div className={`step ${getStepStatus('questions')}`}>
+        <div className={`step ${getStepStatus('onboarding')}`}>
           <div className="step-number">1</div>
-          <h3>진단 질문</h3>
-          <p>명부관련 질문에 답변</p>
+          <h3>파일</h3>
+          <p>Excel 명부 업로드</p>
         </div>
-        <div className={`step ${getStepStatus('upload')}`}>
+        <div className={`step ${getStepStatus('questions')}`}>
           <div className="step-number">2</div>
-          <h3>파일 업로드</h3>
-          <p>명부 Excel 선택</p>
+          <h3>진단</h3>
+          <p>예/아니오 질문</p>
         </div>
         <div className={`step ${getStepStatus('results')}`}>
           <div className="step-number">3</div>
-          <h3>검증 결과</h3>
-          <p>경고 및 차이 확인</p>
+          <h3>검증</h3>
+          <p>AI 자동 분석</p>
         </div>
         <div className={`step ${getStepStatus('download')}`}>
           <div className="step-number">4</div>
-          <h3>파일 다운로드</h3>
-          <p>최종 Excel 생성</p>
+          <h3>다운로드</h3>
+          <p>검증 결과 파일</p>
         </div>
       </div>
         </>
@@ -355,7 +450,7 @@ function App() {
         </div>
       )}
 
-      {loading && currentStep !== 'upload' && (
+      {loading && (
         <div className="loading">
           <div className="spinner"></div>
           <p>{loadingMessage}</p>
@@ -366,234 +461,112 @@ function App() {
       {currentStep === 'onboarding' && (
         <div className="onboarding">
           <header className="onboarding-header-bar">
-            <div className="onboarding-header-title">WIKI AGENT</div>
-            <div className="header-right">
-              <span className="version-badge">v4</span>
-              <ThemeToggle />
+            <div className="onboarding-header-title">
+              WIKI AGENT
+              <span className={`mode-badge ${validationMode}`}>
+                {validationMode === 'roster' ? 'Basic' : 'Complete'}
+              </span>
             </div>
           </header>
           <div className="onboarding-header">
             <h1 className="onboarding-title">
-              <span className="title-wiki">WIKI</span><span className="title-soft">AGENT</span>
+              <span className="title-wiki">WIKI</span> <span className="title-soft">AGENT</span>
             </h1>
             <p className="onboarding-subtitle">퇴직급여채무 AI 자동검증</p>
           </div>
 
-          <h2 className="onboarding-section-title">시작하기 전에</h2>
-
-          <div className="onboarding-steps">
-            <div className="onboarding-card">
-              <div className="card-number">1</div>
-              <div className="card-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <rect x="20" y="10" width="40" height="50" rx="4" stroke="currentColor" strokeWidth="3"/>
-                  <path d="M30 25 L35 30 L50 20" stroke="currentColor" strokeWidth="3" fill="none"/>
-                  <line x1="30" y1="35" x2="50" y2="35" stroke="currentColor" strokeWidth="2"/>
-                  <line x1="30" y1="42" x2="50" y2="42" stroke="currentColor" strokeWidth="2"/>
-                  <line x1="30" y1="49" x2="45" y2="49" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-              </div>
-              <h3 className="card-title">진단 질문</h3>
-              <p className="card-description">13개 질문에 답변</p>
+          <div className="onboarding-stepper">
+            <div className="stepper-step">
+              <div className="step-number-large">01</div>
+              <h3 className="step-label">파일</h3>
+              <p className="step-description">Excel 명부 업로드</p>
             </div>
 
-            <div className="onboarding-card">
-              <div className="card-number">2</div>
-              <div className="card-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <path d="M25 35 L25 60 C25 62 26 63 28 63 L52 63 C54 63 55 62 55 60 L55 35" stroke="currentColor" strokeWidth="3" fill="none"/>
-                  <path d="M20 35 L40 20 L60 35" stroke="currentColor" strokeWidth="3" fill="none"/>
-                  <path d="M35 45 L35 30 L45 30 L45 45" stroke="currentColor" strokeWidth="3"/>
-                  <polyline points="38,38 40,40 42,36" stroke="currentColor" strokeWidth="2" fill="none"/>
-                </svg>
-              </div>
-              <h3 className="card-title">파일 업로드</h3>
-              <p className="card-description">Excel 명부 파일 업로드</p>
+            <div className="stepper-connector"></div>
+
+            <div className="stepper-step">
+              <div className="step-number-large">02</div>
+              <h3 className="step-label">진단</h3>
+              <p className="step-description">예/아니오 질문</p>
             </div>
 
-            <div className="onboarding-card">
-              <div className="card-number">3</div>
-              <div className="card-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <circle cx="35" cy="35" r="18" stroke="currentColor" strokeWidth="3" fill="none"/>
-                  <line x1="48" y1="48" x2="60" y2="60" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                  <path d="M28 35 L32 39 L42 29" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                  <circle cx="55" cy="25" r="4" fill="currentColor"/>
-                  <circle cx="60" cy="30" r="3" fill="currentColor" opacity="0.7"/>
-                </svg>
-              </div>
-              <h3 className="card-title">AI 검증</h3>
-              <p className="card-description">자동 컬럼 매핑 및 이상 탐지</p>
+            <div className="stepper-connector"></div>
+
+            <div className="stepper-step">
+              <div className="step-number-large">03</div>
+              <h3 className="step-label">검증</h3>
+              <p className="step-description">AI 자동 분석</p>
             </div>
 
-            <div className="onboarding-card">
-              <div className="card-number">4</div>
-              <div className="card-icon">
-                <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-                  <rect x="25" y="20" width="30" height="35" rx="2" stroke="currentColor" strokeWidth="3" fill="none"/>
-                  <line x1="30" y1="28" x2="50" y2="28" stroke="currentColor" strokeWidth="2"/>
-                  <line x1="30" y1="35" x2="50" y2="35" stroke="currentColor" strokeWidth="2"/>
-                  <line x1="30" y1="42" x2="45" y2="42" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M35 50 L40 55 L45 50" stroke="currentColor" strokeWidth="3" fill="none" strokeLinecap="round"/>
-                  <line x1="40" y1="55" x2="40" y2="65" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <h3 className="card-title">결과 다운로드</h3>
-              <p className="card-description">검증된 Excel 파일 다운로드</p>
+            <div className="stepper-connector"></div>
+
+            <div className="stepper-step">
+              <div className="step-number-large">04</div>
+              <h3 className="step-label">다운로드</h3>
+              <p className="step-description">검증 결과 파일</p>
             </div>
           </div>
 
-          {/* 시작하기 버튼 + 준비물 - 최근 검증상태 위로 이동 */}
-          <div className="onboarding-footer">
-            <div className="file-requirements">
-              <div className="file-icon">
-                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                  <path d="M10 5 L25 5 L30 10 L30 35 L10 35 Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                  <path d="M25 5 L25 10 L30 10" stroke="currentColor" strokeWidth="2" fill="none"/>
-                  <text x="15" y="23" fontSize="8" fill="currentColor" fontWeight="bold">.xlsx</text>
-                  <text x="15" y="30" fontSize="8" fill="currentColor" fontWeight="bold">.xls</text>
-                </svg>
+          {/* 가로 레이아웃: 업로드(왼쪽) + 버튼(오른쪽) */}
+          <div className="onboarding-row">
+            <div className="onboarding-upload-section">
+              <h3 className="section-title">파일 업로드</h3>
+              <div className="onboarding-dropzone">
+                <div className="dropzone-icon">
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                    <path d="M12 36 L12 12 C12 10 14 9 15 9 L27 9 L36 18 L36 36 C36 38 34 39 33 39 L15 39 C14 39 12 38 12 36Z" stroke="currentColor" strokeWidth="2" fill="none"/>
+                    <path d="M27 9 L27 18 L36 18" stroke="currentColor" strokeWidth="2" fill="none"/>
+                    <line x1="24" y1="24" x2="24" y2="33" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <polyline points="19,28 24,24 29,28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <p className="dropzone-text">Excel 파일을 드래그하거나 클릭</p>
+                <div className="dropzone-formats">
+                  <span className="format-tag">.xlsx</span>
+                  <span className="format-tag">.xls</span>
+                </div>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileChange}
+                  className="file-input-hidden"
+                  id="onboarding-file-input"
+                />
+                <label htmlFor="onboarding-file-input" className="dropzone-label">파일 선택</label>
               </div>
-              <div className="file-text">
-                <strong>준비물</strong>
-                <p>.xlsx 또는 .xls 파일</p>
-              </div>
+
+              {file && (
+                <div className="onboarding-file-selected">
+                  <div className="file-check-icon">✓</div>
+                  <div className="file-info">
+                    <span className="file-name">{file.name}</span>
+                    <span className="file-size">({(file.size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                  <button
+                    className="file-remove-btn"
+                    onClick={() => {
+                      setFile(null)
+                      const input = document.getElementById('onboarding-file-input') as HTMLInputElement
+                      if (input) input.value = ''
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
-            <button 
+
+            <button
               className="btn-start"
               onClick={() => {
+                if (!file) {
+                  alert('먼저 Excel 파일을 업로드해주세요.')
+                  return
+                }
                 setCurrentStep('questions')
                 loadQuestions()
               }}
-            >
-              시작하기
-            </button>
-          </div>
-
-          {/* 최근 검증 상태 - 하단으로 이동 */}
-          <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--border-color, #e5e7eb)', borderRadius: '12px', background: 'var(--bg-secondary, #f9fafb)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-              <h3 style={{ margin: 0 }}>최근 검증 상태 (Windmill)</h3>
-              {runsLoading && <span style={{ color: 'var(--text-secondary)' }}>불러오는 중...</span>}
-            </div>
-            {latestRuns.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>최근 실행 기록이 없습니다.</p>
-            ) : (
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
-                {latestRuns.map((run, idx) => (
-                  <div
-                    key={`${run.run_id || run.timestamp}-${idx}`}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.75rem',
-                      borderRadius: '10px',
-                      background: 'var(--bg-primary, #fff)',
-                      border: '1px solid var(--border-color, #e5e7eb)'
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontWeight: 600 }}>
-                        {run.action || run.status}
-                      </span>
-                      <span style={{ color: 'var(--text-secondary)' }}>
-                        {new Date(run.timestamp).toLocaleString('ko-KR')}
-                      </span>
-                    </div>
-                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                      <span style={{ fontWeight: 600 }}>
-                        {formatConfidence(run.confidence)}
-                      </span>
-                      <span style={{ color: 'var(--text-secondary)' }}>
-                        {run.auto_approve ? '자동 승인' : '수동 검토'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Step 1: 진단 질문 (챗봇) */}
-      {currentStep === 'questions' && !loading && questions.length > 0 && (
-        <ChatBot
-          questions={questions}
-          initialAnswers={answers}  // 기존 답변 전달
-          onComplete={(completedAnswers) => {
-            setAnswers(completedAnswers)
-            setTimeout(() => setCurrentStep('upload'), 1000)
-          }}
-          onBack={() => {
-            setAnswers({})
-            loadQuestions()
-          }}
-        />
-      )}
-
-      {/* Step 2: 파일 업로드 */}
-      {currentStep === 'upload' && (
-        <div className="content-section">
-          <div className="upload-container">
-            <div className="upload-dropzone">
-              <div className="upload-icon">
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
-                  <path d="M16 48 L16 16 C16 13 18 12 20 12 L36 12 L48 24 L48 48 C48 50 46 51 44 51 L20 51 C18 51 16 50 16 48Z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                  <path d="M36 12 L36 24 L48 24" stroke="currentColor" strokeWidth="2" fill="none"/>
-                  <line x1="32" y1="32" x2="32" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <polyline points="24,36 32,44 40,36" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <h3 className="upload-title">Excel 파일을 여기에 드래그하세요</h3>
-              <div className="file-formats">
-                <span className="format-badge">.xlsx</span>
-                <span className="format-badge">.xls</span>
-              </div>
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                className="file-input-hidden"
-                id="file-input"
-              />
-              <label htmlFor="file-input" className="file-input-label">또는 파일 선택하기</label>
-            </div>
-
-            {file && (
-              <div className="file-selected">
-                <div className="file-check">✓</div>
-                <div className="file-details">
-                  <p className="file-name">{file.name}</p>
-                  <p className="file-size">({(file.size / 1024).toFixed(1)} KB)</p>
-                </div>
-              </div>
-            )}
-
-            {loading && (
-              <div className="file-processing">
-                <div className="spinner-small"></div>
-                <span>{loadingMessage}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="upload-actions">
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                setCurrentStep('questions')
-              }}
-            >
-              ← 이전
-            </button>
-            <button
-              className="btn-primary"
-              onClick={() => {
-                handleValidate()
-              }}
-              disabled={!file || loading}
+              disabled={!file}
             >
               검증 시작 →
             </button>
@@ -601,7 +574,25 @@ function App() {
         </div>
       )}
 
-      {/* Step 3: 검증 결과 */}
+      {/* Step 1: 진단 질문 (7페이지 위자드) */}
+      {currentStep === 'questions' && !loading && filteredQuestions.length > 0 && (
+        <DiagnosticWizard
+          questions={filteredQuestions}
+          initialAnswers={answers}
+          mode={validationMode}
+          onComplete={(completedAnswers) => {
+            setAnswers(completedAnswers)
+            // 파일이 이미 업로드되어 있으므로 바로 검증 실행
+            // 답변을 직접 전달하여 상태 업데이트 타이밍 문제 방지
+            handleValidate(completedAnswers)
+          }}
+          onBack={() => {
+            setCurrentStep('onboarding')
+          }}
+        />
+      )}
+
+      {/* Step 2: 검증 결과 */}
       {currentStep === 'results' && validationResult && (
         <div className="results-page">
           <div className="results-container">
@@ -688,12 +679,14 @@ function App() {
               key: string,
               row?: number,
               field?: string,
-              emp_info?: string
+              emp_info?: string,
+              originalMessage?: string,  // 원본 메시지 (dismiss key용)
+              dismissKey?: string        // dismiss 체크용 키
             }> = [];
             const seenMessages = new Set<string>();
 
-            // validation.errors & warnings (이미 상단에서 hook으로 계산됨)
-            editableErrors.forEach((item, idx) => {
+            // validation.errors & warnings (allEditableErrors 사용 - dismissed 포함)
+            allEditableErrors.forEach((item, idx) => {
               // 행 번호가 없으면 "행 null" 표시 안함
               const prefix = item.emp_info
                 ? item.emp_info
@@ -703,6 +696,7 @@ function App() {
               const msg = prefix
                 ? `${prefix}: ${item.field} - ${item.message}`
                 : `${item.field} - ${item.message}`;
+              const dismissKey = `${item.row}-${item.field}-${item.message}`;
               if (!seenMessages.has(msg)) {
                 seenMessages.add(msg);
                 allResults.push({
@@ -712,7 +706,9 @@ function App() {
                   key: `${item.severity}-${idx}`,
                   row: item.row,
                   field: item.field,
-                  emp_info: item.emp_info
+                  emp_info: item.emp_info,
+                  originalMessage: item.message,
+                  dismissKey: dismissKey
                 });
               }
             });
@@ -731,7 +727,19 @@ function App() {
               }
             });
             
-            if (allResults.length === 0) return null;
+            // 이상 없음
+            if (allResults.length === 0) {
+              return (
+                <div className="anomalies-section success">
+                  <div className="anomalies-header">
+                    <h3>✅ 검증 완료 - 이상 없음</h3>
+                  </div>
+                  <div className="success-message">
+                    <p>모든 검증 항목을 통과했습니다.</p>
+                  </div>
+                </div>
+              );
+            }
 
             // severity 순서로 정렬: question > error > warning > info
             const order = { question: 0, error: 1, warning: 2, info: 3 };
@@ -762,10 +770,12 @@ function App() {
                   )}
                 </div>
                 {showValidationDetails && <div className="anomalies-list">
-                  {allResults.map((item) => (
-                    <div key={item.key} className={`anomaly-item ${item.severity}`}>
+                  {allResults.map((item) => {
+                    const isDismissed = item.dismissKey && dismissedItems.has(item.dismissKey);
+                    return (
+                    <div key={item.key} className={`anomaly-item ${item.severity} ${isDismissed ? 'confirmed' : ''}`}>
                       <div className="anomaly-title">
-                        <span className="anomaly-icon">!</span>
+                        <span className="anomaly-icon">{isDismissed ? '✓' : '!'}</span>
                         {item.severity === 'question' ? <strong>AI 질문:</strong> : null} {item.message}
                       </div>
                       {item.details && (
@@ -774,33 +784,56 @@ function App() {
                         </div>
                       )}
                       <div className="anomaly-actions">
-                        {item.severity === 'question' && (
-                          <button className="btn-ai-answer" onClick={() => {
-                            chatRef.current?.setQuestion(item.message);
-                          }}>💬 AI와 대화로 답변</button>
-                        )}
-                        {(item.severity === 'error' || item.severity === 'warning') && item.field && sheetData.length > 0 && (
-                          <button 
-                            className={`btn-edit-value ${item.severity}`}
-                            onClick={() => {
-                              setEditTarget({
-                                row: item.row ?? 0,
-                                field: item.field ?? '',
-                                message: item.message
-                              });
-                              setShowSheetEditor(true);
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                            </svg>
-                            값 수정
-                          </button>
+                        {isDismissed ? (
+                          <span className="confirmed-badge">✅ 확인완료</span>
+                        ) : (
+                          <>
+                            {item.severity === 'question' && (
+                              <button className="btn-ai-answer" onClick={() => {
+                                chatRef.current?.setQuestion(item.message);
+                              }}>💬 AI와 대화로 답변</button>
+                            )}
+                            {(item.severity === 'error' || item.severity === 'warning') && item.field && sheetData.length > 0 && (
+                              <>
+                                <button
+                                  className={`btn-edit-value ${item.severity}`}
+                                  onClick={() => {
+                                    setEditTarget({
+                                      row: item.row ?? 0,
+                                      field: item.field ?? '',
+                                      message: item.originalMessage || item.message
+                                    });
+                                    setShowSheetEditor(true);
+                                  }}
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                  </svg>
+                                  값 수정
+                                </button>
+                                <button
+                                  className="btn-dismiss-value"
+                                  onClick={() => {
+                                    if (item.dismissKey) {
+                                      setDismissedItems(prev => new Set([...prev, item.dismissKey!]))
+                                    }
+                                  }}
+                                  title="이 값이 정확함을 확인합니다"
+                                >
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                  값 유지
+                                </button>
+                              </>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>}
               </div>
             );
@@ -809,10 +842,7 @@ function App() {
           <div className="actions">
             <button
               className="btn-secondary"
-              onClick={() => {
-                setCurrentStep('upload')
-                setValidationResult(null)
-              }}
+              onClick={() => setShowRetryDialog(true)}
             >
               ← 다시 검증
             </button>
@@ -914,12 +944,17 @@ function App() {
               <button
                 className="btn-secondary"
                 onClick={() => {
-                  setCurrentStep('questions')
+                  setCurrentStep('onboarding')
                   setAnswers({})
                   setFile(null)
                   setValidationResult(null)
                   setCurrentMatches([])
+                  setDismissedItems(new Set())
                   clearSession()
+                  // 세션 상태 초기화
+                  sessionStorage.removeItem('currentStep')
+                  const input = document.getElementById('onboarding-file-input') as HTMLInputElement
+                  if (input) input.value = ''
                 }}
               >
                 새로 시작
@@ -1036,6 +1071,49 @@ function App() {
           }
         }}
       />
+
+      {/* 다시 검증 다이얼로그 */}
+      {showRetryDialog && (
+        <div className="dialog-overlay" onClick={() => setShowRetryDialog(false)}>
+          <div className="dialog-content" onClick={(e) => e.stopPropagation()}>
+            <h3>다시 검증</h3>
+            <p>이전 답변을 유지하시겠습니까?</p>
+            <div className="dialog-actions">
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  // 아니오: 답변 초기화, 질문 화면으로
+                  setShowRetryDialog(false)
+                  setValidationResult(null)
+                  setFile(null)
+                  setAnswers({})
+                  setDismissedItems(new Set())
+                  setCurrentStep('onboarding')
+                  const input = document.getElementById('onboarding-file-input') as HTMLInputElement
+                  if (input) input.value = ''
+                }}
+              >
+                아니오 (처음부터)
+              </button>
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  // 예: 답변 유지, 파일만 다시 업로드
+                  setShowRetryDialog(false)
+                  setValidationResult(null)
+                  setFile(null)
+                  setDismissedItems(new Set())
+                  setCurrentStep('onboarding')
+                  const input = document.getElementById('onboarding-file-input') as HTMLInputElement
+                  if (input) input.value = ''
+                }}
+              >
+                예 (답변 유지)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating AI Chat */}
       <FloatingChat ref={chatRef} validationContext={validationResult} />

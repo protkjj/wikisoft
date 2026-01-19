@@ -21,101 +21,241 @@ from core.memory.session_store import session_store
 
 router = APIRouter()
 
-# 퇴직급여 검증용 질문 목록 (23개)
+# =============================================================================
+# 진단 질문 목록 (기초자료_퇴직급여 기반)
+# =============================================================================
+
 ROSTER_QUESTIONS = [
     # ========================================
-    # 기초자료_퇴직급여 (q1-q7)
+    # 1. 일반사항 (단답형)
     # ========================================
-    {"id": "q1", "type": "choice", "category": "basic_retirement",
-     "question": "사외적립자산 - 회계 장부 반영 금액과 일치합니까?",
-     "choices": ["예", "아니오"], "mapping": "사외적립자산"},
-    {"id": "q2", "type": "choice", "category": "basic_retirement",
-     "question": "정년 - 정년은 만 60세 입니까?",
-     "choices": ["예", "아니오"], "mapping": "정년"},
-    {"id": "q3", "type": "choice", "category": "basic_retirement",
-     "question": "임금피크제 - 임금피크제 미적용 기업입니까?",
-     "choices": ["예", "아니오"], "mapping": "임금피크제"},
-    {"id": "q4", "type": "choice", "category": "basic_retirement",
-     "question": "기타장기종업원급여 - 기타장기종업원급여 미적용 기업입니까?",
-     "choices": ["예", "아니오"], "mapping": "기타장기급여"},
-    {"id": "q5", "type": "choice", "category": "basic_retirement",
-     "question": "퇴직금제도 - 퇴직금제도는 법정제를 적용합니까?",
-     "choices": ["예", "아니오"], "mapping": "퇴직금제도"},
-    {"id": "q6", "type": "choice", "category": "basic_retirement",
-     "question": "연봉제/호봉제 - 근무기간에 따른 호봉 미적용 기업입니까?",
-     "choices": ["예", "아니오"], "mapping": "급여체계"},
-    {"id": "q7", "type": "choice", "category": "basic_retirement",
-     "question": "채권 등급 - 할인율 산출기준 채권 회사채 AA0 적용 기업입니까?",
-     "choices": ["예", "아니오"], "mapping": "할인율기준"},
+    {"id": "1-1", "type": "text", "category": "general",
+     "question": "회사명", "mapping": "회사명"},
+    {"id": "1-2", "type": "text", "category": "general",
+     "question": "담당자", "mapping": "담당자"},
+    {"id": "1-3", "type": "text", "category": "general",
+     "question": "전화번호", "mapping": "전화번호"},
+    {"id": "1-4", "type": "text", "category": "general",
+     "question": "이메일", "mapping": "이메일"},
+    {"id": "1-5", "type": "choice", "category": "general",
+     "question": "결산월",
+     "choices": ["1월", "2월", "3월", "4월", "5월", "6월",
+                 "7월", "8월", "9월", "10월", "11월", "12월"],
+     "mapping": "결산월"},
+    {"id": "1-6", "type": "text", "category": "general",
+     "question": "주소", "mapping": "주소"},
 
     # ========================================
-    # 재직자명부 (q8-q13)
+    # 2. 평가대상 및 퇴직급여 지급(환입) 현황 (숫자)
     # ========================================
-    {"id": "q8", "type": "choice", "category": "employee_roster",
-     "question": "1년 미만 재직자 - 1년 미만 재직자도 기재 하셨습니까?",
-     "choices": ["예", "아니오"], "mapping": "1년미만재직자"},
-    {"id": "q9", "type": "choice", "category": "employee_roster",
-     "question": "퇴직금 추계액 - 모든 재직자의 당년도, 차년도 퇴직금 추계액을 입력하셨습니까? (1년 미만 재직자의 경우 일할 계산)",
-     "choices": ["예", "아니오"], "mapping": "퇴직금추계액입력"},
-    {"id": "q10", "type": "choice", "category": "employee_roster",
-     "question": "기준급여 - 3개월 미만 재직자의 경우 한달 근무 시 지급받는 급여로 기재하셨습니까?",
-     "choices": ["예", "아니오"], "mapping": "기준급여"},
-    {"id": "q11", "type": "choice", "category": "employee_roster",
-     "question": "평가기준일 퇴사자 - 평가기준일 발생 퇴직금을 비용(미지급 포함) 처리 하셨습니까?",
-     "choices": ["예", "아니오"], "mapping": "평가기준일퇴사자비용처리"},
-    {"id": "q11-2", "type": "choice", "category": "employee_roster",
-     "question": "평가기준일 퇴사자 - 비용처리 안하셨다면 1월 퇴사 처리 예정입니까?",
-     "choices": ["예", "아니오"], "mapping": "1월퇴사처리",
-     "condition": {"question_id": "q11", "answer": "아니오"}},  # q11이 아니오일 때만 표시
-    {"id": "q12", "type": "choice", "category": "employee_roster",
-     "question": "중간정산 대상자 - 근퇴법 시행령 제3조에(퇴직금 중간정산 사유)에 해당됩니까?",
-     "choices": ["예", "아니오"], "mapping": "중간정산사유"},
+    {"id": "2-0", "type": "date", "category": "evaluation",
+     "question": "작성기준일", "mapping": "작성기준일", "format": "YYMMDD"},
+
+    # 2-a. 재직자수 (총액은 자동 계산)
+    {"id": "2-a", "type": "group", "category": "headcount_active",
+     "question": "재직자수", "mapping": "재직자수", "calculated": True},
+    {"id": "2-a.1", "type": "number", "category": "headcount_active",
+     "question": "임원", "mapping": "재직자수_임원", "unit": "명", "parent": "2-a"},
+    {"id": "2-a.2", "type": "number", "category": "headcount_active",
+     "question": "직원", "mapping": "재직자수_직원", "unit": "명", "parent": "2-a"},
+    {"id": "2-a.3", "type": "number", "category": "headcount_active",
+     "question": "계약직", "mapping": "재직자수_계약직", "unit": "명", "parent": "2-a"},
+
+    # 2-b. 퇴직자수 (총액은 자동 계산)
+    {"id": "2-b", "type": "group", "category": "headcount_retired",
+     "question": "퇴직자수", "mapping": "퇴직자수", "calculated": True},
+    {"id": "2-b.1", "type": "number", "category": "headcount_retired",
+     "question": "임원", "mapping": "퇴직자수_임원", "unit": "명", "parent": "2-b"},
+    {"id": "2-b.2", "type": "number", "category": "headcount_retired",
+     "question": "직원", "mapping": "퇴직자수_직원", "unit": "명", "parent": "2-b"},
+    {"id": "2-b.3", "type": "number", "category": "headcount_retired",
+     "question": "계약직", "mapping": "퇴직자수_계약직", "unit": "명", "parent": "2-b"},
+
+    # 2-c. 중간정산/DC전환자수
+    {"id": "2-c.1", "type": "number", "category": "headcount_special",
+     "question": "중간정산자수", "mapping": "중간정산자수", "unit": "명"},
+    {"id": "2-c.2", "type": "number", "category": "headcount_special",
+     "question": "DC전환자수", "mapping": "DC전환자수", "unit": "명"},
+
+    # 2-d. 퇴직금 추계액 (총액은 자동 계산)
+    {"id": "2-d", "type": "group", "category": "retirement_estimate",
+     "question": "퇴직금 추계액", "mapping": "퇴직금추계액", "calculated": True},
+    {"id": "2-d.1", "type": "number", "category": "retirement_estimate",
+     "question": "임원", "mapping": "퇴직금추계액_임원", "unit": "원", "parent": "2-d"},
+    {"id": "2-d.2", "type": "number", "category": "retirement_estimate",
+     "question": "직원", "mapping": "퇴직금추계액_직원", "unit": "원", "parent": "2-d"},
+    {"id": "2-d.3", "type": "number", "category": "retirement_estimate",
+     "question": "계약직", "mapping": "퇴직금추계액_계약직", "unit": "원", "parent": "2-d"},
+
+    # 2-e. 퇴직부채 감소(증가)액 (A/B/C 그룹)
+    {"id": "2-e", "type": "group", "category": "liability_change",
+     "question": "퇴직부채 감소(증가)액", "mapping": "퇴직부채변동액", "calculated": True},
+
+    # (A) 급여지급액
+    {"id": "2-e.A", "type": "group", "category": "liability_change",
+     "question": "(A) 급여지급액", "mapping": "변동_급여지급액", "calculated": True, "parent": "2-e"},
+    {"id": "2-e.A.1", "type": "number", "category": "liability_change",
+     "question": "퇴직금", "mapping": "변동_퇴직금", "unit": "원", "parent": "2-e.A"},
+    {"id": "2-e.A.2", "type": "number", "category": "liability_change",
+     "question": "중간정산금액", "mapping": "변동_중간정산금액", "unit": "원", "parent": "2-e.A"},
+    {"id": "2-e.A.3", "type": "number", "category": "liability_change",
+     "question": "DC전환금", "mapping": "변동_DC전환금", "unit": "원", "parent": "2-e.A"},
+
+    # (B) 관계사 전입(전출)액
+    {"id": "2-e.B", "type": "group", "category": "liability_change",
+     "question": "(B) 관계사 전입(전출)액", "mapping": "변동_관계사전입전출액", "calculated": True, "parent": "2-e"},
+    {"id": "2-e.B.1", "type": "number", "category": "liability_change",
+     "question": "전입액", "mapping": "변동_전입액", "unit": "원", "parent": "2-e.B"},
+    {"id": "2-e.B.2", "type": "number", "category": "liability_change",
+     "question": "전출액", "mapping": "변동_전출액", "unit": "원", "parent": "2-e.B"},
+
+    # (C) 사업결합(처분)액
+    {"id": "2-e.C", "type": "group", "category": "liability_change",
+     "question": "(C) 사업결합(처분)액", "mapping": "변동_사업결합처분액", "calculated": True, "parent": "2-e"},
+    {"id": "2-e.C.1", "type": "number", "category": "liability_change",
+     "question": "결합액", "mapping": "변동_사업결합액", "unit": "원", "parent": "2-e.C"},
+    {"id": "2-e.C.2", "type": "number", "category": "liability_change",
+     "question": "처분액", "mapping": "변동_사업처분액", "unit": "원", "parent": "2-e.C"},
 
     # ========================================
-    # 퇴직자명부 (q13)
+    # 3. 사외적립자산 현황 (숫자)
     # ========================================
-    {"id": "q13", "type": "choice", "category": "retiree_roster",
-     "question": "평가기준일 퇴사자 - 퇴직자명부에서 평가기준일 퇴사자를 제외하셨습니까?",
-     "choices": ["예", "아니오"], "mapping": "퇴직자명부퇴사자제외"},
+    # 3-a. 기초 잔액
+    {"id": "3-a", "type": "number", "category": "plan_assets",
+     "question": "기초 잔액", "mapping": "기초잔액", "unit": "원"},
+
+    # 3-b. 입금(수탁)액
+    {"id": "3-b", "type": "number", "category": "plan_assets",
+     "question": "입금(수탁)액", "mapping": "입금액", "unit": "원"},
+
+    # 3-c. 급여지급(인출)액
+    {"id": "3-c", "type": "group", "category": "plan_assets_withdrawal",
+     "question": "급여지급(인출)액", "mapping": "인출액", "calculated": True},
+    {"id": "3-c.1", "type": "number", "category": "plan_assets_withdrawal",
+     "question": "퇴직", "mapping": "인출_퇴직", "unit": "원", "parent": "3-c"},
+    {"id": "3-c.2", "type": "number", "category": "plan_assets_withdrawal",
+     "question": "중간정산", "mapping": "인출_중간정산", "unit": "원", "parent": "3-c"},
+    {"id": "3-c.3", "type": "number", "category": "plan_assets_withdrawal",
+     "question": "DC전환", "mapping": "인출_DC전환", "unit": "원", "parent": "3-c"},
+
+    # 3-d. 관계사전입(전출)액
+    {"id": "3-d", "type": "group", "category": "plan_assets_transfer",
+     "question": "관계사전입(전출)액", "mapping": "관계사전입전출액", "calculated": True},
+    {"id": "3-d.1", "type": "number", "category": "plan_assets_transfer",
+     "question": "전입", "mapping": "자산_전입액", "unit": "원", "parent": "3-d"},
+    {"id": "3-d.2", "type": "number", "category": "plan_assets_transfer",
+     "question": "전출", "mapping": "자산_전출액", "unit": "원", "parent": "3-d"},
+
+    # 3-e. 사업결합(처분)액
+    {"id": "3-e", "type": "group", "category": "plan_assets_merger",
+     "question": "사업결합(처분)액", "mapping": "사업결합처분액", "calculated": True},
+    {"id": "3-e.1", "type": "number", "category": "plan_assets_merger",
+     "question": "결합", "mapping": "자산_사업결합", "unit": "원", "parent": "3-e"},
+    {"id": "3-e.2", "type": "number", "category": "plan_assets_merger",
+     "question": "처분", "mapping": "자산_사업처분", "unit": "원", "parent": "3-e"},
+
+    # 3-f. 운용성과
+    {"id": "3-f", "type": "group", "category": "plan_assets_performance",
+     "question": "운용성과", "mapping": "운용성과", "calculated": True},
+    {"id": "3-f.1", "type": "number", "category": "plan_assets_performance",
+     "question": "투자수익", "mapping": "투자수익", "unit": "원", "parent": "3-f"},
+    {"id": "3-f.2", "type": "number", "category": "plan_assets_performance",
+     "question": "운용관리수수료", "mapping": "운용관리수수료", "unit": "원", "parent": "3-f"},
+
+    # 3-g. 기말 잔액
+    {"id": "3-g", "type": "group", "category": "plan_assets_ending",
+     "question": "기말 잔액", "mapping": "기말잔액", "calculated": True},
+    {"id": "3-g.1", "type": "number", "category": "plan_assets_ending",
+     "question": "퇴직연금", "mapping": "기말잔액_퇴직연금", "unit": "원", "parent": "3-g"},
+    {"id": "3-g.2", "type": "number", "category": "plan_assets_ending",
+     "question": "퇴직신탁", "mapping": "기말잔액_퇴직신탁", "unit": "원", "parent": "3-g"},
+    {"id": "3-g.3", "type": "number", "category": "plan_assets_ending",
+     "question": "퇴직보험", "mapping": "기말잔액_퇴직보험", "unit": "원", "parent": "3-g"},
+
+    # 3-h. 국민연금전환금
+    {"id": "3-h", "type": "number", "category": "plan_assets",
+     "question": "국민연금전환금 기말잔액", "mapping": "국민연금전환금", "unit": "원"},
+
+    # 3-i. 공시방법
+    {"id": "3-i", "type": "choice", "category": "plan_assets",
+     "question": "공시방법", "mapping": "공시방법",
+     "choices": ["순액법", "총액법"]},
 
     # ========================================
-    # 평가대상 인원 집계 (q21)
+    # 4. 퇴직급여제도의 주요 사항 (선택/입력)
     # ========================================
-    {"id": "q21-1", "type": "number", "category": "employee_headcount",
-     "question": "평가대상 인원 - 임원 인원은 몇 명인가요?",
-     "mapping": "임원인원", "unit": "명"},
-    {"id": "q21-2", "type": "number", "category": "employee_headcount",
-     "question": "평가대상 인원 - 일반직원 인원은 몇 명인가요?",
-     "mapping": "일반직원인원", "unit": "명"},
-    {"id": "q21-3", "type": "number", "category": "employee_headcount",
-     "question": "평가대상 인원 - 계약직 인원은 몇 명인가요?",
-     "mapping": "계약직인원", "unit": "명"},
+    {"id": "4-1", "type": "number", "category": "plan_details",
+     "question": "정년퇴직연령(만)", "mapping": "정년퇴직연령", "unit": "세"},
+    {"id": "4-2", "type": "choice", "category": "plan_details",
+     "question": "임금피크제", "mapping": "임금피크제",
+     "choices": ["예", "아니오"]},
+    {"id": "4-2.1", "type": "number", "category": "plan_details",
+     "question": "ㄴ 적용시작연령", "mapping": "임금피크제_시작연령", "unit": "세",
+     "parent": "4-2", "condition": {"question_id": "4-2", "answer": "예"}},
+    {"id": "4-3", "type": "choice", "category": "plan_details",
+     "question": "기타장기종업원급여", "mapping": "기타장기종업원급여",
+     "choices": ["예", "아니오"]},
+    {"id": "4-4", "type": "choice", "category": "plan_details",
+     "question": "지급률 가감", "mapping": "지급률가감",
+     "choices": ["+", "-", "없음"]},
+    {"id": "4-5", "type": "choice", "category": "plan_details",
+     "question": "제도구분", "mapping": "제도구분",
+     "choices": ["법정제", "누진제"]},
+    {"id": "4-6", "type": "choice", "category": "plan_details",
+     "question": "1년미만 근무기간 처리방법", "mapping": "1년미만처리방법",
+     "choices": ["일할", "월할(절사)", "월할(절상)"]},
+    {"id": "4-7", "type": "choice", "category": "plan_details",
+     "question": "축소/정산/사업결합/중간정산/DC전환 발생여부", "mapping": "특수사건발생",
+     "choices": ["예", "아니오"]},
+    {"id": "4-8", "type": "choice", "category": "plan_details",
+     "question": "일부 중간정산/DC전환 발생여부", "mapping": "일부중간정산발생",
+     "choices": ["예", "아니오"]},
+    {"id": "4-9", "type": "choice", "category": "plan_details",
+     "question": "임금인상률 임금체계", "mapping": "임금체계",
+     "choices": ["호봉제", "연봉제"]},
+    # 임금인상률 (5년간) - 작성기준일에 따라 동적 생성 필요
+    {"id": "4-10", "type": "group", "category": "wage_increase",
+     "question": "임금인상률 (최근 5년)", "mapping": "임금인상률", "calculated": False},
+    {"id": "4-10.1", "type": "number", "category": "wage_increase",
+     "question": "1년 전", "mapping": "임금인상률_Y1", "unit": "%", "parent": "4-10"},
+    {"id": "4-10.2", "type": "number", "category": "wage_increase",
+     "question": "2년 전", "mapping": "임금인상률_Y2", "unit": "%", "parent": "4-10"},
+    {"id": "4-10.3", "type": "number", "category": "wage_increase",
+     "question": "3년 전", "mapping": "임금인상률_Y3", "unit": "%", "parent": "4-10"},
+    {"id": "4-10.4", "type": "number", "category": "wage_increase",
+     "question": "4년 전", "mapping": "임금인상률_Y4", "unit": "%", "parent": "4-10"},
+    {"id": "4-10.5", "type": "number", "category": "wage_increase",
+     "question": "5년 전", "mapping": "임금인상률_Y5", "unit": "%", "parent": "4-10"},
 
     # ========================================
-    # 퇴직자 인원 집계 (q22)
+    # 5. 할인율 산출 기준 (선택)
     # ========================================
-    {"id": "q22-1", "type": "number", "category": "retiree_headcount",
-     "question": "퇴직자 인원 - 퇴직자 중 임원 수는 몇 명인가요?",
-     "mapping": "퇴직임원수", "unit": "명"},
-    {"id": "q22-2", "type": "number", "category": "retiree_headcount",
-     "question": "퇴직자 인원 - 퇴직자 중 직원 수는 몇 명인가요?",
-     "mapping": "퇴직직원수", "unit": "명"},
-    {"id": "q22-3", "type": "number", "category": "retiree_headcount",
-     "question": "퇴직자 인원 - 퇴직자 중 계약직 수는 몇 명인가요?",
-     "mapping": "퇴직계약직수", "unit": "명"},
+    {"id": "5-1", "type": "choice", "category": "discount_rate",
+     "question": "할인율 채권등급", "mapping": "할인율채권등급",
+     "choices": ["국공채", "회사채AAA", "AA+", "AA0", "AA-"]},
 
     # ========================================
-    # 퇴직금 추계액 (q23)
+    # 6. 사외적립자산 적립비율 (선택/입력)
     # ========================================
-    {"id": "q23-1", "type": "number", "category": "retirement_estimate",
-     "question": "퇴직금 추계액 - 임원 퇴직금 추계액은 얼마입니까?",
-     "mapping": "퇴직금추계액_임원", "unit": "원"},
-    {"id": "q23-2", "type": "number", "category": "retirement_estimate",
-     "question": "퇴직금 추계액 - 직원 퇴직금 추계액은 얼마입니까?",
-     "mapping": "퇴직금추계액_직원", "unit": "원"},
-    {"id": "q23-3", "type": "number", "category": "retirement_estimate",
-     "question": "퇴직금 추계액 - 계약직 퇴직금 추계액은 얼마입니까?",
-     "mapping": "퇴직금추계액_계약직", "unit": "원"},
+    {"id": "6-1", "type": "choice", "category": "funding_ratio",
+     "question": "적립비율", "mapping": "적립비율",
+     "choices": ["80.0% (목표 사외적립비율)", "현재 사외적립비율", "기타", "사외적립비율 없음 (0%)"]},
+    {"id": "6-1.1", "type": "number", "category": "funding_ratio",
+     "question": "기타 적립비율 입력", "mapping": "적립비율_기타", "unit": "%",
+     "condition": {"question_id": "6-1", "answer": "기타"}},
+
+    # ========================================
+    # 7. 특이사항 (주관식)
+    # ========================================
+    {"id": "7-1", "type": "textarea", "category": "special_notes",
+     "question": "임금피크제 관련 특이사항", "mapping": "특이사항_임금피크제"},
+    {"id": "7-2", "type": "textarea", "category": "special_notes",
+     "question": "지급률 가감 관련 특이사항", "mapping": "특이사항_지급률가감"},
+    {"id": "7-3", "type": "textarea", "category": "special_notes",
+     "question": "퇴직금 누진제 관련 특이사항", "mapping": "특이사항_누진제"},
+    {"id": "7-4", "type": "textarea", "category": "special_notes",
+     "question": "기타 특이사항 (축소, 정산, 사업결합, 중간정산, DC전환 등)",
+     "mapping": "특이사항_기타"},
 ]
 
 
@@ -132,9 +272,15 @@ async def get_diagnostic_questions():
 async def auto_validate(
     file: UploadFile = File(...),
     chatbot_answers: Optional[str] = Form(None),
+    validation_mode: Optional[str] = Form("full"),  # "roster" 또는 "full"
     x_session_id: Optional[str] = Header(None)
 ):
-    """파일 업로드 및 자동 검증 (WIKISOFT3 호환)"""
+    """파일 업로드 및 자동 검증 (WIKISOFT3 호환)
+
+    validation_mode:
+        - "roster": 명부 형식만 검증 (L1만, 금액 비교 없음)
+        - "full": 전체 검증 (L1 + L2 금액 비교 + AI)
+    """
 
     # 세션 ID 생성 또는 재사용
     session_id = session_store.get_or_create(x_session_id)
@@ -186,12 +332,13 @@ async def auto_validate(
         # DataFrame 생성
         df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
 
-        # 3. 검증
+        # 3. 검증 (mode: "roster" = 명부만, "full" = 전체)
         validation = validate(
             parsed=parsed,
             matches=matches,
             diagnostic_answers=diagnostic_answers,
-            df=df
+            df=df,
+            mode=validation_mode or "full"
         )
 
         # 4. 신뢰도/이상치 분석
@@ -576,6 +723,82 @@ async def export_xlsx(request: ExportRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"파일 생성 실패: {str(e)}")
+
+
+# ========================================
+# Agent Chat API (FloatingChat용)
+# ========================================
+
+class AgentAskRequest(BaseModel):
+    """AI 에이전트 질문 요청"""
+    message: str
+    context: Optional[Dict[str, Any]] = None  # 검증 컨텍스트 (선택)
+
+
+@router.post("/api/agent/ask")
+async def agent_ask(request: AgentAskRequest):
+    """AI 에이전트에게 질문 (FloatingChat용)
+
+    HR/Finance 검증 관련 질문에 답변하는 AI 어시스턴트
+    """
+    try:
+        from core.ai.llm_client import get_llm_client
+
+        # 시스템 프롬프트: 검증 도우미
+        system_prompt = """당신은 WIKISOFT 4.1의 AI 어시스턴트입니다.
+퇴직연금 계리평가를 위한 명부 검증 플랫폼의 전문 도우미입니다.
+
+주요 역할:
+- 진단 질문 작성 도움 (회사 정보, 재직자수, 퇴직급여 등)
+- 명부 검증 오류 해결 방법 안내
+- 퇴직연금/퇴직급여 관련 용어 설명
+- 엑셀 파일 형식 및 필수 필드 안내
+
+답변 규칙:
+- 간결하고 명확하게 답변
+- 한국어로 답변
+- 검증 관련 질문은 구체적인 해결책 제시
+- 모르는 내용은 솔직히 모른다고 답변"""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+        ]
+
+        # 검증 컨텍스트가 있으면 추가
+        if request.context:
+            context_str = f"현재 검증 상태:\n"
+            if request.context.get("errors"):
+                context_str += f"- 오류 {len(request.context['errors'])}건\n"
+            if request.context.get("warnings"):
+                context_str += f"- 경고 {len(request.context['warnings'])}건\n"
+            if request.context.get("step"):
+                context_str += f"- 현재 단계: {request.context['step']}\n"
+            messages.append({"role": "system", "content": context_str})
+
+        messages.append({"role": "user", "content": request.message})
+
+        # LLM 호출
+        client = get_llm_client()
+        response = client.chat(messages, temperature=0.7, max_tokens=500)
+
+        return {
+            "status": "ok",
+            "response": response
+        }
+
+    except ValueError as e:
+        # API 키 없음
+        return {
+            "status": "error",
+            "response": "AI 기능을 사용하려면 OpenAI API 키가 필요합니다. 관리자에게 문의하세요.",
+            "error": str(e)
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "response": "죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+            "error": str(e)
+        }
 
 
 @router.post("/api/export/errors")

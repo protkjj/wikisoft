@@ -48,6 +48,7 @@ class SecuritySettings(BaseSettings):
     class Config:
         env_prefix = "WIKISOFT4_"
         env_file = ".env"
+        extra = "ignore"  # 다른 환경변수 허용
 
 
 @lru_cache

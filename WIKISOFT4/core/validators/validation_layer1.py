@@ -11,15 +11,31 @@ from core.parsers.standard_schema import get_all_aliases
 from core.utils.date_utils import is_valid_yyyymmdd, normalize_date
 
 
-def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dict[str, Any]:
-    """Layer 1: 규칙/스키마 기반 유효성 검사."""
+def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: str = "full", matches: Optional[List[Dict]] = None) -> Dict[str, Any]:
+    """Layer 1: 규칙/스키마 기반 유효성 검사.
+
+    Args:
+        df: 검증할 DataFrame
+        diagnostic_answers: 진단 질문 답변
+        mode: 검증 모드 ("roster" = 명부만, "full" = 전체)
+              roster 모드에서는 금액 관련 필드 검증 제외
+        matches: AI 헤더 매칭 결과 (source → target 매핑)
+    """
     errors: List[Dict[str, Any]] = []
     warnings: List[Dict[str, Any]] = []
-    
+
+    # AI 매칭 결과를 표준필드명 → 실제컬럼명 맵으로 변환
+    # 예: {"종업원구분": "직종코드", "사원번호": "사번"}
+    ai_field_map: Dict[str, str] = {}
+    if matches:
+        for m in matches:
+            if m.get("target") and m.get("source"):
+                ai_field_map[m["target"]] = m["source"]
+
     def mask_emp_id(emp_id: Any) -> str:
         """사원번호 (마스킹 비활성화)"""
         return str(emp_id).strip()
-    
+
     def get_emp_info(row, idx) -> str:
         """사원번호 정보 문자열 생성"""
         emp_id = row.get("사원번호", "")
@@ -27,8 +43,8 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             return f"사원번호 {mask_emp_id(emp_id)}"
         return f"행 {idx+2}"
 
-    # 필수 필드 8개 (값이 반드시 있어야 함)
-    REQUIRED_FIELDS = [
+    # 필수 필드 (전체 모드: 8개, 명부만 모드: 금액 제외 5개)
+    REQUIRED_FIELDS_FULL = [
         ("사원번호", ["사원번호", "사번"]),
         ("생년월일", ["생년월일"]),
         ("성별", ["성별"]),
@@ -36,10 +52,21 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
         ("기준급여", ["기준급여", "급여"]),
         ("당년도퇴직금추계액", ["당년도퇴직금추계액", "당년도 퇴직금추계액", "퇴직금추계액"]),
         ("차년도퇴직금추계액", ["차년도퇴직금추계액", "차년도 퇴직금추계액"]),
-        ("종업원구분", ["종업원구분", "종업원 구분", "직종구분"]),
+        ("종업원구분", ["종업원구분", "종업원 구분", "직종구분", "직종 구분", "직원구분", "구분"]),
     ]
 
-    # 선택적 필드 4개 (값이 없어도 됨)
+    # 명부만 모드: 금액 관련 필드 제외
+    REQUIRED_FIELDS_ROSTER = [
+        ("사원번호", ["사원번호", "사번"]),
+        ("생년월일", ["생년월일"]),
+        ("성별", ["성별"]),
+        ("입사일자", ["입사일자", "입사일"]),
+        ("종업원구분", ["종업원구분", "종업원 구분", "직종구분", "직종 구분", "직원구분", "구분"]),
+    ]
+
+    REQUIRED_FIELDS = REQUIRED_FIELDS_ROSTER if mode == "roster" else REQUIRED_FIELDS_FULL
+
+    # 선택적 필드 (값이 없어도 됨)
     OPTIONAL_FIELDS = [
         ("중간정산기준일", ["중간정산기준일", "중간정산 기준일"]),
         ("중간정산액", ["중간정산액", "중간정산금액"]),
@@ -48,7 +75,14 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
     ]
 
     # 필드명 → 실제 컬럼명 매핑
-    def find_column(field_aliases: list) -> Optional[str]:
+    def find_column(field_name: str, field_aliases: list) -> Optional[str]:
+        # 1. AI 매칭 결과 우선 사용
+        if field_name in ai_field_map:
+            mapped_col = ai_field_map[field_name]
+            if mapped_col in df.columns:
+                return mapped_col
+
+        # 2. 별칭(alias)으로 직접 찾기 (fallback)
         for alias in field_aliases:
             if alias in df.columns:
                 return alias
@@ -56,7 +90,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
 
     required_col_map = {}  # {"사원번호": "사번", ...} 실제 컬럼명 매핑
     for field_name, aliases in REQUIRED_FIELDS:
-        found_col = find_column(aliases)
+        found_col = find_column(field_name, aliases)
         if found_col:
             required_col_map[field_name] = found_col
         else:
@@ -65,7 +99,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
     # 선택적 필드도 매핑 (검증용, 경고 없음)
     optional_col_map = {}
     for field_name, aliases in OPTIONAL_FIELDS:
-        found_col = find_column(aliases)
+        found_col = find_column(field_name, aliases)
         if found_col:
             optional_col_map[field_name] = found_col
 
@@ -108,19 +142,20 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                 if birth_year < 1945 or birth_year > 2010:
                     errors.append({"row": idx, "emp_info": emp_info, "column": "생년월일", "error": "생년월일 범위 오류", "severity": "error"})
 
-        # 급여: 양수 + 최저임금 체크
+        # 급여: 양수 + 최저임금 체크 (전체 모드에서만)
         # 2024년 최저임금: 시급 9,860원 × 209시간 = 월 2,060,740원
-        MIN_WAGE_MONTHLY = 2060740
-        for sal_col in ["급여", "기준급여"]:
-            if sal_col in df.columns:
-                try:
-                    sal = float(row[sal_col]) if not pd.isna(row[sal_col]) else 0
-                    if sal <= 0:
-                        errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 음수 또는 0", "severity": "error"})
-                    elif sal < MIN_WAGE_MONTHLY:
-                        warnings.append({"row": idx, "emp_info": emp_info, "column": sal_col, "warning": f"{sal_col} {sal:,.0f}원 - 최저임금(월 206만원) 미달", "severity": "warning"})
-                except (ValueError, TypeError):
-                    errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 형식 오류", "severity": "error"})
+        if mode == "full":
+            MIN_WAGE_MONTHLY = 2060740
+            for sal_col in ["급여", "기준급여"]:
+                if sal_col in df.columns:
+                    try:
+                        sal = float(row[sal_col]) if not pd.isna(row[sal_col]) else 0
+                        if sal <= 0:
+                            errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 음수 또는 0", "severity": "error"})
+                        elif sal < MIN_WAGE_MONTHLY:
+                            warnings.append({"row": idx, "emp_info": emp_info, "column": sal_col, "warning": f"{sal_col} {sal:,.0f}원 - 최저임금(월 206만원) 미달", "severity": "warning"})
+                    except (ValueError, TypeError):
+                        errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 형식 오류", "severity": "error"})
 
         # 입사일 > 생년월일 (18세) + 미래 날짜 검사
         hire_col = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
@@ -192,7 +227,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
         if not interim_amt_col and "중간정산액" in df.columns:
             interim_amt_col = "중간정산액"
 
-        # 중간정산기준일 > 입사일 검증
+        # 중간정산기준일 > 입사일 검증 (7일 이내 차이는 허용)
         if interim_date_col:
             try:
                 interim_date_raw = row[interim_date_col]
@@ -205,7 +240,11 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
                         if hire_norm:
                             hire_date = pd.to_datetime(hire_norm, format="%Y%m%d", errors="coerce")
                             if pd.notnull(hire_date) and interim_date < hire_date:
-                                errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": "중간정산기준일이 입사일보다 앞섬", "severity": "error"})
+                                # 입사 직후 중간정산의 경우 기준일이 입사일보다 최대 7일 앞설 수 있음
+                                days_diff = (hire_date - interim_date).days
+                                if days_diff > 7:
+                                    errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": f"중간정산기준일이 입사일보다 {days_diff}일 앞섬", "severity": "error"})
+                                # 7일 이내 차이는 무시 (입사 직후 중간정산 허용)
             except Exception:
                 pass
 
@@ -224,15 +263,16 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str]) -> Dic
             except (ValueError, TypeError):
                 pass
 
-        # 금액 음수 금지
-        for amt_col in ["퇴직금", "전환금"]:
-            if amt_col in df.columns:
-                try:
-                    amt = float(row[amt_col]) if not pd.isna(row[amt_col]) else 0
-                    if amt < 0:
-                        errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 음수", "severity": "error"})
-                except (ValueError, TypeError):
-                    errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 형식 오류", "severity": "error"})
+        # 금액 음수 금지 (전체 모드에서만)
+        if mode == "full":
+            for amt_col in ["퇴직금", "전환금"]:
+                if amt_col in df.columns:
+                    try:
+                        amt = float(row[amt_col]) if not pd.isna(row[amt_col]) else 0
+                        if amt < 0:
+                            errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 음수", "severity": "error"})
+                    except (ValueError, TypeError):
+                        errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 형식 오류", "severity": "error"})
 
         # 도메인 값: 성별(1/2)
         gender_col = None

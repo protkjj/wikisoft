@@ -77,6 +77,10 @@ def validate_with_ai(
 5. 당신은 **데이터 간 관계**, **패턴 이상**, **맥락적 오류**만 찾으세요.
    예: "임원인데 급여가 일반 직원보다 낮음", "퇴직자인데 퇴직금이 0"
 6. **행번호는 0-based index**로 반환하세요. (데이터 첫 행 = 0)
+7. **정년퇴직연령이 컨텍스트에 있으면**, 생년월일과 작성기준일을 비교하여
+   정년을 초과한 직원을 찾아 오류로 보고하세요.
+8. 입사일이 생년월일보다 빠르거나, 입사 나이가 비정상(18세 미만, 70세 초과)이면
+   오류/경고로 보고하세요.
 
 JSON 형식으로 응답하세요:
 {{
@@ -319,39 +323,73 @@ def _create_data_summary(df: pd.DataFrame, matches: List[Dict]) -> str:
 
 
 def _build_context(diagnostic_answers: Dict[str, Any]) -> str:
-    """진단 질문 응답을 컨텍스트로 변환"""
+    """진단 질문 응답을 컨텍스트로 변환
+
+    프론트엔드 질문 ID (compat.py ROSTER_QUESTIONS 기준):
+    - 4-1: 정년퇴직연령(만)
+    - 4-2: 임금피크제 (예/아니오)
+    - 4-3: 기타장기종업원급여 (예/아니오)
+    - 2-a.1/2/3: 재직자수 (임원/직원/계약직)
+    - 2-0: 작성기준일
+    """
     if not diagnostic_answers:
         return "진단 질문 응답 없음 (기본 규칙 적용)"
-    
+
     context_parts = []
-    
-    # 주요 진단 응답 해석
-    mappings = {
+
+    # 정년퇴직연령 (중요!)
+    retirement_age = diagnostic_answers.get("4-1")
+    if retirement_age:
+        context_parts.append(f"⚠️ 정년퇴직연령: 만 {retirement_age}세")
+        context_parts.append(f"   → 현재 나이가 {retirement_age}세를 초과한 직원은 오류로 판단")
+
+    # 작성기준일 (나이 계산용)
+    base_date = diagnostic_answers.get("2-0")
+    if base_date:
+        context_parts.append(f"- 작성기준일: {base_date}")
+
+    # 임금피크제
+    salary_peak = diagnostic_answers.get("4-2")
+    if salary_peak == "예":
+        peak_age = diagnostic_answers.get("4-2.1")
+        context_parts.append(f"- 임금피크제 적용 (시작연령: {peak_age}세)" if peak_age else "- 임금피크제 적용")
+    elif salary_peak == "아니오":
+        context_parts.append("- 임금피크제 미적용")
+
+    # 기타장기종업원급여
+    long_term = diagnostic_answers.get("4-3")
+    if long_term == "예":
+        context_parts.append("- 기타장기종업원급여 적용")
+    elif long_term == "아니오":
+        context_parts.append("- 기타장기종업원급여 미적용")
+
+    # 인원수 정보 (새 질문 ID)
+    headcount_mapping = {
+        "2-a.1": "임원",
+        "2-a.2": "직원",
+        "2-a.3": "계약직",
+    }
+    for key, name in headcount_mapping.items():
+        if key in diagnostic_answers:
+            context_parts.append(f"- {name} 인원: {diagnostic_answers[key]}명")
+
+    # 레거시 키도 지원 (하위 호환)
+    legacy_mappings = {
         "has_pension_assets": ("사외적립자산 있음", "사외적립자산 없음"),
-        "has_retirement_age": ("정년 있음", "정년 없음"),
         "has_salary_peak": ("임금피크제 있음", "임금피크제 없음"),
         "has_long_term_benefits": ("기타장기종업원급여 있음", "기타장기종업원급여 없음"),
-        "is_annual_salary": ("연봉제", "호봉제"),
-        "excludes_resigned": ("퇴사자 제외됨", "퇴사자 포함"),
     }
-    
-    for key, (yes_text, no_text) in mappings.items():
+    for key, (yes_text, no_text) in legacy_mappings.items():
         if key in diagnostic_answers:
             val = diagnostic_answers[key]
             if val in [True, "예", "yes", "Y"]:
                 context_parts.append(f"- {yes_text}")
             elif val in [False, "아니오", "no", "N"]:
                 context_parts.append(f"- {no_text}")
-    
-    # 인원수 정보
-    for key in ["executive_count", "employee_count", "contract_count"]:
-        if key in diagnostic_answers:
-            name = {"executive_count": "임원", "employee_count": "일반직원", "contract_count": "계약직"}[key]
-            context_parts.append(f"- {name} 인원: {diagnostic_answers[key]}명")
-    
+
     if not context_parts:
         return "진단 질문 응답: (구체적 정보 없음)"
-    
+
     return "\n".join(context_parts)
 
 

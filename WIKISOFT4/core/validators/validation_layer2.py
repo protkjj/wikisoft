@@ -57,8 +57,24 @@ def validate_layer2(chatbot_answers: Dict[str, Any], calculated_aggregates: Dict
         diff = user_value - calc_value
         diff_percent = abs(diff / calc_value * 100) if calc_value != 0 else float("inf")
 
+        # 인원수 검증 (headcount): 1명이라도 차이나면 오류
+        # 금액 검증 (amount): 5% 허용 오차
+        is_headcount = question.get("validate_against") == "headcount"
+
         if abs(diff) < 0.01:
             results["passed"] += 1
+        elif is_headcount:
+            # 인원수는 정확히 일치해야 함
+            diff_int = int(abs(diff))
+            results["warnings"].append({
+                "question_id": qid,
+                "question": question["question"],
+                "user_input": int(user_value),
+                "calculated": int(calc_value),
+                "diff": diff_int,
+                "severity": "high",
+                "message": f"⚠️ 인원 불일치: 입력 {int(user_value)}명, 명부 {int(calc_value)}명 (차이: {diff_int}명)",
+            })
         elif diff_percent <= tolerance_percent:
             results["passed"] += 1
             results["warnings"].append({

@@ -16,15 +16,21 @@ def validate(
     matches: Dict[str, Any],
     diagnostic_answers: Optional[Dict[str, Any]] = None,
     use_ai: bool = True,
-    df: Optional[pd.DataFrame] = None
+    df: Optional[pd.DataFrame] = None,
+    mode: str = "full"  # "roster" = 명부만, "full" = 전체 검증
 ) -> Dict[str, Any]:
     """유효성 검사 - 구조 검사 + L1 형식 검사 + AI 검사.
 
     L1 검증: 날짜/전화번호/이메일 형식, 필수값 누락, 음수 급여 등 (하드코딩)
     AI 검증: 컨텍스트 기반 판단 (진단 질문 응답 고려)
 
+    모드:
+        - "roster": 명부 형식 검증만 (L1만, 금액 검증 없음)
+        - "full": 전체 검증 (L1 + L2 금액 비교 + AI)
+
     Args:
         df: 선택적 DataFrame (제공되면 재생성하지 않음, 성능 최적화용)
+        mode: 검증 모드 ("roster" 또는 "full")
     """
     headers = parsed.get("headers") or []
     rows = parsed.get("rows") or []
@@ -41,74 +47,8 @@ def validate(
 
     checks.append({"name": "row_count", "status": "pass", "value": len(rows)})
 
-    # 진단 질문 인원수 vs 실제 유니크 인원 수 비교
-    if diagnostic_answers and rows:
-        # 평가대상 인원 합계 (q21-1: 임원, q21-2: 직원, q21-3: 계약직)
-        headcount_keys = ["q21-1", "q21-2", "q21-3"]
-        total_reported = 0
-        for key in headcount_keys:
-            val = diagnostic_answers.get(key)
-            if val is not None:
-                try:
-                    total_reported += int(float(val))
-                except (ValueError, TypeError):
-                    pass
-
-        # 유니크 사원 수 계산 (중복 제외)
-        total_row_count = len(rows)
-        unique_emp_count = total_row_count  # 기본값: 전체 행 수
-        duplicate_count = 0
-
-        # 사원번호 컬럼 찾기
-        emp_col = None
-        for col_name in ["사원번호", "사번"]:
-            if col_name in headers:
-                emp_col = col_name
-                break
-
-        if emp_col:
-            # rows가 dict 형식인지 확인
-            if rows and isinstance(rows[0], dict):
-                emp_ids = [row.get(emp_col) for row in rows if row.get(emp_col)]
-            else:
-                # list 형식인 경우
-                emp_col_idx = headers.index(emp_col)
-                emp_ids = [row[emp_col_idx] for row in rows if len(row) > emp_col_idx]
-
-            unique_emp_count = len(set(emp_ids))
-            duplicate_count = total_row_count - unique_emp_count
-
-        if total_reported > 0 and total_reported != unique_emp_count:
-            diff = abs(total_reported - unique_emp_count)
-            diff_percent = (diff / max(total_reported, unique_emp_count)) * 100
-
-            severity = "error" if diff_percent > 10 else "warning"
-
-            # 메시지에 중복 정보 포함
-            if duplicate_count > 0:
-                message = f"진단 질문 인원({total_reported}명)과 유니크 사원 수({unique_emp_count}명)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%) [전체 {total_row_count}행 중 중복 {duplicate_count}건 제외]"
-            else:
-                message = f"진단 질문 인원({total_reported}명)과 파일 행 수({unique_emp_count}행)가 불일치합니다. 차이: {diff}명 ({diff_percent:.1f}%)"
-
-            if severity == "error":
-                errors.append({
-                    "row": None,
-                    "field": "인원수",
-                    "message": message,
-                    "severity": "error"
-                })
-            else:
-                warnings.append({
-                    "row": None,
-                    "field": "인원수",
-                    "message": message,
-                    "warning": message,
-                    "severity": "warning"
-                })
-
-            checks.append({"name": "headcount_match", "status": "fail", "message": message})
-        elif total_reported > 0:
-            checks.append({"name": "headcount_match", "status": "pass"})
+    # 인원수 비교는 Layer 2에서 상세하게 처리 (종업원구분별 비교)
+    # 레거시 전체 인원수 비교 코드 제거 (중복 출력 방지)
 
     # L1 검증 (형식 검사)
     if headers and rows:
@@ -128,8 +68,8 @@ def validate(
                 if orig in df.columns and std not in df.columns:
                     df[std] = df[orig]
             
-            # L1 검증 실행
-            l1_result = validate_layer1(df, diagnostic_answers or {})
+            # L1 검증 실행 (mode, matches 전달)
+            l1_result = validate_layer1(df, diagnostic_answers or {}, mode=mode, matches=match_list)
             
             # 오류/경고 수집
             for e in l1_result.get("errors", []):
@@ -178,6 +118,7 @@ def validate(
             checks.append({"name": "layer1_validation", "status": "error", "error": str(e)})
 
     # L2 검증: 사용자 입력값 vs 명부 집계값 비교
+    # roster 모드에서도 인원수 비교를 위해 실행 (답변이 없는 질문은 자동 스킵됨)
     layer2_result = None
     if headers and rows and diagnostic_answers:
         try:
@@ -229,7 +170,7 @@ def validate(
             logger.warning(f"Layer 2 검증 실패: {e}", exc_info=True)
             checks.append({"name": "layer2_validation", "status": "error", "error": str(e)})
 
-    # AI 검증 (컨텍스트 기반)
+    # AI 검증 (컨텍스트 기반) - roster/full 모두 실행 (진단 답변 기반 검증)
     ai_reasoning = []
     if use_ai and headers and rows:
         try:

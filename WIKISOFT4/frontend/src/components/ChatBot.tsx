@@ -1,51 +1,48 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './ChatBot.css'
-import type { DiagnosticQuestion } from './types'
+import type { DiagnosticQuestion } from '../types'
+
+// 검증 규칙
+const VALIDATION_RULES: Record<string, (value: string) => string | null> = {
+  email: (value) => {
+    if (!value || value === '') return null
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(value) ? null : '올바른 이메일 형식이 아닙니다 (예: example@email.com)'
+  },
+  phone: (value) => {
+    if (!value || value === '') return null
+    const phoneRegex = /^[\d\-\s]+$/
+    return phoneRegex.test(value) ? null : '올바른 전화번호 형식이 아닙니다 (예: 02-1234-5678)'
+  },
+  number: (value) => {
+    if (!value || value === '') return '숫자를 입력해주세요'
+    const num = parseFloat(value)
+    if (isNaN(num)) return '올바른 숫자 형식이 아닙니다'
+    if (num < 0) return '음수는 입력할 수 없습니다'
+    return null
+  }
+}
+
+// 질문 ID별 검증 규칙 매핑
+const QUESTION_VALIDATION_MAP: Record<string, string> = {
+  '1-3': 'phone',
+  '1-4': 'email',
+}
 
 interface ChatBotProps {
   questions: DiagnosticQuestion[]
-  onComplete: (answers: Record<string, string | number>) => void
+  onComplete: (answers: Record<string, string | number | string[]>) => void
   onBack: () => void
-  initialAnswers?: Record<string, string | number>  // 기존 답변 유지용
+  initialAnswers?: Record<string, string | number | string[]>
 }
 
 export default function ChatBot({ questions, onComplete, onBack, initialAnswers = {} }: ChatBotProps) {
-  const [answers, setAnswers] = useState<Record<string, string | number>>(initialAnswers)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [answers, setAnswers] = useState<Record<string, string | number | string[]>>(initialAnswers)
   const [userInput, setUserInput] = useState('')
   const [isEditing, setIsEditing] = useState(false)  // 답변 수정 모드
+  const [validationError, setValidationError] = useState<string | null>(null)
   const questionRefs = useRef<(HTMLLIElement | null)[]>([])
-
-  // 조건부 질문 필터링 - 조건을 만족하는 질문만 표시
-  const visibleQuestions = useMemo(() => {
-    return questions.filter(q => {
-      // condition이 없으면 항상 표시
-      if (!q.condition) return true
-
-      // condition이 있으면 해당 조건 확인
-      const { question_id, answer: requiredAnswer } = q.condition
-      const currentAnswer = answers[question_id]
-
-      // 조건 질문에 답변이 없으면 숨김
-      if (currentAnswer === undefined) return false
-
-      // 답변이 조건과 일치하면 표시
-      return currentAnswer === requiredAnswer
-    })
-  }, [questions, answers])
-
-  // 첫 번째 미응답 질문 인덱스로 시작 (기존 답변이 있으면)
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(() => {
-    // visibleQuestions 계산 (초기화 시점)
-    const visible = questions.filter(q => {
-      if (!q.condition) return true
-      const currentAnswer = initialAnswers[q.condition.question_id]
-      if (currentAnswer === undefined) return false
-      return currentAnswer === q.condition.answer
-    })
-    // 미응답 질문 찾기
-    const firstUnanswered = visible.findIndex(q => initialAnswers[q.id] === undefined)
-    return firstUnanswered === -1 ? 0 : firstUnanswered
-  })
 
   // 질문이 없으면 빈 화면 표시
   if (!questions || questions.length === 0) {
@@ -65,35 +62,20 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
     )
   }
 
-  // 현재 질문 (visibleQuestions 기준)
-  const safeIndex = Math.min(currentQuestionIndex, visibleQuestions.length - 1)
-  const currentQuestion = visibleQuestions[safeIndex]
-
-  // 보이는 질문 중 답변된 개수
-  const answeredCount = visibleQuestions.filter(q => answers[q.id] !== undefined).length
-  const progress = (answeredCount / visibleQuestions.length) * 100
-  const allAnswered = answeredCount === visibleQuestions.length
+  const currentQuestion = questions[currentQuestionIndex]
+  const progress = ((Object.keys(answers).length) / questions.length) * 100
+  const allAnswered = Object.keys(answers).length === questions.length
 
   // 현재 질문이 변경되면 해당 항목으로 스크롤 (사이드바만)
   useEffect(() => {
-    const currentRef = questionRefs.current[safeIndex]
+    const currentRef = questionRefs.current[currentQuestionIndex]
     if (currentRef) {
       // scrollIntoView를 사이드바 컨테이너 기준으로 제한
       currentRef.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
-  }, [safeIndex])
+  }, [currentQuestionIndex])
 
-  // 다음 미응답 질문 인덱스 찾기
-  const findNextUnanswered = (fromIndex: number, currentAnswers: Record<string, string | number>) => {
-    for (let i = fromIndex + 1; i < visibleQuestions.length; i++) {
-      if (currentAnswers[visibleQuestions[i].id] === undefined) {
-        return i
-      }
-    }
-    return -1  // 모두 응답됨
-  }
-
-  const handleAnswer = (value: string | number) => {
+  const handleAnswer = (value: string | number | string[]) => {
     if (!currentQuestion) return
 
     const newAnswers = {
@@ -103,12 +85,11 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
     setAnswers(newAnswers)
     setUserInput('')
 
-    // 다음 미응답 질문으로 이동 (없으면 현재 화면 유지)
-    const nextUnanswered = findNextUnanswered(safeIndex, newAnswers)
-    if (nextUnanswered !== -1) {
-      setCurrentQuestionIndex(nextUnanswered)
+    // 마지막 질문이 아니면 다음으로 이동
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1)
     }
-    // 모든 질문 완료 시 현재 화면 유지 (완료 버튼 표시)
+    // 마지막 질문 완료 시 자동으로 완료 처리하지 않고 현재 화면 유지
   }
 
   const handleChoiceClick = (choice: string) => {
@@ -116,7 +97,29 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
   }
 
   const handleInputSubmit = () => {
+    // 빈 입력 무시
     if (!userInput.trim()) return
+
+    // 숫자 타입인 경우 숫자 검증
+    if (currentQuestion.type === 'number') {
+      const error = VALIDATION_RULES.number(userInput)
+      if (error) {
+        setValidationError(error)
+        return
+      }
+    }
+
+    // 특수 검증 규칙 확인 (이메일, 전화번호 등)
+    const ruleKey = QUESTION_VALIDATION_MAP[currentQuestion.id]
+    if (ruleKey && VALIDATION_RULES[ruleKey]) {
+      const error = VALIDATION_RULES[ruleKey](userInput)
+      if (error) {
+        setValidationError(error)
+        return
+      }
+    }
+    setValidationError(null)
+
     const value = currentQuestion.type === 'number'
       ? parseFloat(userInput) || 0
       : userInput
@@ -139,30 +142,17 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
     onComplete(answers)
   }
 
-  // 새로운 카테고리 레이블
   const categoryLabels: Record<string, string> = {
-    // 기존
     'data_quality': '📊 데이터 품질',
     'financial_assumptions': '💰 재무 가정',
     'retirement_settings': '🏖️ 퇴직 설정',
     'headcount_aggregates': '👥 인원 집계',
-    'amount_aggregates': '💵 금액 집계',
-    // 새로운 카테고리
-    'basic_retirement': '📋 기초자료_퇴직급여',
-    'employee_roster': '👤 재직자명부',
-    'retiree_roster': '🚪 퇴직자명부',
-    'employee_headcount': '👥 평가대상 인원',
-    'retiree_headcount': '📊 퇴직자 인원',
-    'retirement_estimate': '💰 퇴직금 추계액',
+    'amount_aggregates': '💵 금액 집계'
   }
 
-  const getQuestionStatus = (index: number): 'answered' | 'current' | 'pending' | 'conditional' => {
-    const q = visibleQuestions[index]
-    if (!q) return 'pending'
-    if (answers[q.id] !== undefined) return 'answered'
-    if (index === safeIndex) return 'current'
-    // 조건부 질문 표시
-    if (q.condition) return 'conditional'
+  const getQuestionStatus = (index: number): 'answered' | 'current' | 'pending' => {
+    if (answers[questions[index].id] !== undefined) return 'answered'
+    if (index === currentQuestionIndex) return 'current'
     return 'pending'
   }
 
@@ -172,7 +162,7 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
       <div className="question-sidebar">
         <div className="sidebar-header">
           <h3>📋 질문 목록</h3>
-          <p>{answeredCount} / {visibleQuestions.length} 완료</p>
+          <p>{Object.keys(answers).length} / {questions.length} 완료</p>
         </div>
 
         <div className="progress-bar">
@@ -180,35 +170,26 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
         </div>
 
         <ul className="question-list">
-          {visibleQuestions.map((q, index) => {
+          {questions.map((q, index) => {
             const status = getQuestionStatus(index)
             // '-' 이전 내용만 추출 (없으면 앞 15자)
             const preview = q.question.includes(' - ')
               ? q.question.split(' - ')[0]
               : q.question.substring(0, 15)
-            const isConditional = !!q.condition
             return (
               <li
                 key={q.id}
                 ref={(el) => { questionRefs.current[index] = el }}
-                className={`question-item ${status} ${isConditional ? 'conditional' : ''}`}
+                className={`question-item ${status}`}
                 onClick={() => handleQuestionClick(index)}
               >
-                <span className="question-number">
-                  {isConditional ? '↳' : index + 1}
-                </span>
+                <span className="question-number">{index + 1}</span>
                 <span className="question-preview">{preview}</span>
                 {status === 'answered' && <span className="check-mark">✓</span>}
               </li>
             )
           })}
         </ul>
-
-        {allAnswered && (
-          <button className="complete-button" onClick={handleComplete}>
-            ✅ 완료 → 검증 시작
-          </button>
-        )}
       </div>
 
       {/* 오른쪽 메인: 현재 질문 또는 완료 화면 */}
@@ -222,11 +203,7 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
               </svg>
             </div>
             <h2 className="completion-title">모든 질문 완료!</h2>
-            <p className="completion-subtitle">{visibleQuestions.length}개 질문에 모두 답변하셨습니다.</p>
-
-            <div className="completion-summary">
-              <p>준비가 완료되었습니다. 검증을 시작하세요.</p>
-            </div>
+            <p className="completion-subtitle">{questions.length}개 질문에 모두 답변하셨습니다.</p>
 
             <div className="completion-buttons">
               <button
@@ -250,29 +227,56 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
           // 질문 진행 중
           <>
             <div className="main-header">
-              <div className={`category-badge ${currentQuestion.category}`}>
-                {categoryLabels[currentQuestion.category] || currentQuestion.category}
+              <div className={`category-badge ${currentQuestion.category || ''}`}>
+                {categoryLabels[currentQuestion.category || ''] || currentQuestion.category || '📋 질문'}
               </div>
-              <span className="question-id">{currentQuestion.id.toUpperCase()}</span>
+              <span className="question-id">Q{currentQuestionIndex + 1}</span>
             </div>
-
-            {/* 조건부 질문 안내 */}
-            {currentQuestion.condition && (
-              <div className="conditional-notice">
-                ↳ 이전 질문 답변에 따른 추가 질문입니다
-              </div>
-            )}
 
             <h2 className="question-text">{currentQuestion.question}</h2>
 
             {answers[currentQuestion.id] !== undefined && (
               <div className="answered-badge">
-                ✓ 답변: <strong>{answers[currentQuestion.id]}</strong>
+                ✓ 답변: <strong>{String(answers[currentQuestion.id])}</strong>
               </div>
             )}
 
             <div className="answer-area">
-              {currentQuestion.choices ? (
+              {currentQuestion.choices && currentQuestion.choices.length > 4 ? (
+                // 선택지가 많으면 (결산월 등) 드롭다운 사용
+                <div className="select-group">
+                  <select
+                    className="select-input"
+                    value={userInput || answers[currentQuestion.id] as string || ''}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && userInput) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleAnswer(userInput)
+                      }
+                    }}
+                    autoFocus
+                  >
+                    <option value="">선택해주세요</option>
+                    {currentQuestion.choices.map((choice, i) => (
+                      <option key={i} value={choice}>{choice}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="submit-button"
+                    onClick={() => {
+                      if (userInput) {
+                        handleAnswer(userInput)
+                      }
+                    }}
+                    disabled={!userInput}
+                  >
+                    확인
+                  </button>
+                </div>
+              ) : currentQuestion.choices ? (
+                // 선택지가 적으면 버튼 사용
                 <div className="choice-buttons">
                   {currentQuestion.choices.map((choice, i) => (
                     <button
@@ -284,14 +288,45 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
                     </button>
                   ))}
                 </div>
+              ) : currentQuestion.type === 'date' ? (
+                // 날짜 입력
+                <div className="input-group">
+                  <input
+                    type="date"
+                    className="date-input"
+                    value={userInput || answers[currentQuestion.id] as string || ''}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && userInput) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleAnswer(userInput)
+                      }
+                    }}
+                  />
+                  <button
+                    className="submit-button"
+                    onClick={() => {
+                      if (userInput) {
+                        handleAnswer(userInput)
+                      }
+                    }}
+                    disabled={!userInput}
+                  >
+                    확인
+                  </button>
+                </div>
               ) : currentQuestion.type === 'number' ? (
                 <div className="input-group">
                   <input
                     type="number"
-                    className="text-input"
+                    className={`text-input ${validationError ? 'has-error' : ''}`}
                     placeholder={`숫자 입력${currentQuestion.unit ? ` (${currentQuestion.unit})` : ''}`}
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
+                    onChange={(e) => {
+                      setUserInput(e.target.value)
+                      setValidationError(null)
+                    }}
                     onKeyPress={handleKeyPress}
                     autoFocus
                   />
@@ -302,14 +337,22 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
                 <div className="input-group">
                   <input
                     type="text"
-                    className="text-input"
+                    className={`text-input ${validationError ? 'has-error' : ''}`}
                     placeholder="입력해주세요"
                     value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
+                    onChange={(e) => {
+                      setUserInput(e.target.value)
+                      setValidationError(null)
+                    }}
                     onKeyPress={handleKeyPress}
                     autoFocus
                   />
                   <button className="submit-button" onClick={handleInputSubmit} disabled={!userInput.trim()}>확인</button>
+                </div>
+              )}
+              {validationError && (
+                <div className="validation-error">
+                  ⚠️ {validationError}
                 </div>
               )}
             </div>
@@ -317,12 +360,12 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
             <div className="navigation-buttons">
               <button
                 className="nav-button"
-                onClick={() => safeIndex > 0 && setCurrentQuestionIndex(safeIndex - 1)}
-                disabled={safeIndex === 0}
+                onClick={() => currentQuestionIndex > 0 && setCurrentQuestionIndex(currentQuestionIndex - 1)}
+                disabled={currentQuestionIndex === 0}
               >
                 ← 이전
               </button>
-              <span className="nav-info">{safeIndex + 1} / {visibleQuestions.length}</span>
+              <span className="nav-info">{currentQuestionIndex + 1} / {questions.length}</span>
               {isEditing && allAnswered ? (
                 <button
                   className="nav-button done-button"
@@ -333,8 +376,8 @@ export default function ChatBot({ questions, onComplete, onBack, initialAnswers 
               ) : (
                 <button
                   className="nav-button"
-                  onClick={() => safeIndex < visibleQuestions.length - 1 && setCurrentQuestionIndex(safeIndex + 1)}
-                  disabled={safeIndex === visibleQuestions.length - 1}
+                  onClick={() => currentQuestionIndex < questions.length - 1 && setCurrentQuestionIndex(currentQuestionIndex + 1)}
+                  disabled={currentQuestionIndex === questions.length - 1}
                 >
                   다음 →
                 </button>

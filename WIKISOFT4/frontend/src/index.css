@@ -13,6 +13,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 다크모드에서 가독성 향상을 위한 폰트 웨이트 증가 */
+[data-theme="dark"] {
+  font-weight: 500;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -91,12 +96,12 @@ input[type="number"],
 input[type="email"],
 textarea {
   border-radius: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-color, #ccc);
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-family: inherit;
-  background-color: #fff;
-  color: #333;
+  background-color: var(--bg-card, #fff);
+  color: var(--text-primary, #333);
 }
 
 @media (prefers-color-scheme: light) {

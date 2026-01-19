@@ -12,13 +12,23 @@ export default function Layout() {
     navigate('/login')
   }
 
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    // 온보딩으로 리셋하라는 플래그 설정
+    sessionStorage.setItem('resetToOnboarding', 'true')
+    sessionStorage.removeItem('currentStep')
+    navigate('/')
+    // 같은 페이지에서 리로드 트리거
+    window.location.reload()
+  }
+
   return (
     <div className="layout">
       <header className="layout-header">
         <div className="header-left">
-          <NavLink to="/" className="logo">
-            WIKISOFT <span className="version">4.1</span>
-          </NavLink>
+          <a href="/" className="logo" onClick={handleLogoClick}>
+            WIKISOFT
+          </a>
           {isAuthenticated && (
             <nav className="nav-links">
               <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
@@ -34,6 +44,7 @@ export default function Layout() {
           )}
         </div>
         <div className="header-right">
+          <span className="version-tag">v4</span>
           <ThemeToggle />
           {isAuthenticated ? (
             <div className="user-menu">
