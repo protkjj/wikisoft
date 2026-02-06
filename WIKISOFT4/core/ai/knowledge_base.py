@@ -1,18 +1,13 @@
 """
 Knowledge Base: 시스템 문서를 에이전트에 제공하는 간단한 RAG
-+ 학습 가능한 Error Check 규칙 관리
++ 학습 가능한 Error Check 규칙 관리 (SQLite 기반)
 """
 import os
 import json
 from typing import Optional, List, Dict
 from datetime import datetime
 
-# 규칙 파일 경로
-RULES_FILE_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "training_data",
-    "error_rules.json"
-)
+from core.database import get_db, get_cursor
 
 # 시스템 문서 요약 (수동 큐레이션)
 SYSTEM_KNOWLEDGE = """
@@ -105,7 +100,7 @@ ERROR_CHECK_RULES = """
 ## 7. 계산 방식별 주의
 - 일할: 일 단위 정밀 계산
 - 월절상: 월 단위 올림
-- 6개월절상: 6개월 단위 올림  
+- 6개월절상: 6개월 단위 올림
 - 비례/비비례: 퇴직급여 비례배분 방식
 """
 
@@ -128,19 +123,9 @@ def save_training_example(
     """
     AI 응답과 사람의 수정을 학습 데이터로 저장.
     나중에 파인튜닝할 때 사용.
-    
-    Args:
-        input_data: 입력 데이터 (진단 답변, 명부 요약 등)
-        ai_response: AI가 생성한 응답
-        human_correction: 사람이 수정한 내용 (있는 경우)
-        is_correct: AI 응답이 맞았는지 여부
-        category: 분류 (validation, matching, analysis 등)
-    
-    Returns:
-        저장된 파일 경로
     """
     os.makedirs(TRAINING_DATA_PATH, exist_ok=True)
-    
+
     example = {
         "timestamp": datetime.now().isoformat(),
         "category": category,
@@ -149,13 +134,13 @@ def save_training_example(
         "human_correction": human_correction,
         "is_correct": is_correct,
     }
-    
+
     filename = f"{category}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     filepath = os.path.join(TRAINING_DATA_PATH, filename)
-    
+
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(example, f, ensure_ascii=False, indent=2)
-    
+
     return filepath
 
 
@@ -163,18 +148,18 @@ def load_training_examples(category: Optional[str] = None) -> List[Dict]:
     """저장된 학습 데이터 로드"""
     if not os.path.exists(TRAINING_DATA_PATH):
         return []
-    
+
     examples = []
     for filename in os.listdir(TRAINING_DATA_PATH):
         if not filename.endswith(".json"):
             continue
         if category and not filename.startswith(category):
             continue
-        
+
         filepath = os.path.join(TRAINING_DATA_PATH, filename)
         with open(filepath, "r", encoding="utf-8") as f:
             examples.append(json.load(f))
-    
+
     return examples
 
 
@@ -185,14 +170,14 @@ def get_few_shot_examples(category: str, limit: int = 3) -> str:
     """
     examples = load_training_examples(category)
     correct_examples = [e for e in examples if e.get("is_correct", False)]
-    
+
     # 최신 예시 우선
     correct_examples.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     selected = correct_examples[:limit]
-    
+
     if not selected:
         return ""
-    
+
     result = "=== 참고 예시 ===\n"
     for i, ex in enumerate(selected, 1):
         result += f"\n### 예시 {i}\n"
@@ -201,92 +186,108 @@ def get_few_shot_examples(category: str, limit: int = 3) -> str:
             result += f"정답: {json.dumps(ex['human_correction'], ensure_ascii=False)}\n"
         else:
             result += f"응답: {json.dumps(ex['ai_response'], ensure_ascii=False)}\n"
-    
+
     return result
 
 
 def get_system_context(query: Optional[str] = None, include_rules: bool = True) -> str:
     """시스템 지식 반환 (Error Check 규칙 포함)"""
     result = SYSTEM_KNOWLEDGE.strip()
-    
+
     if include_rules:
         result += "\n\n" + ERROR_CHECK_RULES.strip()
-    
+
     return result
 
 
 def get_error_check_rules() -> str:
-    """Error Check 규칙만 반환 (JSON에서 로드)"""
+    """Error Check 규칙만 반환 (SQLite에서 로드)"""
     rules = load_error_rules()
     patterns = load_learned_patterns()
-    
+
     if not rules:
-        return ERROR_CHECK_RULES.strip()  # 폴백
-    
-    # JSON 규칙을 프롬프트용 문자열로 변환
-    result = "=== Error Check 규칙 (학습된 메모리) ===\n\n"
-    
-    by_category = {}
-    for rule in rules:
-        cat = rule.get("category", "기타")
-        if cat not in by_category:
-            by_category[cat] = []
-        by_category[cat].append(rule)
-    
-    category_names = {
-        "value_validation": "## 값 유효성 검사",
-        "required_field": "## 필수 필드 검사",
-        "date_validation": "## 날짜 형식 검사",
-        "age_validation": "## 연령 검사",
-        "cross_validation": "## 교차 검증",
-        "year_validation": "## 연도 검사",
-        "yoy_validation": "## 전년 대비 검증",
-    }
-    
-    for cat, cat_rules in by_category.items():
-        result += f"{category_names.get(cat, f'## {cat}')}\n"
-        for r in cat_rules:
-            severity_icon = "❌" if r.get("severity") == "error" else "⚠️"
-            ctx = r.get("context_override")
-            ctx_note = f" (단, {', '.join(ctx.keys())}일 경우 제외)" if ctx else ""
-            result += f"- {severity_icon} {r.get('field')}: {r.get('condition')} → {r.get('message')}{ctx_note}\n"
-        result += "\n"
-    
-    # 학습된 패턴 추가 (사용자 수정으로부터 학습)
+        # 폴백: 하드코딩 규칙 사용
+        result = ERROR_CHECK_RULES.strip()
+    else:
+        # DB 규칙을 프롬프트용 문자열로 변환
+        result = "=== Error Check 규칙 (학습된 메모리) ===\n\n"
+
+        by_category = {}
+        for rule in rules:
+            cat = rule.get("category", "기타")
+            if cat not in by_category:
+                by_category[cat] = []
+            by_category[cat].append(rule)
+
+        category_names = {
+            "value_validation": "## 값 유효성 검사",
+            "required_field": "## 필수 필드 검사",
+            "date_validation": "## 날짜 형식 검사",
+            "age_validation": "## 연령 검사",
+            "cross_validation": "## 교차 검증",
+            "year_validation": "## 연도 검사",
+            "yoy_validation": "## 전년 대비 검증",
+        }
+
+        for cat, cat_rules in by_category.items():
+            result += f"{category_names.get(cat, f'## {cat}')}\n"
+            for r in cat_rules:
+                severity_icon = "❌" if r.get("severity") == "error" else "⚠️"
+                ctx = r.get("context_override")
+                ctx_note = f" (단, {', '.join(ctx.keys())}일 경우 제외)" if ctx else ""
+                result += f"- {severity_icon} {r.get('field')}: {r.get('condition')} → {r.get('message')}{ctx_note}\n"
+            result += "\n"
+
+    # 학습된 패턴은 항상 추가 (DB 규칙/폴백 무관)
     if patterns:
-        result += "\n## 학습된 예외 패턴 (사용자 피드백 기반)\n"
+        result += "\n\n## 학습된 예외 패턴 (사용자 피드백 기반)\n"
+        result += "아래 패턴은 사용자가 '오류 아님'으로 확인한 항목입니다. 이 패턴에 해당하면 오류로 보고하지 마세요.\n"
         for p in patterns:
             context = p.get("context", {})
             ctx_str = ", ".join([f"{k}={v}" for k, v in context.items()]) if context else "일반"
-            result += f"- {p.get('field')}: {p.get('correct_interpretation')} (컨텍스트: {ctx_str})\n"
-    
+            result += f"- {p.get('field')}: \"{p.get('original_value')}\" → {p.get('correct_interpretation')} (컨텍스트: {ctx_str})\n"
+
     return result
 
 
 def load_learned_patterns() -> List[Dict]:
-    """학습된 패턴 로드"""
-    if not os.path.exists(RULES_FILE_PATH):
-        return []
-    
-    try:
-        with open(RULES_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("learned_patterns", [])
-    except Exception:
-        return []
+    """학습된 패턴 로드 (SQLite)"""
+    db = get_db()
+    rows = db.execute("SELECT * FROM learned_patterns ORDER BY learned_at DESC").fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        if d.get("context"):
+            try:
+                d["context"] = json.loads(d["context"])
+            except (json.JSONDecodeError, TypeError):
+                d["context"] = {}
+        return_val = {
+            "field": d.get("field"),
+            "original_value": d.get("original_value"),
+            "ai_said_error": d.get("ai_said_error"),
+            "correct_interpretation": d.get("correct_interpretation"),
+            "context": d.get("context") or {},
+            "learned_at": d.get("learned_at"),
+        }
+        result.append(return_val)
+    return result
 
 
 def load_error_rules() -> List[Dict]:
-    """JSON 파일에서 오류 검증 규칙 로드"""
-    if not os.path.exists(RULES_FILE_PATH):
-        return []
-    
-    try:
-        with open(RULES_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data.get("rules", [])
-    except Exception:
-        return []
+    """SQLite에서 오류 검증 규칙 로드"""
+    db = get_db()
+    rows = db.execute("SELECT * FROM error_rules ORDER BY id").fetchall()
+    result = []
+    for row in rows:
+        d = dict(row)
+        if d.get("context_override"):
+            try:
+                d["context_override"] = json.loads(d["context_override"])
+            except (json.JSONDecodeError, TypeError):
+                d["context_override"] = None
+        result.append(d)
+    return result
 
 
 def add_error_rule(
@@ -297,70 +298,34 @@ def add_error_rule(
     category: str = "learned",
     context_override: Optional[Dict] = None
 ) -> str:
-    """
-    새로운 오류 검증 규칙 추가 (학습).
-    
-    Args:
-        field: 검증 대상 필드
-        condition: 조건 (예: "value < 0")
-        message: 오류 메시지
-        severity: "error" 또는 "warning"
-        category: 규칙 카테고리
-        context_override: 컨텍스트별 예외 처리
-    
-    Returns:
-        추가된 규칙 ID
-    """
-    # 기존 규칙 로드
-    if os.path.exists(RULES_FILE_PATH):
-        with open(RULES_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    else:
-        data = {"version": "1.0", "rules": [], "learned_patterns": []}
-    
+    """새로운 오류 검증 규칙 추가 (학습)."""
+    db = get_db()
+
     # 새 규칙 ID 생성
-    existing_ids = [r.get("id", "") for r in data.get("rules", [])]
-    new_id = f"L{len([i for i in existing_ids if i.startswith('L')]) + 1:03d}"
-    
-    new_rule = {
-        "id": new_id,
-        "category": category,
-        "field": field,
-        "condition": condition,
-        "severity": severity,
-        "message": message,
-        "context_override": context_override,
-        "learned_at": datetime.now().isoformat(),
-        "source": "user_feedback"
-    }
-    
-    data["rules"].append(new_rule)
-    data["last_updated"] = datetime.now().strftime("%Y-%m-%d")
-    
-    # 저장
-    with open(RULES_FILE_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    
+    row = db.execute(
+        "SELECT COUNT(*) as cnt FROM error_rules WHERE id LIKE 'L%'"
+    ).fetchone()
+    new_id = f"L{(row['cnt'] or 0) + 1:03d}"
+
+    with get_cursor() as cur:
+        cur.execute("""
+            INSERT OR REPLACE INTO error_rules
+            (id, category, field, condition, severity, message, context_override, learned_at, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            new_id, category, field, condition, severity, message,
+            json.dumps(context_override, ensure_ascii=False) if context_override else None,
+            datetime.now().isoformat(), "user_feedback",
+        ))
+
     return new_id
 
 
 def remove_error_rule(rule_id: str) -> bool:
     """규칙 삭제"""
-    if not os.path.exists(RULES_FILE_PATH):
-        return False
-    
-    with open(RULES_FILE_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    original_count = len(data.get("rules", []))
-    data["rules"] = [r for r in data.get("rules", []) if r.get("id") != rule_id]
-    
-    if len(data["rules"]) < original_count:
-        with open(RULES_FILE_PATH, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return True
-    
-    return False
+    with get_cursor() as cur:
+        cur.execute("DELETE FROM error_rules WHERE id = ?", (rule_id,))
+        return cur.rowcount > 0
 
 
 def learn_from_correction(
@@ -370,46 +335,18 @@ def learn_from_correction(
     correct_interpretation: str,
     diagnostic_context: Optional[Dict] = None
 ) -> str:
-    """
-    사용자 수정으로부터 새 규칙 학습.
-    
-    예: 사용자가 "65세 입사"를 오류가 아니라고 수정했을 때,
-        "임원인 경우 65세 입사는 정상"이라는 규칙 추가.
-    
-    Args:
-        field: 관련 필드
-        original_value: 원래 값
-        was_error: AI가 오류로 판단했는지
-        correct_interpretation: 정답 (오류인지 아닌지, 이유)
-        diagnostic_context: 진단 질문 응답 컨텍스트
-    
-    Returns:
-        학습 결과 메시지
-    """
-    # 학습 패턴 저장
-    if os.path.exists(RULES_FILE_PATH):
-        with open(RULES_FILE_PATH, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    else:
-        data = {"version": "1.0", "rules": [], "learned_patterns": []}
-    
-    pattern = {
-        "field": field,
-        "original_value": original_value,
-        "ai_said_error": was_error,
-        "correct_interpretation": correct_interpretation,
-        "context": diagnostic_context,
-        "learned_at": datetime.now().isoformat()
-    }
-    
-    if "learned_patterns" not in data:
-        data["learned_patterns"] = []
-    
-    data["learned_patterns"].append(pattern)
-    
-    with open(RULES_FILE_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    
+    """사용자 수정으로부터 새 규칙 학습."""
+    with get_cursor() as cur:
+        cur.execute("""
+            INSERT INTO learned_patterns
+            (field, original_value, ai_said_error, correct_interpretation, context, learned_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            field, original_value, was_error, correct_interpretation,
+            json.dumps(diagnostic_context, ensure_ascii=False) if diagnostic_context else None,
+            datetime.now().isoformat(),
+        ))
+
     return f"패턴 학습됨: {field} - {correct_interpretation}"
 
 
@@ -417,10 +354,10 @@ def load_document(filename: str) -> str:
     """문서 파일 로드 (ARCHITECTURE.md, PROJECT_SPEC.md 등)"""
     base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     file_path = os.path.join(base_path, filename)
-    
+
     if not os.path.exists(file_path):
         return ""
-    
+
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             return f.read()

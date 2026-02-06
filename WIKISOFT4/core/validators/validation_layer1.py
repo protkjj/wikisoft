@@ -43,7 +43,8 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
             return f"사원번호 {mask_emp_id(emp_id)}"
         return f"행 {idx+2}"
 
-    # 필수 필드 (전체 모드: 8개, 명부만 모드: 금액 제외 5개)
+    # 필수 필드 (전체 모드: 7개, 명부만 모드: 금액 제외 5개)
+    # 차년도퇴직금추계액은 조건부 필수 (임원/계약직만) → 별도 처리
     REQUIRED_FIELDS_FULL = [
         ("사원번호", ["사원번호", "사번"]),
         ("생년월일", ["생년월일"]),
@@ -51,8 +52,12 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
         ("입사일자", ["입사일자", "입사일"]),
         ("기준급여", ["기준급여", "급여"]),
         ("당년도퇴직금추계액", ["당년도퇴직금추계액", "당년도 퇴직금추계액", "퇴직금추계액"]),
-        ("차년도퇴직금추계액", ["차년도퇴직금추계액", "차년도 퇴직금추계액"]),
         ("종업원구분", ["종업원구분", "종업원 구분", "직종구분", "직종 구분", "직원구분", "구분"]),
+    ]
+
+    # 조건부 필수: 임원(3)/계약직(4)/정년초과자만 필수
+    CONDITIONAL_REQUIRED_FIELDS = [
+        ("차년도퇴직금추계액", ["차년도퇴직금추계액", "차년도 퇴직금추계액"]),
     ]
 
     # 명부만 모드: 금액 관련 필드 제외
@@ -103,6 +108,22 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
         if found_col:
             optional_col_map[field_name] = found_col
 
+    # 조건부 필수 필드 매핑 (전체 모드에서만)
+    conditional_col_map = {}
+    if mode == "full":
+        for field_name, aliases in CONDITIONAL_REQUIRED_FIELDS:
+            found_col = find_column(field_name, aliases)
+            if found_col:
+                conditional_col_map[field_name] = found_col
+
+    # 시산일 (작성기준일) 파싱 — 시산일<=입사일, 시산일<=중간정산일 체크에 사용
+    eval_date = None
+    eval_date_str = diagnostic_answers.get("2-0") if diagnostic_answers else None
+    if eval_date_str:
+        eval_norm = normalize_date(str(eval_date_str))
+        if eval_norm and is_valid_yyyymmdd(eval_norm):
+            eval_date = pd.to_datetime(eval_norm, format="%Y%m%d", errors="coerce")
+
     # 행별 검사 (항상 실행)
     for idx, row in df.iterrows():
         emp_info = get_emp_info(row, idx)
@@ -112,6 +133,57 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
             val = row.get(actual_col)
             if pd.isna(val) or str(val).strip() == "":
                 errors.append({"row": idx, "emp_info": emp_info, "column": actual_col, "error": f"{field_name} 필수 값 누락", "severity": "error"})
+
+        # 조건부 필수 값 검사 (차년도퇴직금추계액: 임원/계약직/정년초과자만)
+        if mode == "full" and conditional_col_map:
+            emp_type_actual_col = required_col_map.get("종업원구분")
+            emp_type_val = ""
+            if emp_type_actual_col:
+                raw = row.get(emp_type_actual_col, "")
+                emp_type_val = str(raw).strip() if not pd.isna(raw) else ""
+
+            # 종업원구분 3(임원), 4(계약직)이면 차년도퇴직금추계액 필수
+            requires_next_year = emp_type_val in ["3", "3.0", "4", "4.0", "임원", "계약직"]
+
+            # 정년초과자 체크: 만 60세 이상
+            if not requires_next_year:
+                birth_col = required_col_map.get("생년월일", "생년월일")
+                if birth_col in df.columns:
+                    birth_raw = row.get(birth_col)
+                    birth_norm = normalize_date(birth_raw)
+                    if birth_norm and is_valid_yyyymmdd(birth_norm):
+                        birth_year = int(birth_norm[:4])
+                        current_year = datetime.now().year
+                        if current_year - birth_year >= 60:
+                            requires_next_year = True
+
+            if requires_next_year:
+                for field_name, actual_col in conditional_col_map.items():
+                    val = row.get(actual_col)
+                    if pd.isna(val) or str(val).strip() == "":
+                        errors.append({"row": idx, "emp_info": emp_info, "column": actual_col, "error": f"{field_name} 필수 값 누락 (임원/계약직/정년초과자)", "severity": "error"})
+
+                # 직종>2: 당년도퇴직금추계액 blank/0 체크
+                cur_year_col = required_col_map.get("당년도퇴직금추계액")
+                if cur_year_col:
+                    cur_val = row.get(cur_year_col)
+                    try:
+                        cur_num = float(cur_val) if not pd.isna(cur_val) else 0
+                    except (ValueError, TypeError):
+                        cur_num = 0
+                    if pd.isna(cur_val) or str(cur_val).strip() == "" or cur_num == 0:
+                        errors.append({"row": idx, "emp_info": emp_info, "column": cur_year_col, "error": "당년도퇴직금추계액 필수 값 누락/0 (임원/계약직/정년초과자)", "severity": "error"})
+
+                    # 직종>2: 당년도퇴직금 < 차년도퇴직금 체크
+                    next_year_col = conditional_col_map.get("차년도퇴직금추계액")
+                    if next_year_col and cur_num > 0:
+                        next_val = row.get(next_year_col)
+                        try:
+                            next_num = float(next_val) if not pd.isna(next_val) else 0
+                        except (ValueError, TypeError):
+                            next_num = 0
+                        if next_num > 0 and cur_num < next_num:
+                            warnings.append({"row": idx, "emp_info": emp_info, "column": cur_year_col, "warning": f"당년도퇴직금추계액({cur_num:,.0f}) < 차년도퇴직금추계액({next_num:,.0f})", "severity": "warning"})
 
         # 전화번호 형식
         phone_aliases = get_all_aliases("전화번호")
@@ -157,33 +229,43 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
                     except (ValueError, TypeError):
                         errors.append({"row": idx, "emp_info": emp_info, "column": sal_col, "error": f"{sal_col} 형식 오류", "severity": "error"})
 
-        # 입사일 > 생년월일 (18세) + 미래 날짜 검사
+        # 입사일 검증: 날짜 유효성 + 연령 + 시산일
         hire_col = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
         if hire_col and hire_col in df.columns:
             try:
                 hire_raw = row[hire_col]
                 hire_norm = normalize_date(hire_raw)
-                if hire_norm:
+
+                # 입사일 날짜 유효성 (월>12, 일>31, 파싱 불가)
+                has_hire_value = hire_raw is not None and not pd.isna(hire_raw) and str(hire_raw).strip() != ""
+                if has_hire_value and (not hire_norm or not is_valid_yyyymmdd(hire_norm)):
+                    errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사일 날짜 형식 오류 (월>12 or 일>31)", "severity": "error"})
+
+                if hire_norm and is_valid_yyyymmdd(hire_norm):
                     hire_date = pd.to_datetime(hire_norm, format="%Y%m%d", errors="coerce")
                     if pd.notnull(hire_date):
                         # 미래 입사일 검사
                         if hire_date > pd.Timestamp.now():
                             errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사일이 미래임", "severity": "error"})
-                        
-                        # 18세 미만 입사 검사
+
+                        # 시산일 <= 입사일 (평가일 이후 입사자는 명부에 없어야 함)
+                        if eval_date and pd.notnull(eval_date) and eval_date <= hire_date:
+                            errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": f"시산일({eval_date.strftime('%Y-%m-%d')}) 이전 또는 동일 입사 — 명부 포함 불가", "severity": "error"})
+
+                        # 17세 미만 입사 검사
                         if "생년월일" in df.columns:
                             birth_norm = normalize_date(row["생년월일"])
                             if birth_norm:
                                 birth_date = pd.to_datetime(birth_norm, format="%Y%m%d", errors="coerce")
                                 if pd.notnull(birth_date):
                                     age_at_hire = (hire_date - birth_date).days / 365.25
-                                    if age_at_hire < 18:
-                                        errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사 나이 18세 미만", "severity": "error"})
-                                    
-                                    # 고령 입사 경고 (70세 이상)
+                                    if age_at_hire < 17:
+                                        errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": f"입사 나이 {int(age_at_hire)}세 (17세 미만)", "severity": "error"})
+
+                                    # 고령 입사 경고 (70세 초과)
                                     if age_at_hire > 70:
-                                        warnings.append({"row": idx, "emp_info": emp_info, "column": hire_col, "warning": f"입사 나이 {int(age_at_hire)}세 (70세 초과)", "severity": "warning"})
-                                    
+                                        errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": f"입사 나이 {int(age_at_hire)}세 (70세 초과)", "severity": "error"})
+
                                     # 입사일 < 생년월일 (불가능)
                                     if hire_date < birth_date:
                                         errors.append({"row": idx, "emp_info": emp_info, "column": hire_col, "error": "입사일이 생년월일보다 앞섬", "severity": "error"})
@@ -215,7 +297,6 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
             if "중간정산" in c and ("기준일" in c or "일자" in c or "날짜" in c):
                 interim_date_col = c
                 break
-        # 중간정산기준일 컬럼명이 정확히 "중간정산기준일"인 경우도 체크
         if not interim_date_col and "중간정산기준일" in df.columns:
             interim_date_col = "중간정산기준일"
 
@@ -227,31 +308,47 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
         if not interim_amt_col and "중간정산액" in df.columns:
             interim_amt_col = "중간정산액"
 
-        # 중간정산기준일 > 입사일 검증 (7일 이내 차이는 허용)
+        # 중간정산기준일 검증
         if interim_date_col:
             try:
                 interim_date_raw = row[interim_date_col]
                 interim_date_norm = normalize_date(interim_date_raw)
-                if interim_date_norm:
+
+                # 중간정산일 날짜 유효성 (월>12, 일>31, 파싱 불가)
+                has_interim_value = interim_date_raw is not None and not pd.isna(interim_date_raw) and str(interim_date_raw).strip() != ""
+                if has_interim_value and (not interim_date_norm or not is_valid_yyyymmdd(interim_date_norm)):
+                    errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": "중간정산일 날짜 형식 오류 (월>12 or 일>31)", "severity": "error"})
+
+                if interim_date_norm and is_valid_yyyymmdd(interim_date_norm):
                     interim_date = pd.to_datetime(interim_date_norm, format="%Y%m%d", errors="coerce")
-                    hire_col = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
-                    if hire_col and pd.notnull(interim_date):
-                        hire_norm = normalize_date(row[hire_col])
-                        if hire_norm:
-                            hire_date = pd.to_datetime(hire_norm, format="%Y%m%d", errors="coerce")
-                            if pd.notnull(hire_date) and interim_date < hire_date:
-                                # 입사 직후 중간정산의 경우 기준일이 입사일보다 최대 7일 앞설 수 있음
-                                days_diff = (hire_date - interim_date).days
-                                if days_diff > 7:
-                                    errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": f"중간정산기준일이 입사일보다 {days_diff}일 앞섬", "severity": "error"})
-                                # 7일 이내 차이는 무시 (입사 직후 중간정산 허용)
+                    if pd.notnull(interim_date):
+                        # 중간정산일 <= 입사일 (7일 이내 허용)
+                        hire_col_tmp = "입사일" if "입사일" in df.columns else ("입사일자" if "입사일자" in df.columns else None)
+                        if hire_col_tmp:
+                            hire_norm_tmp = normalize_date(row[hire_col_tmp])
+                            if hire_norm_tmp:
+                                hire_date_tmp = pd.to_datetime(hire_norm_tmp, format="%Y%m%d", errors="coerce")
+                                if pd.notnull(hire_date_tmp) and interim_date < hire_date_tmp:
+                                    days_diff = (hire_date_tmp - interim_date).days
+                                    if days_diff > 7:
+                                        errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": f"중간정산기준일이 입사일보다 {days_diff}일 앞섬", "severity": "error"})
+
+                        # 시산일 <= 중간정산일 (평가일 이전에 중간정산 있어야 함)
+                        if eval_date and pd.notnull(eval_date) and eval_date <= interim_date:
+                            errors.append({"row": idx, "emp_info": emp_info, "column": interim_date_col, "error": f"중간정산일이 시산일({eval_date.strftime('%Y-%m-%d')}) 이후 — 불가", "severity": "error"})
             except Exception:
                 pass
 
-        # 중간정산액 > 0인데 중간정산기준일 없으면 경고
+        # 중간정산액 검증
         if interim_amt_col:
             try:
                 interim_amt = float(row[interim_amt_col]) if not pd.isna(row[interim_amt_col]) else 0
+
+                # 중간정산액 < 0
+                if interim_amt < 0:
+                    errors.append({"row": idx, "emp_info": emp_info, "column": interim_amt_col, "error": f"중간정산액 음수 ({interim_amt:,.0f}원)", "severity": "error"})
+
+                # 중간정산액 > 0인데 기준일 없으면 경고
                 if interim_amt > 0:
                     has_interim_date = False
                     if interim_date_col:
@@ -265,12 +362,23 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
 
         # 금액 음수 금지 (전체 모드에서만)
         if mode == "full":
-            for amt_col in ["퇴직금", "전환금"]:
+            # 기본 컬럼 + 매핑된 퇴직금추계액 컬럼
+            neg_check_cols = ["퇴직금", "전환금"]
+            for std_name in ["당년도퇴직금추계액", "차년도퇴직금추계액"]:
+                actual = required_col_map.get(std_name) or conditional_col_map.get(std_name)
+                if actual and actual not in neg_check_cols:
+                    neg_check_cols.append(actual)
+
+            for amt_col in neg_check_cols:
                 if amt_col in df.columns:
+                    amt_raw = row[amt_col]
+                    # 빈 값은 필수 필드 체크에서 처리 → 여기서는 스킵
+                    if pd.isna(amt_raw) or str(amt_raw).strip() == "":
+                        continue
                     try:
-                        amt = float(row[amt_col]) if not pd.isna(row[amt_col]) else 0
+                        amt = float(amt_raw)
                         if amt < 0:
-                            errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 음수", "severity": "error"})
+                            errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 음수 ({amt:,.0f}원)", "severity": "error"})
                     except (ValueError, TypeError):
                         errors.append({"row": idx, "emp_info": emp_info, "column": amt_col, "error": f"{amt_col} 형식 오류", "severity": "error"})
 

@@ -62,8 +62,11 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Training data (optional - uncomment if needed)
-# training_data/
+# Training data (contains PII from validation sessions)
+training_data/
+
+# SQLite database
+data/
 
 # Temporary files
 *.tmp

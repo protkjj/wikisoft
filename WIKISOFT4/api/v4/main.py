@@ -11,9 +11,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routes import health, validation, privacy, webhook, compat, auth, learn, windmill, ifrs, report
-# TODO: Fix migrated routes after dependency cleanup
-# from .routes import auto_validate, diagnostic_questions, export
+from .routes import health, validation, privacy, webhook, compat, auth, learn, windmill, ifrs, report, admin, agent
+from .routes import auto_validate, diagnostic_questions, export
 from .middleware.auth import AuthMiddleware
 from .middleware.audit import AuditMiddleware
 from .middleware.rate_limit import RateLimitMiddleware
@@ -23,17 +22,26 @@ from .middleware.rate_limit import RateLimitMiddleware
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    print("🚀 WIKISOFT 4.1 Starting...")
+    print("🚀 OneCheck Starting...")
     print("🔒 Security: Enabled")
     print("🔐 Privacy: Enabled")
     print("🔄 Workflow: Enabled")
+
+    # DB 초기화
+    from core.database import init_db, migrate_json_to_sqlite, close_db
+    print("💾 Database: Initializing...")
+    init_db()
+    migrate_json_to_sqlite()
+    print("💾 Database: Ready")
+
     yield
     # Shutdown
-    print("👋 WIKISOFT 4.1 Shutting down...")
+    close_db()
+    print("👋 OneCheck Shutting down...")
 
 
 app = FastAPI(
-    title="WIKISOFT 4.1 API",
+    title="OneCheck API",
     description="Security-first, privacy-focused HR/Finance data validation platform",
     version="4.1.0",
     docs_url="/api/v4/docs",
@@ -92,10 +100,16 @@ app.include_router(ifrs.router, prefix="/api/v4", tags=["IFRS 1019"])
 # 리포트 생성 라우터
 app.include_router(report.router, prefix="/api/v4", tags=["Report"])
 
-# TODO: 추가 마이그레이션 필요
-# app.include_router(auto_validate.router, tags=["Auto Validate"])
-# app.include_router(diagnostic_questions.router, tags=["Diagnostic"])
-# app.include_router(export.router, tags=["Export"])
+# 관리자 라우터
+app.include_router(admin.router, prefix="/api/v4", tags=["Admin"])
+
+# AI 에이전트 라우터
+app.include_router(agent.router, tags=["Agent"])
+
+# WIKISOFT3에서 마이그레이션된 라우터 (v4 경로로 병렬 제공)
+app.include_router(auto_validate.router, tags=["Auto Validate"])
+app.include_router(diagnostic_questions.router, tags=["Diagnostic"])
+app.include_router(export.router, tags=["Export"])
 
 
 # Root endpoint
@@ -103,7 +117,7 @@ app.include_router(report.router, prefix="/api/v4", tags=["Report"])
 async def root():
     """Root endpoint."""
     return {
-        "name": "WIKISOFT",
+        "name": "OneCheck",
         "version": "4.1.0",
         "status": "running",
         "features": {

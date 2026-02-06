@@ -1316,3 +1316,101 @@
   background: rgba(129, 201, 149, 0.12);
   border-color: #81C995;
 }
+
+/* 미완료 질문 툴팁 */
+.complete-btn-wrapper {
+  position: relative;
+}
+
+.complete-btn-wrapper:hover .unanswered-tooltip {
+  display: block;
+}
+
+.unanswered-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 300px;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+}
+
+.unanswered-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 20px;
+  border: 8px solid transparent;
+  border-top-color: var(--bg-primary, #fff);
+}
+
+.tooltip-header {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary, #333);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.tooltip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tooltip-list li {
+  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #666);
+  border-bottom: 1px solid var(--border-light, #f0f0f0);
+}
+
+.tooltip-list li:last-child {
+  border-bottom: none;
+}
+
+.tooltip-list .section-badge {
+  display: inline-block;
+  background: var(--primary, #3b82f6);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-right: 0.5rem;
+}
+
+.tooltip-list .more-count {
+  color: var(--text-muted, #999);
+  font-style: italic;
+}
+
+/* 다크모드: 미완료 툴팁 */
+[data-theme="dark"] .unanswered-tooltip {
+  background: #1D1D1D;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .unanswered-tooltip::after {
+  border-top-color: #1D1D1D;
+}
+
+[data-theme="dark"] .tooltip-header {
+  color: #E0E0E0;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .tooltip-list li {
+  color: #B0B0B0;
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+}

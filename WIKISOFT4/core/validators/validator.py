@@ -6,7 +6,7 @@ from core.validators.validation_layer1 import validate_layer1
 from core.validators.validation_layer2 import validate_layer2
 from core.validators.validation_layer_ai import validate_with_ai
 from core.validators.aggregator import get_aggregates_by_question_id
-from core.ai.knowledge_base import save_training_example
+from core.ai.knowledge_base import save_training_example, load_learned_patterns
 
 logger = logging.getLogger(__name__)
 
@@ -285,6 +285,71 @@ def validate(
     
     errors, dict_warnings = deduplicate_all(errors, dict_warnings)
     warnings = dict_warnings + str_warnings
+
+    # ========================================
+    # 학습된 패턴 적용: false positive 억제
+    # learned_patterns에서 "오류 아님"/"정상" 패턴이 있으면 해당 에러를 제거
+    # ========================================
+    try:
+        learned = load_learned_patterns()
+        if learned:
+            suppressed = []
+            for pattern in learned:
+                p_field = pattern.get("field", "")
+                p_interp = pattern.get("correct_interpretation", "")
+                p_context = pattern.get("context", {})
+                p_was_error = pattern.get("ai_said_error", False)
+
+                # "오류 아님"/"정상" 패턴만 억제 대상
+                if not p_was_error:
+                    continue
+                suppress_keywords = ["오류 아님", "정상", "문제없", "예외", "무시"]
+                if not any(kw in p_interp for kw in suppress_keywords):
+                    continue
+
+                new_errors = []
+                for e in errors:
+                    e_field = e.get("field", "")
+                    e_msg = e.get("message", "")
+
+                    # 필드명 매칭 (부분 일치, 공백 무시)
+                    p_norm = p_field.replace(" ", "")
+                    e_norm = e_field.replace(" ", "")
+                    if p_norm and p_norm in e_norm:
+                        # 컨텍스트 매칭 (진단 답변이 있으면 비교)
+                        context_match = True
+                        if p_context and diagnostic_answers:
+                            for ctx_key, ctx_val in p_context.items():
+                                user_val = diagnostic_answers.get(ctx_key)
+                                if user_val is not None and str(user_val) != str(ctx_val):
+                                    context_match = False
+                                    break
+
+                        if context_match:
+                            suppressed.append({
+                                "field": e_field,
+                                "message": e_msg,
+                                "pattern": p_interp,
+                                "row": e.get("row"),
+                            })
+                            continue  # 이 오류 제거
+                    new_errors.append(e)
+                errors = new_errors
+
+            # 억제된 항목을 info 레벨 경고로 추가 (투명성)
+            for s in suppressed:
+                warnings.append({
+                    "row": s.get("row"),
+                    "field": s.get("field", ""),
+                    "message": f"[학습 패턴 적용] {s.get('message', '')} → {s.get('pattern', '')}",
+                    "source": "learned_pattern",
+                    "severity": "info",
+                })
+
+            if suppressed:
+                logger.info(f"학습된 패턴으로 {len(suppressed)}건의 오류 억제됨")
+    except Exception as e:
+        logger.warning(f"학습 패턴 적용 실패 (검증 계속): {e}", exc_info=True)
 
     # AI 사용 여부 확인
     used_ai = any(c.get("name") == "ai_validation" and c.get("status") != "error" for c in checks)

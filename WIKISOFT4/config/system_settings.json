@@ -1,0 +1,7 @@
+{
+  "minimum_wage": 2060740,
+  "retirement_age": 60,
+  "validation_confidence_threshold": 0.8,
+  "max_file_size_mb": 50,
+  "allowed_extensions": [".xls", ".xlsx"]
+}

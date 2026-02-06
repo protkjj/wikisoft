@@ -452,7 +452,7 @@ def _notify_email(record: Dict[str, Any]) -> bool:
     import smtplib
 
     msg = EmailMessage()
-    msg["Subject"] = "WIKISOFT4 검증 결과 알림"
+    msg["Subject"] = "OneCheck 검증 결과 알림"
     msg["From"] = smtp_user
     msg["To"] = email_to
 

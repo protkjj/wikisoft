@@ -39,6 +39,8 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
   // 소스 헤더 드래그 시작
   const handleSourceDragStart = (e: React.DragEvent, index: number, source: string) => {
     e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', source)  // 브라우저 호환성을 위해 필수
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'source', index, value: source }))
     setDraggedItem({ type: 'source', index, value: source })
     // 드래그 이미지 설정
     const elem = e.target as HTMLElement
@@ -48,6 +50,8 @@ export default function ManualMapping({ matches, onConfirm, onCancel }: ManualMa
   // 타겟 필드 드래그 시작 (사용 가능한 필드 목록에서)
   const handleTargetDragStart = (e: React.DragEvent, fieldName: string) => {
     e.dataTransfer.effectAllowed = 'copy'
+    e.dataTransfer.setData('text/plain', fieldName)  // 브라우저 호환성을 위해 필수
+    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'target', index: -1, value: fieldName }))
     setDraggedItem({ type: 'target', index: -1, value: fieldName })
   }
 

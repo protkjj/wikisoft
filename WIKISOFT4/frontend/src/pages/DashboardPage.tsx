@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import type { ValidationRun } from '../types'
 import './DashboardPage.css'
 
@@ -22,17 +23,28 @@ export default function DashboardPage() {
     avgConfidence: 0
   })
   const [loading, setLoading] = useState(true)
+  const [userFilter, setUserFilter] = useState<string>('')
+  const [uniqueUsers, setUniqueUsers] = useState<string[]>([])
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin'
 
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [userFilter])
 
   const loadDashboardData = async () => {
     try {
       setLoading(true)
-      const runsData = await api.getLatestRuns(20)
+      const runsData = await api.getLatestRuns(100, userFilter || undefined)
       setRuns(runsData)
+
+      // 관리자용: 고유 사용자 목록 추출
+      if (isAdmin && !userFilter) {
+        const users = [...new Set(runsData.map((r: any) => r.user_id).filter(Boolean))]
+        setUniqueUsers(users as string[])
+      }
 
       // Calculate stats from runs
       const total = runsData.length
@@ -87,9 +99,25 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <div className="dashboard-header">
         <h1>대시보드</h1>
-        <button onClick={() => navigate('/')} className="action-btn">
-          + 새 검증
-        </button>
+        <div className="dashboard-actions">
+          {isAdmin && uniqueUsers.length > 0 && (
+            <select
+              className="user-filter"
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+            >
+              <option value="">전체 사용자</option>
+              {uniqueUsers.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          )}
+          {!isAdmin && (
+            <button onClick={() => navigate('/')} className="action-btn">
+              + 새 검증
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="stats-grid">
@@ -138,10 +166,12 @@ export default function DashboardPage() {
         <h2>최근 검증 내역</h2>
         {runs.length === 0 ? (
           <div className="empty-state">
-            <p>아직 검증 기록이 없습니다.</p>
-            <button onClick={() => navigate('/')} className="action-btn">
-              첫 검증 시작하기
-            </button>
+            <p>{isAdmin ? '검증 기록이 없습니다.' : '아직 검증 기록이 없습니다.'}</p>
+            {!isAdmin && (
+              <button onClick={() => navigate('/')} className="action-btn">
+                첫 검증 시작하기
+              </button>
+            )}
           </div>
         ) : (
           <div className="runs-list">
@@ -149,7 +179,10 @@ export default function DashboardPage() {
               <div key={index} className="run-item">
                 <div className="run-icon">{getStatusIcon(run.action || '')}</div>
                 <div className="run-info">
-                  <div className="run-message">{run.message || '검증 완료'}</div>
+                  <div className="run-message">
+                    {run.company_name && <span className="run-company">{run.company_name}</span>}
+                    {run.message || '검증 완료'}
+                  </div>
                   <div className="run-meta">
                     <span className="run-date">{formatDate(run.timestamp)}</span>
                     {run.confidence && (

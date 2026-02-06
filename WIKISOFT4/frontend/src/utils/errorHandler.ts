@@ -24,6 +24,70 @@ const HTTP_STATUS_MESSAGES: Record<number, string> = {
   504: '서버 응답 시간이 초과되었습니다. 다시 시도해주세요.',
 }
 
+// 기술적 에러 메시지 → 사용자 친화적 메시지 매핑
+const ERROR_MESSAGE_MAP: Record<string, string> = {
+  // 파일 관련
+  'No file uploaded': '파일을 선택해주세요.',
+  'Invalid file type': 'Excel 파일(.xlsx, .xls)만 업로드 가능합니다.',
+  'File too large': '파일 크기가 너무 큽니다. 10MB 이하의 파일을 선택해주세요.',
+  'Empty file': '파일이 비어있습니다. 다른 파일을 선택해주세요.',
+  'Unable to parse file': '파일을 읽을 수 없습니다. 파일이 손상되었거나 형식이 올바르지 않습니다.',
+  'No data found': '파일에 데이터가 없습니다. 명부 데이터가 있는 파일을 선택해주세요.',
+
+  // 헤더 매핑 관련
+  'No headers found': '헤더 행을 찾을 수 없습니다. 첫 번째 행에 컬럼명이 있는지 확인해주세요.',
+  'Required column missing': '필수 컬럼이 누락되었습니다. 사원번호, 성명, 입사일 등이 포함되어야 합니다.',
+  'Header mapping failed': '컬럼 매핑에 실패했습니다. 컬럼명을 확인해주세요.',
+
+  // 검증 관련
+  'Validation failed': '데이터 검증에 실패했습니다. 파일 내용을 확인해주세요.',
+  'Invalid date format': '날짜 형식이 올바르지 않습니다. YYYY-MM-DD 형식으로 입력해주세요.',
+  'Invalid number format': '숫자 형식이 올바르지 않습니다.',
+
+  // 서버 관련
+  'Internal server error': '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  'Service unavailable': '서비스를 일시적으로 이용할 수 없습니다. 잠시 후 다시 시도해주세요.',
+  'Request timeout': '요청 처리 시간이 초과되었습니다. 파일 크기를 줄이거나 다시 시도해주세요.',
+
+  // 세션 관련
+  'Session expired': '세션이 만료되었습니다. 페이지를 새로고침 후 다시 시도해주세요.',
+  'Session not found': '검증 세션을 찾을 수 없습니다. 파일을 다시 업로드해주세요.',
+}
+
+/**
+ * 기술적 메시지를 사용자 친화적 메시지로 변환
+ */
+const translateErrorMessage = (message: string): string => {
+  // 정확히 일치하는 메시지 먼저 확인
+  if (ERROR_MESSAGE_MAP[message]) {
+    return ERROR_MESSAGE_MAP[message]
+  }
+
+  // 부분 일치 확인 (대소문자 무시)
+  const lowerMessage = message.toLowerCase()
+  for (const [key, value] of Object.entries(ERROR_MESSAGE_MAP)) {
+    if (lowerMessage.includes(key.toLowerCase())) {
+      return value
+    }
+  }
+
+  // 일반적인 패턴 변환
+  if (lowerMessage.includes('timeout') || lowerMessage.includes('timed out')) {
+    return '요청 처리 시간이 초과되었습니다. 다시 시도해주세요.'
+  }
+  if (lowerMessage.includes('network') || lowerMessage.includes('connection')) {
+    return '네트워크 연결을 확인해주세요.'
+  }
+  if (lowerMessage.includes('permission') || lowerMessage.includes('denied')) {
+    return '접근 권한이 없습니다.'
+  }
+  if (lowerMessage.includes('not found')) {
+    return '요청한 항목을 찾을 수 없습니다.'
+  }
+
+  return message
+}
+
 /**
  * Extract user-friendly error message from any error object
  * @param error - Error object (axios error, fetch error, or Error instance)
@@ -59,12 +123,13 @@ export const getErrorMessage = (error: unknown, fallbackMessage: string): string
       return HTTP_STATUS_MESSAGES[status]
     }
 
-    // 일반 서버 응답 메시지
+    // 일반 서버 응답 메시지 (사용자 친화적으로 변환)
     const detail = axiosError.response?.data?.detail
     const message = axiosError.response?.data?.message
     const errorMsg = axiosError.response?.data?.error
-    if (detail || message || errorMsg) {
-      return detail || message || errorMsg || fallbackMessage
+    const serverMsg = detail || message || errorMsg
+    if (serverMsg) {
+      return translateErrorMessage(serverMsg)
     }
 
     // Axios 에러 코드 (네트워크 오류 등)
@@ -82,7 +147,11 @@ export const getErrorMessage = (error: unknown, fallbackMessage: string): string
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       return '서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.'
     }
-    return error.message || fallbackMessage
+    // AbortError는 타임아웃
+    if (error.name === 'AbortError') {
+      return '요청 시간이 초과되었습니다. 다시 시도해주세요.'
+    }
+    return translateErrorMessage(error.message) || fallbackMessage
   }
 
   // String error

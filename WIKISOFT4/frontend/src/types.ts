@@ -273,4 +273,5 @@ export interface ValidationRun {
   file_url?: string | null
   run_id?: string | null
   flow_id?: string | null
+  company_name?: string | null
 }

@@ -11,13 +11,16 @@ from io import BytesIO
 from urllib.parse import quote
 import json
 
-from fastapi import APIRouter, File, Form, Header, UploadFile, HTTPException
+from fastapi import APIRouter, File, Form, Header, UploadFile, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+
+from .auth import get_current_user, User
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
 from core.memory.session_store import session_store
+from core.memory.validation_history import get_validation_history
 
 router = APIRouter()
 
@@ -273,7 +276,8 @@ async def auto_validate(
     file: UploadFile = File(...),
     chatbot_answers: Optional[str] = Form(None),
     validation_mode: Optional[str] = Form("full"),  # "roster" 또는 "full"
-    x_session_id: Optional[str] = Header(None)
+    x_session_id: Optional[str] = Header(None),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     """파일 업로드 및 자동 검증 (WIKISOFT3 호환)
 
@@ -305,6 +309,9 @@ async def auto_validate(
             diagnostic_answers = json.loads(chatbot_answers)
         except json.JSONDecodeError:
             pass
+
+    # 회사명 추출 (진단 질문 1-1)
+    company_name = diagnostic_answers.get("1-1", "")
 
     try:
         # core 모듈 사용
@@ -366,10 +373,9 @@ async def auto_validate(
         # status 동적 설정: errors 있으면 "error", warnings만 있으면 "warning", 둘 다 없으면 "ok"
         errors = validation.get("errors", [])
         warnings_list = validation.get("warnings", [])
+        # 오류 0건 → 성공, 오류 있음 → 실패 (경고는 무관)
         if errors:
             status = "error"
-        elif warnings_list:
-            status = "warning"
         else:
             status = "ok"
 
@@ -397,6 +403,35 @@ async def auto_validate(
         session_store.set(session_id, "parsed_data", parsed)
         session_store.set(session_id, "diagnostic_answers", diagnostic_answers)
         session_store.set(session_id, "filename", file.filename)
+
+        # 검증 이력에 저장
+        history = get_validation_history()
+        history.add(
+            filename=file.filename or "unknown",
+            status=status,
+            confidence=confidence.get("score", 0),
+            error_count=len(errors),
+            warning_count=len(warnings_list),
+            row_count=len(parsed.get("rows", [])),
+            session_id=session_id,
+            user_id=current_user.id if current_user else None,
+            company_name=company_name or None,
+        )
+
+        # 텔레그램 알림 (비동기, 실패해도 결과 반환)
+        try:
+            from integrations.telegram.notifier import send_validation_notification
+            import asyncio
+            asyncio.ensure_future(send_validation_notification(
+                filename=file.filename or "unknown",
+                error_count=len(errors),
+                warning_count=len(warnings_list),
+                row_count=len(parsed.get("rows", [])),
+                confidence=confidence.get("score", 0),
+                status=status,
+            ))
+        except Exception:
+            pass  # 텔레그램 실패해도 검증 결과는 정상 반환
 
         return result
 
@@ -437,10 +472,15 @@ class RevalidateRequest(BaseModel):
     headers: List[str]
     rows: List[List[Any]]
     diagnostic_answers: Optional[Dict[str, Any]] = None
+    session_id: Optional[str] = None
+    filename: Optional[str] = None
 
 
 @router.post("/api/auto-validate/revalidate")
-async def revalidate(request: RevalidateRequest):
+async def revalidate(
+    request: RevalidateRequest,
+    current_user: Optional[User] = Depends(get_current_user)
+):
     """수정된 데이터로 재검증 수행
 
     사용자가 UI에서 데이터를 수정한 후 재검증 버튼을 누르면 호출됨.
@@ -457,6 +497,9 @@ async def revalidate(request: RevalidateRequest):
         headers = request.headers
         rows = request.rows
         diagnostic_answers = request.diagnostic_answers or {}
+
+        # 회사명 추출 (진단 질문 1-1)
+        company_name = diagnostic_answers.get("1-1", "")
 
         # parsed 형식으로 변환
         parsed = {
@@ -492,13 +535,66 @@ async def revalidate(request: RevalidateRequest):
         errors = validation.get("errors", [])
         warnings = validation.get("warnings", [])
 
-        # status 동적 설정
+        # 오류 0건 → 성공, 오류 있음 → 실패 (경고는 무관)
         if errors:
             status = "error"
-        elif warnings:
-            status = "warning"
         else:
             status = "ok"
+
+        # 재검증 결과를 이력에 반영 (같은 세션이면 기존 이력 업데이트)
+        history = get_validation_history()
+        updated = False
+        if request.session_id:
+            updated = history.update_by_session(
+                session_id=request.session_id,
+                status=status,
+                confidence=confidence.get("score", 0),
+                error_count=len(errors),
+                warning_count=len(warnings),
+            )
+        if not updated:
+            # 세션 이력이 없으면 새로 추가
+            history.add(
+                filename=request.filename or "재검증",
+                status=status,
+                confidence=confidence.get("score", 0),
+                error_count=len(errors),
+                warning_count=len(warnings),
+                row_count=len(rows),
+                session_id=request.session_id,
+                user_id=current_user.id if current_user else None,
+                company_name=company_name or None,
+            )
+
+        # 행동 로깅: 재검증 = 사용자가 수정 후 다시 제출
+        try:
+            from core.ai.autonomous_learning import log_customer_behavior
+            log_customer_behavior(
+                action="file_resubmitted",
+                context={
+                    "filename": request.filename or "재검증",
+                    "error_count": len(errors),
+                    "warning_count": len(warnings),
+                },
+                session_id=request.session_id,
+            )
+        except Exception:
+            pass  # 로깅 실패는 재검증 결과에 영향 없음
+
+        # 텔레그램 알림 (재검증 결과)
+        try:
+            from integrations.telegram.notifier import send_validation_notification
+            import asyncio
+            asyncio.ensure_future(send_validation_notification(
+                filename=f"[재검증] {request.filename or '재검증'}",
+                error_count=len(errors),
+                warning_count=len(warnings),
+                row_count=len(rows),
+                confidence=confidence.get("score", 0),
+                status=status,
+            ))
+        except Exception:
+            pass
 
         return {
             "status": status,
@@ -635,12 +731,50 @@ async def download_final_data(x_session_id: Optional[str] = Header(None)):
 
 
 @router.get("/api/windmill/latest")
-async def get_windmill_latest(limit: int = 5):
-    """최근 실행 기록 (WIKISOFT3 호환)"""
-    return {
-        "runs": [],
-        "note": "WIKISOFT4에서는 n8n/Temporal 워크플로우 사용 예정"
-    }
+async def get_windmill_latest(
+    limit: int = 100,
+    user_filter: Optional[str] = Query(None, description="사용자 ID 필터 (관리자 전용)"),
+    current_user: Optional[User] = Depends(get_current_user)
+):
+    """최근 검증 이력 조회
+
+    - 일반 사용자: 본인 이력만 조회
+    - 관리자: 전체 이력 조회 (user_filter로 특정 사용자 필터 가능)
+    """
+    history = get_validation_history()
+
+    # 관리자 여부 확인
+    is_admin = current_user and (current_user.role == "admin" or current_user.role == "superadmin")
+
+    if is_admin:
+        # 관리자: 전체 또는 특정 사용자 필터
+        if user_filter:
+            runs = history.get_by_user(user_filter, limit)
+        else:
+            runs = history.get_latest(limit)
+    else:
+        # 일반 사용자: 본인 이력만
+        if current_user:
+            runs = history.get_by_user(current_user.id, limit)
+        else:
+            # 비로그인 사용자: 전체 이력 표시 (user_id 없는 것 포함)
+            runs = history.get_latest(limit)
+
+    # 프론트엔드 호환 형식으로 변환
+    formatted_runs = []
+    for run in runs:
+        formatted_runs.append({
+            "timestamp": run.get("timestamp"),
+            "action": run.get("action"),
+            "confidence": run.get("confidence"),
+            "message": run.get("message"),
+            "run_id": run.get("run_id"),
+            "file_url": run.get("filename"),
+            "status": run.get("status"),
+            "user_id": run.get("user_id"),  # 관리자용
+        })
+
+    return {"runs": formatted_runs}
 
 
 @router.get("/api/health")
@@ -745,7 +879,7 @@ async def agent_ask(request: AgentAskRequest):
         from core.ai.llm_client import get_llm_client
 
         # 시스템 프롬프트: 검증 도우미
-        system_prompt = """당신은 WIKISOFT 4.1의 AI 어시스턴트입니다.
+        system_prompt = """당신은 OneCheck의 AI 어시스턴트입니다.
 퇴직연금 계리평가를 위한 명부 검증 플랫폼의 전문 도우미입니다.
 
 주요 역할:
@@ -799,6 +933,60 @@ async def agent_ask(request: AgentAskRequest):
             "response": "죄송합니다. 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
             "error": str(e)
         }
+
+
+# ========================================
+# 오류 Dismiss API (학습 파이프라인)
+# ========================================
+
+class DismissErrorRequest(BaseModel):
+    """오류 dismiss 요청 (사용자가 '값 유지' 클릭 시)"""
+    field: str
+    message: str
+    row: Optional[int] = None
+    severity: str = "error"
+    session_id: Optional[str] = None
+    diagnostic_context: Optional[Dict[str, Any]] = None
+
+
+@router.post("/api/dismiss-error")
+async def dismiss_error(request: DismissErrorRequest):
+    """사용자가 오류를 '값 유지'로 처리 시 학습 파이프라인에 기록
+
+    1. learned_patterns에 패턴 저장
+    2. behavior_events에 행동 로깅
+    3. 이벤트 10개 이상이면 자율학습 분석 자동 트리거
+    """
+    try:
+        from core.ai.knowledge_base import learn_from_correction
+        from core.ai.autonomous_learning import log_customer_behavior
+
+        # 1. learned_patterns 저장
+        learn_from_correction(
+            field=request.field,
+            original_value=request.message,
+            was_error=True,
+            correct_interpretation="사용자가 오류 아님 처리",
+            diagnostic_context=request.diagnostic_context,
+        )
+
+        # 2. behavior_events 저장 (자동으로 10개 이상이면 analyze_and_learn 트리거)
+        log_customer_behavior(
+            action="error_ignored",
+            context={
+                "field": request.field,
+                "message": request.message,
+                "row": request.row,
+                "severity": request.severity,
+                "error_type": request.message,
+            },
+            session_id=request.session_id,
+        )
+
+        return {"status": "ok", "message": f"패턴 학습됨: {request.field}"}
+
+    except Exception as e:
+        return {"status": "error", "message": f"학습 기록 실패: {str(e)}"}
 
 
 @router.post("/api/export/errors")

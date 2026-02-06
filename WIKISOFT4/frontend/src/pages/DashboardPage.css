@@ -16,6 +16,28 @@
   margin: 0;
 }
 
+.dashboard-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-filter {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: var(--card-bg, white);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.user-filter:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+}
+
 .action-btn {
   padding: 10px 20px;
   background: var(--primary-color, #3b82f6);
@@ -29,6 +51,11 @@
 
 .action-btn:hover {
   background: var(--primary-dark, #2563eb);
+}
+
+[data-theme="dark"] .user-filter {
+  background: var(--bg-card);
+  border-color: var(--border-color);
 }
 
 .loading-state {
@@ -187,6 +214,16 @@
   margin-bottom: 4px;
 }
 
+.run-company {
+  display: inline-block;
+  background: var(--primary-color, #3b82f6);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  margin-right: 8px;
+}
+
 .run-meta {
   display: flex;
   gap: 16px;
@@ -216,18 +253,46 @@
   color: #991b1b;
 }
 
-/* Dark mode */
+/* Dark mode - 토스증권 스타일 */
 [data-theme="dark"] .stat-card,
 [data-theme="dark"] .confidence-card,
 [data-theme="dark"] .recent-section {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  box-shadow: none;
 }
 
 [data-theme="dark"] .run-item {
-  background: var(--bg-secondary, #374151);
+  background: var(--bg-secondary);
 }
 
 [data-theme="dark"] .run-item:hover {
-  background: var(--hover-bg, #4b5563);
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .run-status.auto_approve {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+[data-theme="dark"] .run-status.needs_review {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+[data-theme="dark"] .run-status.rejected {
+  background: var(--error-light);
+  color: var(--error);
+}
+
+[data-theme="dark"] .confidence-bar-container {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .confidence-bar {
+  background: linear-gradient(90deg, var(--success), var(--accent-primary));
+}
+
+[data-theme="dark"] .confidence-value {
+  color: var(--accent-primary);
 }

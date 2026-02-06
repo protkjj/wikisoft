@@ -36,6 +36,33 @@
   flex-wrap: wrap;
 }
 
+.filter-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.user-filter {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: var(--card-bg, white);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  min-width: 140px;
+}
+
+.user-filter:focus {
+  outline: none;
+  border-color: var(--primary-color, #3b82f6);
+}
+
+[data-theme="dark"] .user-filter {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
 .filter-buttons {
   display: flex;
   gap: 8px;
@@ -149,6 +176,12 @@
   font-size: 0.875rem;
 }
 
+.company-cell {
+  font-weight: 600;
+  color: var(--primary-color, #3b82f6);
+  white-space: nowrap;
+}
+
 .message-cell {
   max-width: 400px;
   overflow: hidden;
@@ -202,23 +235,74 @@
   color: #ef4444;
 }
 
-/* Dark mode */
+/* Dark mode - 토스증권 스타일 */
 [data-theme="dark"] .filter-btn {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: var(--bg-card);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .filter-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+[data-theme="dark"] .filter-btn.success.active {
+  background: var(--success-light);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+[data-theme="dark"] .filter-btn.warning.active {
+  background: var(--warning-light);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+[data-theme="dark"] .filter-btn.danger.active {
+  background: var(--error-light);
+  border-color: var(--error);
+  color: var(--error);
 }
 
 [data-theme="dark"] .search-input {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: var(--bg-card);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .history-table-container,
 [data-theme="dark"] .empty-state {
-  background: var(--card-bg, #1f2937);
-  border-color: var(--border-color, #374151);
+  background: var(--bg-card);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .history-table th {
-  background: var(--bg-secondary, #374151);
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .badge.success {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+[data-theme="dark"] .badge.warning {
+  background: var(--warning-light);
+  color: var(--warning);
+}
+
+[data-theme="dark"] .badge.danger {
+  background: var(--error-light);
+  color: var(--error);
+}
+
+[data-theme="dark"] .confidence.high {
+  color: var(--success);
+}
+
+[data-theme="dark"] .confidence.medium {
+  color: var(--warning);
+}
+
+[data-theme="dark"] .confidence.low {
+  color: var(--error);
 }

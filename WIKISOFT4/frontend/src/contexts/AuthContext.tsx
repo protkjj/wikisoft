@@ -12,7 +12,7 @@ interface AuthContextType {
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (username: string, password: string) => Promise<User>
   logout: () => void
 }
 
@@ -38,30 +38,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` }
       })
       setUser(response.data)
+      // Set default auth header for all subsequent requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
     } catch {
       // Token is invalid, clear it
       localStorage.removeItem('token')
       setToken(null)
       setUser(null)
+      delete axios.defaults.headers.common['Authorization']
     } finally {
       setIsLoading(false)
     }
   }
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string): Promise<User> => {
     const response = await axios.post(`${API_BASE_URL}/v4/auth/login`, {
       username,
       password
     })
 
     const { access_token, user: userData } = response.data
+    const loggedInUser = userData || { username, role: 'user' }
 
     localStorage.setItem('token', access_token)
     setToken(access_token)
-    setUser(userData || { username, role: 'user' })
+    setUser(loggedInUser)
 
     // Set default auth header for all requests
     axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+
+    return loggedInUser
   }
 
   const logout = () => {

@@ -974,6 +974,24 @@
   background: var(--bg-hover);
 }
 
+.onboarding-dropzone.drag-over {
+  border-color: var(--accent-primary);
+  background: rgba(59, 130, 246, 0.1);
+  border-style: solid;
+  transform: scale(1.02);
+}
+
+.onboarding-dropzone.drag-over .dropzone-icon {
+  color: var(--accent-primary);
+  transform: translateY(-4px);
+  transition: transform 0.2s ease;
+}
+
+.onboarding-dropzone.drag-over .dropzone-text {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
 .dropzone-icon {
   color: var(--text-muted);
 }

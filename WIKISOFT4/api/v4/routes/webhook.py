@@ -98,7 +98,7 @@ async def test_webhook(url: str, event_type: str = "test"):
         EventType.USER_ACTION,
         data={
             "type": "test",
-            "message": "This is a test webhook from WIKISOFT4",
+            "message": "This is a test webhook from OneCheck",
             "timestamp": datetime.now(timezone.utc).isoformat(),
         },
     )
@@ -111,6 +111,14 @@ async def test_webhook(url: str, event_type: str = "test"):
         "status_code": delivery.status_code,
         "error": delivery.error_message,
     }
+
+
+@router.post("/webhook/telegram-test")
+async def test_telegram():
+    """텔레그램 알림 테스트."""
+    from integrations.telegram.notifier import send_test_notification
+    result = await send_test_notification()
+    return result
 
 
 @router.get("/webhook/events")

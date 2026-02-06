@@ -252,6 +252,36 @@ export default function DiagnosticWizard({
     .filter(s => s.id !== 7) // 특이사항 제외
     .every(s => s.completed || s.total === 0)
 
+  // 미완료 질문 목록 (섹션 7 제외)
+  const unansweredQuestions = useMemo(() => {
+    const unanswered: Array<{ sectionTitle: string; questionText: string; questionId: string }> = []
+
+    activeSections
+      .filter(s => s.id !== 7) // 특이사항 제외
+      .forEach(section => {
+        const sectionQuestions = questionsBySection[section.id] || []
+        sectionQuestions.forEach(q => {
+          // group 타입은 제외
+          if (q.type === 'group') return
+          // 조건부 질문 체크
+          if (q.condition) {
+            const { question_id, answer: requiredAnswer } = q.condition
+            if (answers[question_id] !== requiredAnswer) return
+          }
+          // 미답변 질문
+          if (answers[q.id] === undefined) {
+            unanswered.push({
+              sectionTitle: section.title,
+              questionText: q.question.length > 30 ? q.question.slice(0, 30) + '...' : q.question,
+              questionId: q.id
+            })
+          }
+        })
+      })
+
+    return unanswered
+  }, [activeSections, questionsBySection, answers])
+
   // 현재 섹션이 마지막 섹션인지
   const isLastSection = currentSection === activeSections[activeSections.length - 1]?.id
 
@@ -550,13 +580,31 @@ export default function DiagnosticWizard({
         </div>
 
         {isLastSection ? (
-          <button
-            className="nav-btn complete"
-            onClick={handleComplete}
-            disabled={!allCompleted}
-          >
-            {allCompleted ? '✅ 완료 → 검증 시작' : '모든 질문에 답변해주세요'}
-          </button>
+          <div className="complete-btn-wrapper">
+            <button
+              className="nav-btn complete"
+              onClick={handleComplete}
+              disabled={!allCompleted}
+            >
+              {allCompleted ? '✅ 완료 → 검증 시작' : `미완료 ${unansweredQuestions.length}개`}
+            </button>
+            {!allCompleted && unansweredQuestions.length > 0 && (
+              <div className="unanswered-tooltip">
+                <div className="tooltip-header">⚠️ 답변이 필요한 질문</div>
+                <ul className="tooltip-list">
+                  {unansweredQuestions.slice(0, 5).map((q, idx) => (
+                    <li key={q.questionId}>
+                      <span className="section-badge">{q.sectionTitle}</span>
+                      {q.questionText}
+                    </li>
+                  ))}
+                  {unansweredQuestions.length > 5 && (
+                    <li className="more-count">...외 {unansweredQuestions.length - 5}개</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         ) : (
           <button
             className="nav-btn next"
@@ -581,7 +629,9 @@ interface QuestionCardProps {
 
 function QuestionCard({ question, value, onChange, isChild = false, error }: QuestionCardProps) {
   const [inputValue, setInputValue] = useState('')
+  const [isComposing, setIsComposing] = useState(false)  // 한글 IME 조합 상태
   const cardRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
   useEffect(() => {
     // 숫자/텍스트 입력의 경우 기존 값 복원
@@ -604,7 +654,36 @@ function QuestionCard({ question, value, onChange, isChild = false, error }: Que
     }
   }
 
+  // 한글 IME 조합 시작
+  const handleCompositionStart = () => {
+    setIsComposing(true)
+  }
+
+  // 한글 IME 조합 완료
+  const handleCompositionEnd = (e: React.CompositionEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setIsComposing(false)
+    setInputValue(e.currentTarget.value)
+  }
+
+  // 다음 입력 필드로 포커스 이동
+  const focusNextInput = (currentElement: HTMLElement) => {
+    const form = currentElement.closest('.wizard-questions')
+    if (!form) return
+
+    const inputs = Array.from(form.querySelectorAll<HTMLElement>(
+      'input:not([type="checkbox"]):not([type="radio"]), textarea, select'
+    ))
+    const currentIndex = inputs.indexOf(currentElement)
+
+    if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
+      inputs[currentIndex + 1].focus()
+    }
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // 한글 조합 중이면 무시
+    if (isComposing) return
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       // Enter 키 누르면 값 저장
@@ -616,8 +695,7 @@ function QuestionCard({ question, value, onChange, isChild = false, error }: Que
         }
       }
       // 포커스를 다음 필드로 이동
-      const target = e.target as HTMLElement
-      target.blur()
+      focusNextInput(e.target as HTMLElement)
     }
   }
 
@@ -715,6 +793,8 @@ function QuestionCard({ question, value, onChange, isChild = false, error }: Que
                 onBlur={handleInputBlur}
                 onKeyDown={handleKeyDown}
                 onFocus={handleFocus}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 placeholder="0"
               />
               {question.unit && <span className="input-unit">{question.unit}</span>}
@@ -729,6 +809,8 @@ function QuestionCard({ question, value, onChange, isChild = false, error }: Que
               onBlur={handleInputBlur}
               onKeyDown={handleKeyDown}
               onFocus={handleFocus}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               placeholder="입력"
             />
           )}
@@ -747,7 +829,10 @@ function QuestionCard({ question, value, onChange, isChild = false, error }: Que
               value={inputValue}
               onChange={handleInputChange}
               onBlur={handleInputBlur}
+              onKeyDown={handleKeyDown}
               onFocus={handleFocus}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               placeholder="자유롭게 작성해주세요"
               rows={2}
             />

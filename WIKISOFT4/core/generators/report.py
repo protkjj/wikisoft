@@ -103,7 +103,7 @@ def _create_summary_sheet(ws, validation_result: Dict, answers: Optional[Dict]):
     """요약 시트 생성"""
     # 제목
     ws.merge_cells('A1:D1')
-    ws['A1'] = "🏢 WIKISOFT3 검증 결과 리포트"
+    ws['A1'] = "🏢 OneCheck 검증 결과 리포트"
     ws['A1'].font = Font(bold=True, size=16)
     ws['A1'].alignment = ALIGN_CENTER
     

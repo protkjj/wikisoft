@@ -168,6 +168,24 @@ async def auto_validate(
         except Exception as e:
             secure_logger.error(f"케이스 저장 실패: {e}")
 
+    # 텔레그램 알림 (비동기, 실패해도 결과 반환)
+    try:
+        from integrations.telegram.notifier import send_validation_notification
+        import asyncio
+        errors_list = validation.get("errors", [])
+        warnings_list = validation.get("warnings", [])
+        v_status = "error" if errors_list else ("warning" if warnings_list else "ok")
+        asyncio.ensure_future(send_validation_notification(
+            filename=file.filename or "unknown",
+            error_count=len(errors_list),
+            warning_count=len(warnings_list),
+            row_count=len(parsed.get("rows", [])),
+            confidence=confidence.get("score", 0),
+            status=v_status,
+        ))
+    except Exception:
+        pass
+
     return result
 
 

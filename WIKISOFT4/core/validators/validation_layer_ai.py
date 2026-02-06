@@ -79,8 +79,8 @@ def validate_with_ai(
 6. **행번호는 0-based index**로 반환하세요. (데이터 첫 행 = 0)
 7. **정년퇴직연령이 컨텍스트에 있으면**, 생년월일과 작성기준일을 비교하여
    정년을 초과한 직원을 찾아 오류로 보고하세요.
-8. 입사일이 생년월일보다 빠르거나, 입사 나이가 비정상(18세 미만, 70세 초과)이면
-   오류/경고로 보고하세요.
+8. 입사일/생년월일 관련 기본 검증(입사일<생년월일, 입사나이 18세 미만 등)은
+   다른 레이어에서 이미 처리하므로 **중복 검사하지 마세요**.
 
 JSON 형식으로 응답하세요:
 {{
@@ -178,7 +178,7 @@ JSON 형식으로 응답하세요:
                 def should_filter(item: Dict) -> bool:
                     msg = item.get("message", "").lower()
                     field = item.get("field", "").lower()
-                    
+
                     # 성별 관련
                     if "성별" in field and ("값 오류" in msg or "형식" in msg):
                         return True
@@ -187,6 +187,11 @@ JSON 형식으로 응답하세요:
                         return True
                     # 입사 나이/연령 (L1에서 이미 체크)
                     if ("입사" in msg or "입사" in field) and ("나이" in msg or "연령" in msg or "미만" in msg):
+                        return True
+                    # 입사일 < 생년월일 (L1에서 이미 체크)
+                    if "입사일" in msg and "생년월일" in msg:
+                        return True
+                    if "생년월일" in msg and ("앞" in msg or "빠르" in msg or "이전" in msg):
                         return True
                     return False
                 

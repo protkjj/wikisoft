@@ -27,16 +27,23 @@ export default function Layout() {
       <header className="layout-header">
         <div className="header-left">
           <a href="/" className="logo" onClick={handleLogoClick}>
-            WIKISOFT
+            OneCheck
           </a>
           {isAuthenticated && (
             <nav className="nav-links">
-              <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
-                검증
-              </NavLink>
+              {user?.role !== 'admin' && user?.role !== 'superadmin' && (
+                <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
+                  검증
+                </NavLink>
+              )}
               <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'active' : ''}>
                 대시보드
               </NavLink>
+              {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>
+                  관리
+                </NavLink>
+              )}
               <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
                 이력
               </NavLink>
@@ -64,7 +71,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <footer className="layout-footer">
-        <p>WIKISOFT 4.1.0 - Security-first HR/Finance Validation Platform</p>
+        <p>OneCheck — Zero Touch Retirement Validation Platform</p>
       </footer>
     </div>
   )

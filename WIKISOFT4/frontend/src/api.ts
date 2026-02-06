@@ -135,10 +135,12 @@ export const api = {
   },
 
   // Windmill 최근 실행 기록 조회
-  async getLatestRuns(limit = 5): Promise<ValidationRun[]> {
-    const response = await axios.get(`${API_BASE}/windmill/latest`, {
-      params: { limit }
-    })
+  async getLatestRuns(limit = 5, userFilter?: string): Promise<ValidationRun[]> {
+    const params: Record<string, any> = { limit }
+    if (userFilter) {
+      params.user_filter = userFilter
+    }
+    const response = await axios.get(`${API_BASE}/windmill/latest`, { params })
     return response.data?.runs ?? []
   },
 
@@ -160,12 +162,16 @@ export const api = {
   async revalidate(
     headers: string[],
     rows: string[][],
-    diagnosticAnswers?: Record<string, string | number | string[]> | null
+    diagnosticAnswers?: Record<string, string | number | string[]> | null,
+    sessionId?: string,
+    filename?: string
   ): Promise<RevalidateResponse> {
     const response = await axios.post(`${API_BASE}/auto-validate/revalidate`, {
       headers,
       rows,
-      diagnostic_answers: diagnosticAnswers
+      diagnostic_answers: diagnosticAnswers,
+      session_id: sessionId,
+      filename: filename
     })
     return response.data
   }

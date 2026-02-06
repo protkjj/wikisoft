@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import './App.css'
+import { useAuth } from './contexts/AuthContext'
 import { api } from './api'
+import { API_BASE_URL } from './config/api'
 import DiagnosticWizard from './components/DiagnosticWizard'
 import FloatingChat, { FloatingChatHandle } from './components/FloatingChat'
 import ManualMapping from './ManualMapping'
@@ -35,7 +37,16 @@ interface EditTarget {
 
 function App() {
   const { session, setSession, clearSession } = useSession()
+  const { user } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  // 관리자는 검증 페이지 접근 시 대시보드로 리다이렉트
+  useEffect(() => {
+    if (user?.role === 'admin' || user?.role === 'superadmin') {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [user, navigate])
 
   // localStorage에서 초기 상태 복원
   const [currentStep, setCurrentStep] = useState<Step>(() => {
@@ -107,6 +118,7 @@ function App() {
   })
 
   const chatRef = useRef<FloatingChatHandle>(null)
+  const nextScrollTargetRef = useRef<string | null>(null)  // 에디터 닫힌 후 스크롤할 다음 항목 키
 
   // 검증 모드에 따라 질문 필터링
   const filteredQuestions = useMemo(() => {
@@ -163,6 +175,38 @@ function App() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0])
+    }
+  }
+
+  // 드래그 앤 드롭 상태
+  const [isDragOver, setIsDragOver] = useState(false)
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+
+    const droppedFile = e.dataTransfer.files[0]
+    if (droppedFile) {
+      // 확장자 검증
+      const ext = droppedFile.name.toLowerCase().split('.').pop()
+      if (ext === 'xlsx' || ext === 'xls') {
+        setFile(droppedFile)
+      } else {
+        alert('Excel 파일(.xlsx, .xls)만 업로드 가능합니다.')
+      }
     }
   }
 
@@ -511,7 +555,12 @@ function App() {
           <div className="onboarding-row">
             <div className="onboarding-upload-section">
               <h3 className="section-title">파일 업로드</h3>
-              <div className="onboarding-dropzone">
+              <div
+                className={`onboarding-dropzone ${isDragOver ? 'drag-over' : ''}`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <div className="dropzone-icon">
                   <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
                     <path d="M12 36 L12 12 C12 10 14 9 15 9 L27 9 L36 18 L36 36 C36 38 34 39 33 39 L15 39 C14 39 12 38 12 36Z" stroke="currentColor" strokeWidth="2" fill="none"/>
@@ -520,7 +569,9 @@ function App() {
                     <polyline points="19,28 24,24 29,28" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
-                <p className="dropzone-text">Excel 파일을 드래그하거나 클릭</p>
+                <p className="dropzone-text">
+                  {isDragOver ? '여기에 파일을 놓으세요!' : 'Excel 파일을 드래그하거나 클릭'}
+                </p>
                 <div className="dropzone-formats">
                   <span className="format-tag">.xlsx</span>
                   <span className="format-tag">.xls</span>
@@ -773,7 +824,7 @@ function App() {
                   {allResults.map((item) => {
                     const isDismissed = item.dismissKey && dismissedItems.has(item.dismissKey);
                     return (
-                    <div key={item.key} className={`anomaly-item ${item.severity} ${isDismissed ? 'confirmed' : ''}`}>
+                    <div key={item.key} id={`anomaly-${item.key}`} className={`anomaly-item ${item.severity} ${isDismissed ? 'confirmed' : ''}`}>
                       <div className="anomaly-title">
                         <span className="anomaly-icon">{isDismissed ? '✓' : '!'}</span>
                         {item.severity === 'question' ? <strong>AI 질문:</strong> : null} {item.message}
@@ -798,6 +849,14 @@ function App() {
                                 <button
                                   className={`btn-edit-value ${item.severity}`}
                                   onClick={() => {
+                                    // 다음 미확인 항목 찾아서 ref에 저장 (에디터 닫힌 후 스크롤용)
+                                    const currentIndex = allResults.findIndex(r => r.key === item.key)
+                                    const nextItem = allResults.slice(currentIndex + 1).find(r => {
+                                      const isDismissedNext = r.dismissKey && dismissedItems.has(r.dismissKey)
+                                      return !isDismissedNext && (r.severity === 'error' || r.severity === 'warning') && r.field
+                                    })
+                                    nextScrollTargetRef.current = nextItem ? nextItem.key : null
+
                                     setEditTarget({
                                       row: item.row ?? 0,
                                       field: item.field ?? '',
@@ -817,6 +876,32 @@ function App() {
                                   onClick={() => {
                                     if (item.dismissKey) {
                                       setDismissedItems(prev => new Set([...prev, item.dismissKey!]))
+
+                                      // 백엔드에 학습 요청 (fire-and-forget)
+                                      fetch(`${API_BASE_URL}/dismiss-error`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          field: item.field,
+                                          message: item.originalMessage || item.message,
+                                          row: item.row,
+                                          severity: item.severity || 'error',
+                                          session_id: session.sessionId,
+                                        })
+                                      }).catch(() => {})  // 실패해도 UI 영향 없음
+
+                                      // 다음 미확인 항목으로 스크롤
+                                      const currentIndex = allResults.findIndex(r => r.key === item.key)
+                                      const nextItem = allResults.slice(currentIndex + 1).find(r => {
+                                        const isDismissedNext = r.dismissKey && dismissedItems.has(r.dismissKey)
+                                        return !isDismissedNext && (r.severity === 'error' || r.severity === 'warning') && r.field
+                                      })
+                                      if (nextItem) {
+                                        setTimeout(() => {
+                                          const nextElement = document.getElementById(`anomaly-${nextItem.key}`)
+                                          nextElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                                        }, 100)
+                                      }
                                     }
                                   }}
                                   title="이 값이 정확함을 확인합니다"
@@ -968,10 +1053,66 @@ function App() {
       {showManualMapping && currentMatches.length > 0 && (
         <ManualMapping
           matches={currentMatches}
-          onConfirm={(updatedMatches) => {
+          onConfirm={async (updatedMatches) => {
             setCurrentMatches(updatedMatches)
             setShowManualMapping(false)
-            // TODO: 업데이트된 매핑으로 재검증 가능
+
+            // 수동 매핑 후 자동 재검증
+            if (sheetData.length > 1 && validationResult) {
+              try {
+                setLoading(true)
+                setLoadingMessage('🔄 수동 매핑 적용 중...')
+
+                // 매핑 결과로 validation result 업데이트
+                const newMatchResult = {
+                  ...validationResult.steps?.matches,
+                  matches: updatedMatches
+                }
+
+                // 매핑 성공률 계산
+                const mappedCount = updatedMatches.filter(m => m.target && !m.skipped).length
+                const totalCount = updatedMatches.filter(m => !m.ignored).length
+                const mappingSuccess = totalCount > 0 ? mappedCount / totalCount : 0
+
+                // 매핑 관련 경고 필터링 (필수 필드 누락 경고 재계산)
+                const requiredFields = getRequiredFieldLabels()
+                const mappedTargets = new Set(updatedMatches.filter(m => m.target).map(m => m.target))
+                const missingRequired = requiredFields.filter(f => !mappedTargets.has(f))
+
+                const newWarnings = missingRequired.length > 0
+                  ? [`필수 필드 누락: ${missingRequired.join(', ')}`]
+                  : []
+
+                // 재검증 API 호출 (데이터 검증 다시 실행)
+                const headers = sheetData[0]
+                const rows = sheetData.slice(1)
+                const revalidateResult = await api.revalidate(headers, rows, answers, session.sessionId, file?.name)
+
+                // 검증 결과 업데이트
+                setValidationResult({
+                  ...validationResult,
+                  confidence: revalidateResult.confidence || validationResult.confidence,
+                  anomalies: revalidateResult.anomalies || validationResult.anomalies,
+                  steps: {
+                    ...validationResult.steps,
+                    matches: {
+                      ...newMatchResult,
+                      warnings: newWarnings
+                    },
+                    validation: revalidateResult.validation || validationResult.steps?.validation
+                  }
+                })
+
+                // 성공 메시지
+                if (mappingSuccess >= 1) {
+                  setError('')
+                }
+              } catch (err) {
+                handleError('ManualMapping', err, '수동 매핑 적용 중 오류')
+              } finally {
+                setLoading(false)
+              }
+            }
           }}
           onCancel={() => setShowManualMapping(false)}
         />
@@ -983,6 +1124,14 @@ function App() {
         onClose={() => {
           setShowSheetEditor(false);
           setEditTarget(null);
+          // 다음 항목으로 스크롤
+          if (nextScrollTargetRef.current) {
+            setTimeout(() => {
+              const nextElement = document.getElementById(`anomaly-${nextScrollTargetRef.current}`)
+              nextElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              nextScrollTargetRef.current = null
+            }, 150)
+          }
         }}
         data={sheetData}
         targetRow={editTarget?.row ? editTarget.row - 1 : undefined}
@@ -990,36 +1139,88 @@ function App() {
         errorMessage={editTarget?.message}
         allErrors={editableErrors}
         filename={file?.name || 'export.xlsx'}
-        onSave={(updatedData) => {
+        onSave={async (updatedData) => {
           // 새 배열로 복사하여 상태 업데이트 강제
           const newData = updatedData.map(row => [...row]);
           setSheetData(newData);
-          
-          // validationResult도 함께 업데이트 (화면 반영용)
-          if (validationResult) {
-            setValidationResult({
-              ...validationResult,
-              steps: {
-                ...validationResult.steps,
-                parsed_summary: {
-                  ...validationResult.steps?.parsed_summary,
-                  headers: newData[0],
-                  all_rows: newData.slice(1).map(row => {
-                    const obj: Record<string, string | number | null> = {};
-                    (newData[0] || []).forEach((header, idx) => {
-                      obj[header] = row[idx] ?? null;
-                    });
-                    return obj;
-                  })
+
+          // 적용 시 자동 재검증 실행
+          try {
+            setLoading(true);
+            setLoadingMessage('🔄 수정 사항 반영 중...');
+
+            const headers = newData[0];
+            const rows = newData.slice(1);
+
+            const result = await api.revalidate(
+              headers,
+              rows,
+              Object.keys(answers).length > 0 ? answers : null,
+              session.sessionId,
+              file?.name
+            );
+
+            // validationResult 전체 갱신 (검증 결과 + 데이터)
+            if (validationResult) {
+              setValidationResult({
+                ...validationResult,
+                steps: {
+                  ...validationResult.steps,
+                  parsed_summary: {
+                    ...validationResult.steps?.parsed_summary,
+                    headers: newData[0],
+                    all_rows: newData.slice(1).map(row => {
+                      const obj: Record<string, string | number | null> = {};
+                      (newData[0] || []).forEach((header, idx) => {
+                        obj[header] = row[idx] ?? null;
+                      });
+                      return obj;
+                    })
+                  },
+                  ...(result.validation && { validation: result.validation }),
+                },
+                ...(result.confidence && { confidence: result.confidence }),
+                ...(result.anomalies && { anomalies: result.anomalies }),
+              });
+            }
+
+            // dismissed 항목 초기화 (재검증 결과로 갱신되므로)
+            setDismissedItems(new Set());
+          } catch (err) {
+            console.error('적용 후 재검증 실패:', err);
+            // 재검증 실패해도 데이터는 반영
+            if (validationResult) {
+              setValidationResult({
+                ...validationResult,
+                steps: {
+                  ...validationResult.steps,
+                  parsed_summary: {
+                    ...validationResult.steps?.parsed_summary,
+                    headers: newData[0],
+                    all_rows: newData.slice(1).map(row => {
+                      const obj: Record<string, string | number | null> = {};
+                      (newData[0] || []).forEach((header, idx) => {
+                        obj[header] = row[idx] ?? null;
+                      });
+                      return obj;
+                    })
+                  }
                 }
-              }
-            });
+              });
+            }
+          } finally {
+            setLoading(false);
           }
 
-          // 강제 리렌더링을 위해 짧은 지연 후 재검증
-          setTimeout(() => {
-            setShowSheetEditor(false);
-          }, 100);
+          setShowSheetEditor(false);
+          // 다음 항목으로 스크롤
+          if (nextScrollTargetRef.current) {
+            setTimeout(() => {
+              const nextElement = document.getElementById(`anomaly-${nextScrollTargetRef.current}`)
+              nextElement?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              nextScrollTargetRef.current = null
+            }, 150)
+          }
         }}
         onRevalidate={async (updatedData) => {
           // 수정된 데이터로 재검증 API 호출
@@ -1030,7 +1231,9 @@ function App() {
             const result = await api.revalidate(
               headers,
               rows,
-              Object.keys(answers).length > 0 ? answers : null
+              Object.keys(answers).length > 0 ? answers : null,
+              session.sessionId,
+              file?.name
             );
 
             // 에러/경고 합치기 (ValidationItem 형식으로 변환)

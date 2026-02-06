@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api'
+import { useAuth } from '../contexts/AuthContext'
 import type { ValidationRun } from '../types'
 import './HistoryPage.css'
 
@@ -11,10 +12,15 @@ export default function HistoryPage() {
   const [filter, setFilter] = useState<FilterType>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [userFilter, setUserFilter] = useState<string>('')
+  const [uniqueUsers, setUniqueUsers] = useState<string[]>([])
+  const { user } = useAuth()
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin'
 
   useEffect(() => {
     loadHistory()
-  }, [])
+  }, [userFilter])
 
   useEffect(() => {
     applyFilters()
@@ -23,8 +29,14 @@ export default function HistoryPage() {
   const loadHistory = async () => {
     try {
       setLoading(true)
-      const data = await api.getLatestRuns(100)
+      const data = await api.getLatestRuns(100, userFilter || undefined)
       setRuns(data)
+
+      // 관리자용: 고유 사용자 목록 추출
+      if (isAdmin && !userFilter) {
+        const users = [...new Set(data.map((r: any) => r.user_id).filter(Boolean))]
+        setUniqueUsers(users as string[])
+      }
     } catch (err) {
       console.error('Failed to load history:', err)
     } finally {
@@ -46,7 +58,8 @@ export default function HistoryPage() {
       result = result.filter(r =>
         r.message?.toLowerCase().includes(query) ||
         r.file_url?.toLowerCase().includes(query) ||
-        r.run_id?.toLowerCase().includes(query)
+        r.run_id?.toLowerCase().includes(query) ||
+        r.company_name?.toLowerCase().includes(query)
       )
     }
 
@@ -128,13 +141,27 @@ export default function HistoryPage() {
             반려
           </button>
         </div>
-        <input
-          type="text"
-          className="search-input"
-          placeholder="검색..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        <div className="filter-right">
+          {isAdmin && uniqueUsers.length > 0 && (
+            <select
+              className="user-filter"
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+            >
+              <option value="">전체 사용자</option>
+              {uniqueUsers.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
+          )}
+          <input
+            type="text"
+            className="search-input"
+            placeholder="검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {filteredRuns.length === 0 ? (
@@ -147,6 +174,7 @@ export default function HistoryPage() {
             <thead>
               <tr>
                 <th>일시</th>
+                <th>회사명</th>
                 <th>상태</th>
                 <th>신뢰도</th>
                 <th>메시지</th>
@@ -157,6 +185,7 @@ export default function HistoryPage() {
               {filteredRuns.map((run, index) => (
                 <tr key={index}>
                   <td className="date-cell">{formatDate(run.timestamp)}</td>
+                  <td className="company-cell">{run.company_name || '-'}</td>
                   <td>{getStatusBadge(run.action || '')}</td>
                   <td>
                     {run.confidence != null && (

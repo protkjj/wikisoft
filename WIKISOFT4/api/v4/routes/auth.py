@@ -33,7 +33,7 @@ security = HTTPBearer(auto_error=False)
 _users_db: dict[str, dict] = {
     "admin": {
         "id": "admin",
-        "email": "admin@wikisoft.com",
+        "email": "admin@onecheck.com",
         "name": "관리자",
         "role": "admin",
         "password": "admin1234!",  # 데모용 평문
@@ -42,7 +42,7 @@ _users_db: dict[str, dict] = {
     },
     "user": {
         "id": "user",
-        "email": "user@wikisoft.com",
+        "email": "user@onecheck.com",
         "name": "사용자",
         "role": "user",
         "password": "user1234!",  # 데모용 평문

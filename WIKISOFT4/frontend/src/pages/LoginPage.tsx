@@ -24,11 +24,15 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await login(username, password)
+      const loggedInUser = await login(username, password)
       localStorage.setItem('validationMode', validationMode)
       sessionStorage.setItem('newLogin', 'true')
       sessionStorage.removeItem('currentStep')
-      navigate(from, { replace: true })
+
+      // 관리자는 대시보드로, 일반 사용자는 검증 페이지로
+      const isAdmin = loggedInUser.role === 'admin' || loggedInUser.role === 'superadmin'
+      const destination = isAdmin ? '/dashboard' : (from === '/' ? '/' : from)
+      navigate(destination, { replace: true })
     } catch (err: any) {
       if (err.response?.status === 401) {
         setError('아이디 또는 비밀번호가 올바르지 않습니다.')
@@ -45,8 +49,8 @@ export default function LoginPage() {
       {/* Left Panel - Brand */}
       <div className="login-brand-panel">
         <div className="brand-content">
-          <h1 className="brand-logo">WIKISOFT</h1>
-          <p className="brand-tagline">위키소프트 계리업무 AI 플랫폼</p>
+          <h1 className="brand-logo">OneCheck</h1>
+          <p className="brand-tagline">퇴직연금 검증 자동화 플랫폼</p>
         </div>
       </div>
 
@@ -120,7 +124,8 @@ export default function LoginPage() {
           </form>
 
           <div className="login-footer">
-            <p>admin / admin1234!</p>
+            <p>관리자: admin / admin1234!</p>
+            <p>사용자: user / user1234!</p>
           </div>
         </div>
       </div>

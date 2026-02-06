@@ -9,9 +9,11 @@ import { AuthProvider } from './contexts/AuthContext'
 // Layout and Pages
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/admin/AdminRoute'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import HistoryPage from './pages/HistoryPage'
+import AdminPage from './pages/AdminPage'
 import App from './App' // Main validation page
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -33,6 +35,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 <Route path="/" element={<App />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/history" element={<HistoryPage />} />
+                <Route path="/admin" element={
+                  <AdminRoute>
+                    <AdminPage />
+                  </AdminRoute>
+                } />
               </Route>
             </Routes>
           </SessionProvider>

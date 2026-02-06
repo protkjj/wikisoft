@@ -58,6 +58,10 @@ export default function SheetEditorPro({
   }>({ start: null, end: null, isSelecting: false })
   const [activeCell, setActiveCell] = useState<{ row: number; col: number } | null>(null)
   const [editValue, setEditValue] = useState('')
+
+  // Undo history
+  const [history, setHistory] = useState<string[][][]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
   
   // AI Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -157,6 +161,139 @@ export default function SheetEditorPro({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // 히스토리 저장
+  const saveToHistory = useCallback((data: string[][]) => {
+    setHistory(prev => {
+      // 현재 인덱스 이후의 히스토리 삭제 (새 분기)
+      const newHistory = prev.slice(0, historyIndex + 1)
+      newHistory.push(data.map(row => [...row]))
+      // 최대 50개까지만 유지
+      if (newHistory.length > 50) newHistory.shift()
+      return newHistory
+    })
+    setHistoryIndex(prev => Math.min(prev + 1, 49))
+  }, [historyIndex])
+
+  // 초기 상태 히스토리 저장
+  useEffect(() => {
+    if (sheetData.length > 0 && history.length === 0) {
+      setHistory([sheetData.map(row => [...row])])
+      setHistoryIndex(0)
+    }
+  }, [sheetData, history.length])
+
+  // Undo
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      setHistoryIndex(newIndex)
+      setSheetData(history[newIndex].map(row => [...row]))
+    }
+  }, [historyIndex, history])
+
+  // Redo
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1
+      setHistoryIndex(newIndex)
+      setSheetData(history[newIndex].map(row => [...row]))
+    }
+  }, [historyIndex, history])
+
+  // 키보드 이벤트 핸들러
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + S: 저장
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+        return
+      }
+
+      // Ctrl/Cmd + Z: Undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+        return
+      }
+
+      // Ctrl/Cmd + Shift + Z 또는 Ctrl/Cmd + Y: Redo
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        handleRedo()
+        return
+      }
+
+      // Esc: 편집 취소 또는 모달 닫기
+      if (e.key === 'Escape') {
+        if (activeCell) {
+          setActiveCell(null)
+        } else {
+          onClose()
+        }
+        return
+      }
+
+      // 셀이 선택된 상태에서만 동작
+      if (!selection.start) return
+      const { row, col } = selection.start
+
+      // Enter: 아래 셀로 이동 (편집 중이면 저장 후 이동)
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        if (activeCell) {
+          setActiveCell(null)
+        }
+        const nextRow = Math.min(row + 1, sheetData.length - 1)
+        if (nextRow > 1) { // 헤더 제외
+          setSelection({ start: { row: nextRow, col }, end: { row: nextRow, col }, isSelecting: false })
+        }
+        return
+      }
+
+      // Tab: 다음 셀로 이동
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (activeCell) {
+          setActiveCell(null)
+        }
+        const nextCol = e.shiftKey
+          ? Math.max(col - 1, 1) // Shift+Tab: 이전 셀
+          : Math.min(col + 1, (sheetData[0]?.length || 1) - 1) // Tab: 다음 셀
+        setSelection({ start: { row, col: nextCol }, end: { row, col: nextCol }, isSelecting: false })
+        return
+      }
+
+      // 화살표 키: 셀 이동 (편집 중이 아닐 때만)
+      if (!activeCell && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault()
+        let newRow = row
+        let newCol = col
+
+        switch (e.key) {
+          case 'ArrowUp': newRow = Math.max(row - 1, 2); break // 헤더 제외
+          case 'ArrowDown': newRow = Math.min(row + 1, sheetData.length - 1); break
+          case 'ArrowLeft': newCol = Math.max(col - 1, 1); break // 행번호 열 제외
+          case 'ArrowRight': newCol = Math.min(col + 1, (sheetData[0]?.length || 1) - 1); break
+        }
+
+        setSelection({ start: { row: newRow, col: newCol }, end: { row: newRow, col: newCol }, isSelecting: false })
+        return
+      }
+
+      // 편집 중이 아닐 때 문자 입력하면 편집 시작
+      if (!activeCell && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setActiveCell({ row, col })
+        setEditValue(e.key)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, selection, activeCell, sheetData, handleUndo, handleRedo, onClose])
+
   // 리사이저 핸들러
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -191,6 +328,17 @@ export default function SheetEditorPro({
       document.removeEventListener('mouseup', handleResizeEnd)
     }
   }, [isResizing, handleResizeMove, handleResizeEnd])
+
+  // 저장 (Hook은 early return 전에 있어야 함)
+  const handleSave = useCallback(() => {
+    if (onSave) {
+      // 행 번호 열 제거
+      const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
+      const saveData = [sheetData[0].slice(1), ...dataWithoutRowNumbers]
+      onSave(saveData)
+    }
+    onClose()
+  }, [sheetData, onSave, onClose])
 
   if (!isOpen) return null
 
@@ -293,18 +441,11 @@ export default function SheetEditorPro({
   }
 
   const handleCellBlur = () => {
-    setActiveCell(null)
-  }
-
-  // 저장
-  const handleSave = () => {
-    if (onSave) {
-      // 행 번호 열 제거
-      const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
-      const saveData = [sheetData[0].slice(1), ...dataWithoutRowNumbers]
-      onSave(saveData)
+    // 셀 편집 완료 시 히스토리에 저장
+    if (activeCell && sheetData.length > 0) {
+      saveToHistory(sheetData)
     }
-    onClose()
+    setActiveCell(null)
   }
 
   // 다운로드 (다른 이름으로 저장)
@@ -617,14 +758,40 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
             </div>
             
             <div className="toolbar-divider" />
-            
+
+            {/* Undo/Redo 버튼 */}
+            <div className="toolbar-history">
+              <button
+                className="toolbar-btn"
+                onClick={handleUndo}
+                disabled={historyIndex <= 0}
+                title="실행 취소 (Ctrl+Z)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 10h13a5 5 0 0 1 0 10H9" />
+                  <polyline points="7 6 3 10 7 14" />
+                </svg>
+              </button>
+              <button
+                className="toolbar-btn"
+                onClick={handleRedo}
+                disabled={historyIndex >= history.length - 1}
+                title="다시 실행 (Ctrl+Y)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 10H8a5 5 0 0 0 0 10h7" />
+                  <polyline points="17 6 21 10 17 14" />
+                </svg>
+              </button>
+            </div>
+
             {/* 선택 범위 표시 */}
             {selection.start && (
               <div className="selection-indicator">
                 📍 {getSelectionRangeString()}
               </div>
             )}
-            
+
             {pendingEdits.length > 0 && (
               <div className="edit-count">✏️ {pendingEdits.length}건 수정됨</div>
             )}
@@ -741,7 +908,13 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
 
           {/* 팁 */}
           <div className="sheet-tips">
-            <strong>Tips:</strong> 클릭하여 선택 • 드래그로 범위 선택 • 더블클릭으로 편집 • Shift+클릭으로 범위 확장
+            <strong>단축키:</strong>
+            <kbd>Ctrl+S</kbd> 저장 •
+            <kbd>Ctrl+Z</kbd> 실행취소 •
+            <kbd>↑↓←→</kbd> 이동 •
+            <kbd>Tab</kbd> 다음 셀 •
+            <kbd>Enter</kbd> 아래 셀 •
+            <kbd>Esc</kbd> 취소
           </div>
         </div>
 

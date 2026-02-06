@@ -1,5 +1,4 @@
 /* 🎨 테마 시스템 - 다크/라이트 모드 */
-/* Theme: Soft Dark - Muted Teal */
 
 :root {
   /* 라이트 모드 (기본) - 원래 색상 유지 */
@@ -45,89 +44,83 @@
   --transition: all 0.2s ease;
 }
 
-/* 다크 모드 - Google Material Design Dark Theme */
+/* 다크 모드 - 토스증권 스타일 */
 [data-theme="dark"] {
-  /* 배경 레이어 (Google Elevation 시스템) */
-  --bg-primary: #121212;           /* elevation 0dp - 기본 배경 */
-  --bg-secondary: #1D1D1D;         /* elevation 1dp */
-  --bg-card: #2D2D2D;              /* elevation 8dp - 카드 */
-  --bg-hover: #373737;             /* elevation 24dp - 호버 */
-  --bg-elevated: #323232;          /* elevation 12dp */
+  /* 배경 - 깊은 다크 */
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-card: #1C2128;
+  --bg-hover: #262C36;
+  --bg-elevated: #21262D;
 
-  /* 텍스트 (Google 투명도 시스템) */
-  --text-primary: rgba(255, 255, 255, 0.87);    /* high emphasis */
-  --text-secondary: rgba(255, 255, 255, 0.60);  /* medium emphasis */
-  --text-muted: rgba(255, 255, 255, 0.38);      /* disabled */
+  /* 텍스트 */
+  --text-primary: #F0F6FC;
+  --text-secondary: #8B949E;
+  --text-muted: #6E7681;
 
   /* 보더 */
-  --border-color: rgba(255, 255, 255, 0.12);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-focus: #8AB4F8;
+  --border-color: #30363D;
+  --border-subtle: #21262D;
+  --border-focus: #58A6FF;
 
-  /* 강조색 - Google Blue (다크모드용 채도 낮춤) */
-  --accent-primary: #8AB4F8;
-  --accent-hover: #AECBFA;
-  --accent-light: rgba(138, 180, 248, 0.24);
-  --accent-glow: rgba(138, 180, 248, 0.16);
+  /* 강조색 - 토스 블루 */
+  --accent-primary: #58A6FF;
+  --accent-hover: #79B8FF;
+  --accent-light: rgba(88, 166, 255, 0.15);
+  --accent-glow: rgba(88, 166, 255, 0.2);
 
-  /* 상태 색상 (Google 다크모드 팔레트) */
-  --success: #81C995;
-  --success-light: rgba(129, 201, 149, 0.16);
-  --warning: #FDD663;
-  --warning-light: rgba(253, 214, 99, 0.16);
-  --error: #F28B82;
-  --error-light: rgba(242, 139, 130, 0.16);
-  --info: #8AB4F8;
-  --info-light: rgba(138, 180, 248, 0.16);
+  /* 상태 색상 - 토스/주식 스타일 */
+  --success: #3FB950;
+  --success-light: rgba(63, 185, 80, 0.15);
+  --warning: #D29922;
+  --warning-light: rgba(210, 153, 34, 0.15);
+  --error: #F85149;
+  --error-light: rgba(248, 81, 73, 0.15);
+  --info: #58A6FF;
+  --info-light: rgba(88, 166, 255, 0.15);
 
-  /* 그림자 (다크모드에서는 subtle하게) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.5);
+  /* 그림자 */
+  --shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
-/* 자동 다크 모드 (시스템 설정 따라가기) */
+/* 시스템 다크 모드 자동 감지 */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* 배경 레이어 (Google Elevation 시스템) */
-    --bg-primary: #121212;
-    --bg-secondary: #1D1D1D;
-    --bg-card: #2D2D2D;
-    --bg-hover: #373737;
-    --bg-elevated: #323232;
+    --bg-primary: #0D1117;
+    --bg-secondary: #161B22;
+    --bg-card: #1C2128;
+    --bg-hover: #262C36;
+    --bg-elevated: #21262D;
 
-    /* 텍스트 (Google 투명도 시스템) */
-    --text-primary: rgba(255, 255, 255, 0.87);
-    --text-secondary: rgba(255, 255, 255, 0.60);
-    --text-muted: rgba(255, 255, 255, 0.38);
+    --text-primary: #F0F6FC;
+    --text-secondary: #8B949E;
+    --text-muted: #6E7681;
 
-    /* 보더 */
-    --border-color: rgba(255, 255, 255, 0.12);
-    --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-focus: #8AB4F8;
+    --border-color: #30363D;
+    --border-subtle: #21262D;
+    --border-focus: #58A6FF;
 
-    /* 강조색 - Google Blue */
-    --accent-primary: #8AB4F8;
-    --accent-hover: #AECBFA;
-    --accent-light: rgba(138, 180, 248, 0.24);
-    --accent-glow: rgba(138, 180, 248, 0.16);
+    --accent-primary: #58A6FF;
+    --accent-hover: #79B8FF;
+    --accent-light: rgba(88, 166, 255, 0.15);
+    --accent-glow: rgba(88, 166, 255, 0.2);
 
-    /* 상태 색상 */
-    --success: #81C995;
-    --success-light: rgba(129, 201, 149, 0.16);
-    --warning: #FDD663;
-    --warning-light: rgba(253, 214, 99, 0.16);
-    --error: #F28B82;
-    --error-light: rgba(242, 139, 130, 0.16);
-    --info: #8AB4F8;
-    --info-light: rgba(138, 180, 248, 0.16);
+    --success: #3FB950;
+    --success-light: rgba(63, 185, 80, 0.15);
+    --warning: #D29922;
+    --warning-light: rgba(210, 153, 34, 0.15);
+    --error: #F85149;
+    --error-light: rgba(248, 81, 73, 0.15);
+    --info: #58A6FF;
+    --info-light: rgba(88, 166, 255, 0.15);
 
-    /* 그림자 */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
-    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
-    --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.5);
+    --shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
   }
 }
 
