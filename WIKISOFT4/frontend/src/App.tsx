@@ -383,6 +383,44 @@ function App() {
     doDownload()
   }
 
+  // Layer 2 인원수/금액 인라인 수정
+  const handleLayer2Correction = async (questionId: string, newValue: number) => {
+    const updatedAnswers = { ...answers, [questionId]: newValue }
+    setAnswers(updatedAnswers)
+
+    if (sheetData.length > 1) {
+      try {
+        setLoading(true)
+        setLoadingMessage('🔄 답변 수정 반영 중...')
+
+        const headers = sheetData[0]
+        const rows = sheetData.slice(1)
+        const revalidateResult = await api.revalidate(
+          headers, rows, updatedAnswers, session.sessionId || undefined, file?.name,
+          undefined, validationMode
+        )
+
+        if (validationResult) {
+          setValidationResult({
+            ...validationResult,
+            confidence: revalidateResult.confidence || validationResult.confidence,
+            anomalies: revalidateResult.anomalies || validationResult.anomalies,
+            steps: {
+              ...validationResult.steps,
+              validation: revalidateResult.validation || validationResult.steps?.validation
+            }
+          })
+        }
+
+        // dismissed 유지 (사용자가 "값 유지" 선택한 항목은 그대로)
+      } catch (err) {
+        handleError('Layer2Correction', err, '답변 수정 중 오류')
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
   const getStepStatus = (step: Step): 'active' | 'completed' | 'pending' => {
     // 파일 업로드는 온보딩에서 완료됨
     if (step === 'onboarding') return 'completed'
@@ -732,7 +770,11 @@ function App() {
               field?: string,
               emp_info?: string,
               originalMessage?: string,  // 원본 메시지 (dismiss key용)
-              dismissKey?: string        // dismiss 체크용 키
+              dismissKey?: string,       // dismiss 체크용 키
+              source?: string,           // "layer1" | "layer2" | "ai"
+              question_id?: string,      // Layer 2 질문 ID
+              user_input?: number,       // 사용자 입력값
+              calculated?: number,       // 명부 계산값
             }> = [];
             const seenMessages = new Set<string>();
 
@@ -759,7 +801,11 @@ function App() {
                   field: item.field,
                   emp_info: item.emp_info,
                   originalMessage: item.message,
-                  dismissKey: dismissKey
+                  dismissKey: dismissKey,
+                  source: item.source,
+                  question_id: item.question_id,
+                  user_input: item.user_input,
+                  calculated: item.calculated,
                 });
               }
             });
@@ -844,33 +890,63 @@ function App() {
                                 chatRef.current?.setQuestion(item.message);
                               }}>💬 AI와 대화로 답변</button>
                             )}
-                            {(item.severity === 'error' || item.severity === 'warning') && item.field && sheetData.length > 0 && (
+                            {(item.severity === 'error' || item.severity === 'warning') && item.field && (
                               <>
-                                <button
-                                  className={`btn-edit-value ${item.severity}`}
-                                  onClick={() => {
-                                    // 다음 미확인 항목 찾아서 ref에 저장 (에디터 닫힌 후 스크롤용)
-                                    const currentIndex = allResults.findIndex(r => r.key === item.key)
-                                    const nextItem = allResults.slice(currentIndex + 1).find(r => {
-                                      const isDismissedNext = r.dismissKey && dismissedItems.has(r.dismissKey)
-                                      return !isDismissedNext && (r.severity === 'error' || r.severity === 'warning') && r.field
-                                    })
-                                    nextScrollTargetRef.current = nextItem ? nextItem.key : null
+                                {/* Layer 2: 인라인 수정 (진단 답변 수정) */}
+                                {item.source === 'layer2' && item.question_id ? (
+                                  <div className="layer2-inline-edit">
+                                    <input
+                                      type="number"
+                                      id={`layer2-input-${item.question_id}`}
+                                      defaultValue={item.user_input ?? ''}
+                                      className="layer2-input"
+                                      min="0"
+                                    />
+                                    <button
+                                      className="btn-layer2-apply"
+                                      onClick={() => {
+                                        const input = document.getElementById(`layer2-input-${item.question_id}`) as HTMLInputElement
+                                        const val = Number(input?.value)
+                                        if (!isNaN(val)) handleLayer2Correction(item.question_id!, val)
+                                      }}
+                                    >
+                                      수정 적용
+                                    </button>
+                                    {item.calculated != null && (
+                                      <button
+                                        className="btn-layer2-roster"
+                                        onClick={() => handleLayer2Correction(item.question_id!, Number(item.calculated))}
+                                      >
+                                        명부 값({Number(item.calculated).toLocaleString()}) 적용
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : sheetData.length > 0 ? (
+                                  <button
+                                    className={`btn-edit-value ${item.severity}`}
+                                    onClick={() => {
+                                      const currentIndex = allResults.findIndex(r => r.key === item.key)
+                                      const nextItem = allResults.slice(currentIndex + 1).find(r => {
+                                        const isDismissedNext = r.dismissKey && dismissedItems.has(r.dismissKey)
+                                        return !isDismissedNext && (r.severity === 'error' || r.severity === 'warning') && r.field
+                                      })
+                                      nextScrollTargetRef.current = nextItem ? nextItem.key : null
 
-                                    setEditTarget({
-                                      row: item.row ?? 0,
-                                      field: item.field ?? '',
-                                      message: item.originalMessage || item.message
-                                    });
-                                    setShowSheetEditor(true);
-                                  }}
-                                >
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                  </svg>
-                                  값 수정
-                                </button>
+                                      setEditTarget({
+                                        row: item.row ?? 0,
+                                        field: item.field ?? '',
+                                        message: item.originalMessage || item.message
+                                      });
+                                      setShowSheetEditor(true);
+                                    }}
+                                  >
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                    값 수정
+                                  </button>
+                                ) : null}
                                 <button
                                   className="btn-dismiss-value"
                                   onClick={() => {
@@ -1083,10 +1159,10 @@ function App() {
                   ? [`필수 필드 누락: ${missingRequired.join(', ')}`]
                   : []
 
-                // 재검증 API 호출 (데이터 검증 다시 실행)
+                // 재검증 API 호출 (수동 매핑 결과 전달)
                 const headers = sheetData[0]
                 const rows = sheetData.slice(1)
-                const revalidateResult = await api.revalidate(headers, rows, answers, session.sessionId, file?.name)
+                const revalidateResult = await api.revalidate(headers, rows, answers, session.sessionId, file?.name, updatedMatches, validationMode)
 
                 // 검증 결과 업데이트
                 setValidationResult({
@@ -1102,6 +1178,8 @@ function App() {
                     validation: revalidateResult.validation || validationResult.steps?.validation
                   }
                 })
+
+                // dismissed 유지 (사용자가 "값 유지" 선택한 항목은 그대로)
 
                 // 성공 메시지
                 if (mappingSuccess >= 1) {
@@ -1134,7 +1212,7 @@ function App() {
           }
         }}
         data={sheetData}
-        targetRow={editTarget?.row ? editTarget.row - 1 : undefined}
+        targetRow={editTarget?.row}
         targetField={editTarget?.field}
         errorMessage={editTarget?.message}
         allErrors={editableErrors}
@@ -1157,7 +1235,9 @@ function App() {
               rows,
               Object.keys(answers).length > 0 ? answers : null,
               session.sessionId,
-              file?.name
+              file?.name,
+              undefined,
+              validationMode
             );
 
             // validationResult 전체 갱신 (검증 결과 + 데이터)
@@ -1184,8 +1264,7 @@ function App() {
               });
             }
 
-            // dismissed 항목 초기화 (재검증 결과로 갱신되므로)
-            setDismissedItems(new Set());
+            // dismissed 유지 (사용자가 "값 유지" 선택한 항목은 그대로)
           } catch (err) {
             console.error('적용 후 재검증 실패:', err);
             // 재검증 실패해도 데이터는 반영
@@ -1233,7 +1312,9 @@ function App() {
               rows,
               Object.keys(answers).length > 0 ? answers : null,
               session.sessionId,
-              file?.name
+              file?.name,
+              undefined,
+              validationMode
             );
 
             // 에러/경고 합치기 (ValidationItem 형식으로 변환)

@@ -15,6 +15,10 @@ import DashboardPage from './pages/DashboardPage'
 import HistoryPage from './pages/HistoryPage'
 import AdminPage from './pages/AdminPage'
 import App from './App' // Main validation page
+import PortfolioPage from './pages/PortfolioPage'
+import PortfolioOneCheck from './pages/PortfolioOneCheck'
+import PortfolioDrobot from './pages/PortfolioDrobot'
+import PortfolioCraip from './pages/PortfolioCraip'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -25,6 +29,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Routes>
               {/* Public route */}
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/portfolio" element={<PortfolioPage />} />
+              <Route path="/portfolio/onecheck" element={<PortfolioOneCheck />} />
+              <Route path="/portfolio/drobot" element={<PortfolioDrobot />} />
+              <Route path="/portfolio/craip" element={<PortfolioCraip />} />
 
               {/* Protected routes with layout */}
               <Route element={

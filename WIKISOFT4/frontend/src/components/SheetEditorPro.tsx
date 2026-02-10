@@ -123,9 +123,9 @@ export default function SheetEditorPro({
           timestamp: new Date()
         }])
         
-        // 해당 셀 선택
-        const headers = sheetData[0] || []
-        const colIdx = headers.indexOf(targetField)
+        // 해당 셀 선택 (sheetData[1]이 실제 헤더)
+        const headerRow = sheetData[1] || []
+        const colIdx = headerRow.indexOf(targetField)
         if (colIdx !== -1) {
           setSelection({
             start: { row: targetRow, col: colIdx },
@@ -332,10 +332,11 @@ export default function SheetEditorPro({
   // 저장 (Hook은 early return 전에 있어야 함)
   const handleSave = useCallback(() => {
     if (onSave) {
-      // 행 번호 열 제거
-      const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
-      const saveData = [sheetData[0].slice(1), ...dataWithoutRowNumbers]
-      onSave(saveData)
+      // sheetData[0]=컬럼레이블(A,B,C), sheetData[1]=실제헤더, sheetData[2+]=데이터
+      // 컬럼 레이블 행과 행 번호 열 제거
+      const headers = sheetData[1].slice(1)  // 실제 헤더 (행번호 열 제거)
+      const dataRows = sheetData.slice(2).map(row => row.slice(1))  // 데이터 행 (행번호 열 제거)
+      onSave([headers, ...dataRows])
     }
     onClose()
   }, [sheetData, onSave, onClose])
@@ -451,9 +452,9 @@ export default function SheetEditorPro({
   // 다운로드 (다른 이름으로 저장)
   const handleDownload = async () => {
     try {
-      // 행 번호 열 제거
-      const headers = sheetData[0].slice(1)
-      const dataRows = sheetData.slice(1).map(row => row.slice(1))
+      // sheetData[0]=컬럼레이블, sheetData[1]=실제헤더, sheetData[2+]=데이터
+      const headers = sheetData[1].slice(1)  // 실제 헤더 (행번호 열 제거)
+      const dataRows = sheetData.slice(2).map(row => row.slice(1))  // 데이터 행
       
       // 헤더를 키로 하는 객체 배열로 변환
       const exportData = dataRows.map(row => {
@@ -805,8 +806,10 @@ ${allErrors.map((e, i) => `${i + 1}번: 행번호=${e.row}, 필드명="${e.field
                 onClick={async () => {
                   setIsRevalidating(true)
                   try {
-                    const dataWithoutRowNumbers = sheetData.slice(1).map(row => row.slice(1))
-                    const newErrors = await onRevalidate([sheetData[0].slice(1), ...dataWithoutRowNumbers])
+                    // sheetData[0]=컬럼레이블, sheetData[1]=실제헤더, sheetData[2+]=데이터
+                    const headers = sheetData[1].slice(1)
+                    const dataRows = sheetData.slice(2).map(row => row.slice(1))
+                    const newErrors = await onRevalidate([headers, ...dataRows])
                     setCurrentErrors(newErrors)
                     
                     if (newErrors.length === 0) {

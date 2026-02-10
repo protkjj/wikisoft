@@ -174,7 +174,7 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
                     if pd.isna(cur_val) or str(cur_val).strip() == "" or cur_num == 0:
                         errors.append({"row": idx, "emp_info": emp_info, "column": cur_year_col, "error": "당년도퇴직금추계액 필수 값 누락/0 (임원/계약직/정년초과자)", "severity": "error"})
 
-                    # 직종>2: 당년도퇴직금 < 차년도퇴직금 체크
+                    # 당년도 > 차년도 체크 (비정상: 퇴직금이 줄어드는 경우만 경고)
                     next_year_col = conditional_col_map.get("차년도퇴직금추계액")
                     if next_year_col and cur_num > 0:
                         next_val = row.get(next_year_col)
@@ -182,8 +182,8 @@ def validate_layer1(df: pd.DataFrame, diagnostic_answers: Dict[str, str], mode: 
                             next_num = float(next_val) if not pd.isna(next_val) else 0
                         except (ValueError, TypeError):
                             next_num = 0
-                        if next_num > 0 and cur_num < next_num:
-                            warnings.append({"row": idx, "emp_info": emp_info, "column": cur_year_col, "warning": f"당년도퇴직금추계액({cur_num:,.0f}) < 차년도퇴직금추계액({next_num:,.0f})", "severity": "warning"})
+                        if next_num > 0 and cur_num > next_num:
+                            warnings.append({"row": idx, "emp_info": emp_info, "column": cur_year_col, "warning": f"당년도퇴직금추계액({cur_num:,.0f}) > 차년도퇴직금추계액({next_num:,.0f}) — 퇴직금 감소", "severity": "warning"})
 
         # 전화번호 형식
         phone_aliases = get_all_aliases("전화번호")

@@ -54,6 +54,10 @@ export interface ValidationError {
   reason?: string
   emp_info?: string
   severity: 'error'
+  source?: string         // "layer1" | "layer2" | "ai"
+  question_id?: string    // Layer 2 질문 ID
+  user_input?: number     // 사용자 입력값
+  calculated?: number     // 명부 계산값
 }
 
 // 검증 경고 (상세 정보 포함)
@@ -66,9 +70,10 @@ export interface ValidationWarningItem {
   reason?: string
   emp_info?: string
   severity: 'warning' | 'low' | 'medium' | 'high' | 'info'
+  source?: string         // "layer1" | "layer2" | "ai"
   question_id?: string
-  user_input?: string
-  calculated?: string
+  user_input?: number | string
+  calculated?: number | string
   diff?: number
   diff_percent?: number
 }

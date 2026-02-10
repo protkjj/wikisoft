@@ -4,7 +4,8 @@ import type {
   AutoValidateResult,
   ValidationRun,
   ValidationError,
-  ValidationWarningItem
+  ValidationWarningItem,
+  HeaderMatch
 } from './types'
 import { API_BASE_URL } from './config/api'
 
@@ -164,14 +165,18 @@ export const api = {
     rows: string[][],
     diagnosticAnswers?: Record<string, string | number | string[]> | null,
     sessionId?: string,
-    filename?: string
+    filename?: string,
+    matches?: HeaderMatch[],
+    validationMode?: string
   ): Promise<RevalidateResponse> {
     const response = await axios.post(`${API_BASE}/auto-validate/revalidate`, {
       headers,
       rows,
       diagnostic_answers: diagnosticAnswers,
       session_id: sessionId,
-      filename: filename
+      filename: filename,
+      ...(matches && { matches }),
+      ...(validationMode && { validation_mode: validationMode })
     })
     return response.data
   }

@@ -49,11 +49,16 @@ def calculate_aggregates(df: pd.DataFrame) -> Dict[str, Any]:
     emp_type_col = _find_column(df, ["종업원구분", "종업원 구분", "직종구분"])
     if emp_type_col:
         counts = _count_by_employee_type(df, emp_type_col)
+        임원 = int(counts.get("임원", 0))
+        계약직 = int(counts.get("계약직", 0))
+        전체 = int(len(df))
+        # 직원 = 전체 - 임원 - 계약직 (빈칸/비표준 코드도 직원으로 간주)
+        직원 = 전체 - 임원 - 계약직
         result["headcount"] = {
-            "임원인원": int(counts.get("임원", 0)),
-            "일반직원인원": int(counts.get("직원", 0)),
-            "계약직인원": int(counts.get("계약직", 0)),
-            "전체인원": int(len(df)),
+            "임원인원": 임원,
+            "일반직원인원": 직원,
+            "계약직인원": 계약직,
+            "전체인원": 전체,
         }
     else:
         result["headcount"] = {

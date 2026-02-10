@@ -20,6 +20,7 @@ router = APIRouter(prefix="/api/auto-validate", tags=["auto-validate"])
 async def auto_validate(
     file: UploadFile = File(...),
     chatbot_answers: Optional[str] = Form(None),
+    validation_mode: Optional[str] = Form("full"),
     x_session_id: Optional[str] = Header(None)
 ) -> dict:
     """파일 업로드 → 파싱 → 매칭 → 검증 → 리포트 파이프라인.
@@ -66,12 +67,14 @@ async def auto_validate(
     df = pd.DataFrame(parsed.get("rows", []), columns=parsed.get("headers", []))
 
     # 3. 검증 (진단 답변 전달 + DataFrame 재사용)
+    mode = validation_mode if validation_mode in ("roster", "full") else "full"
     validation = registry.call_tool(
         "validate",
         parsed=parsed,
         matches=matches,
         diagnostic_answers=diagnostic_answers,
-        df=df  # DataFrame 재사용
+        df=df,  # DataFrame 재사용
+        mode=mode
     )
 
     # 4. 신뢰도/이상치 분석
@@ -346,8 +349,8 @@ def _ai_agent_analyze(parsed: dict, answers: dict, row_count: int, headers: list
     tool_results = {}
     issues = []
     
-    # 인원수 비교 - 새로운 질문 ID 구조 (q21-1, q21-2, q21-3)
-    employee_headcount_questions = ["q21-1", "q21-2", "q21-3"]  # 평가대상 인원 (임원/직원/계약직)
+    # 인원수 비교 - 프론트엔드 질문 ID (2-a.1, 2-a.2, 2-a.3)
+    employee_headcount_questions = ["2-a.1", "2-a.2", "2-a.3"]  # 평가대상 인원 (임원/직원/계약직)
     total_reported = sum(
         int(answers.get(q, 0))
         for q in employee_headcount_questions
@@ -570,6 +573,8 @@ class RevalidateRequest(BaseModel):
     rows: List[List[Any]]
     diagnostic_answers: Optional[Dict[str, Any]] = None
     session_id: Optional[str] = None
+    matches: Optional[List[Dict[str, Any]]] = None  # 수동 매핑 결과
+    validation_mode: Optional[str] = None  # "roster" | "full"
 
 
 @router.post("/revalidate")
@@ -604,19 +609,24 @@ async def revalidate(request: RevalidateRequest) -> dict:
         "rows": rows,
     }
 
-    # 1. 헤더 매칭 (캐시된 결과 사용 가능하면 사용)
-    matches = match_headers(parsed, sheet_type="재직자")
+    # 1. 헤더 매칭 (수동 매핑 결과가 있으면 사용, 없으면 자동 매칭)
+    if request.matches:
+        matches = {"matches": request.matches, "warnings": [], "used_ai": False, "used_manual": True}
+    else:
+        matches = match_headers(parsed, sheet_type="재직자")
 
     # 2. DataFrame 생성
     df = pd.DataFrame(rows, columns=headers)
 
-    # 3. 검증 실행
+    # 3. 검증 실행 (validation_mode 전달)
+    mode = request.validation_mode if request.validation_mode in ("roster", "full") else "full"
     validation = validate(
         parsed=parsed,
         matches=matches,
         diagnostic_answers=diagnostic_answers,
         use_ai=False,  # 재검증 시 AI 비활성화 (속도)
-        df=df
+        df=df,
+        mode=mode
     )
 
     # 4. 중복 탐지

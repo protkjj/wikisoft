@@ -142,6 +142,7 @@ def validate(
                         "message": w.get("message", ""),
                         "user_input": w.get("user_input"),
                         "calculated": w.get("calculated"),
+                        "question_id": w.get("question_id"),
                         "severity": "error",
                         "source": "layer2"
                     })
@@ -152,6 +153,7 @@ def validate(
                         "message": w.get("message", ""),
                         "user_input": w.get("user_input"),
                         "calculated": w.get("calculated"),
+                        "question_id": w.get("question_id"),
                         "source": "layer2"
                     })
 

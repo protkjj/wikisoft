@@ -1806,6 +1806,66 @@
   color: white;
 }
 
+/* Layer 2 인라인 수정 UI */
+.layer2-inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.layer2-input {
+  width: 100px;
+  padding: 8px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  text-align: right;
+  background: white;
+  transition: border-color 0.2s;
+}
+
+.layer2-input:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+.btn-layer2-apply {
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-layer2-apply:hover {
+  background: #2563eb;
+}
+
+.btn-layer2-roster {
+  padding: 8px 16px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-layer2-roster:hover {
+  background: #22c55e;
+  color: white;
+}
+
 .anomaly-title {
   display: flex;
   align-items: center;
