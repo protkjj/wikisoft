@@ -20,8 +20,16 @@ class Notifier:
         self.bot_token = bot_token or config.bot_token
         self.chat_id = chat_id or config.chat_id
 
+    def is_configured(self) -> bool:
+        """발송에 필요한 토큰/채팅 ID가 있는지 확인."""
+        return bool(self.bot_token and self.chat_id)
+
     async def send(self, text: str, parse_mode: str = "HTML") -> bool:
-        """메시지 발송"""
+        """메시지 발송 (설정이 없으면 조용히 건너뜀)"""
+        if not self.is_configured():
+            print("알림 건너뜀: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 미설정")
+            return False
+
         url = self.API_URL.format(token=self.bot_token)
 
         async with httpx.AsyncClient(timeout=10) as client:

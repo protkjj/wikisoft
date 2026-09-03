@@ -1,7 +1,7 @@
 """
 WIKISOFT 5 Telegram Bot
 
-실행: python -m telegram.bot
+실행: python -m tg_bot.bot
 """
 
 import logging
@@ -34,6 +34,10 @@ logger = logging.getLogger(__name__)
 def main():
     """봇 시작"""
     logger.info("WIKISOFT 5 Telegram Bot 시작...")
+
+    # 필수 설정 확인 (봇 토큰)
+    config.validate()
+    logger.info("WIKISOFT4 백엔드: %s", config.api_base_url)
 
     # Application 생성
     app = Application.builder().token(config.bot_token).build()

@@ -772,6 +772,11 @@ async def get_windmill_latest(
             "file_url": run.get("filename"),
             "status": run.get("status"),
             "user_id": run.get("user_id"),  # 관리자용
+            "company_name": run.get("company_name"),
+            # 외부 연동(텔레그램 봇 등)에서 요약 표시에 사용
+            "error_count": run.get("error_count"),
+            "warning_count": run.get("warning_count"),
+            "row_count": run.get("row_count"),
         })
 
     return {"runs": formatted_runs}

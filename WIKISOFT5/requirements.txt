@@ -8,3 +8,7 @@ python-dotenv>=1.0.0
 # Excel 처리 (선택)
 pandas>=2.0.0
 openpyxl>=3.1.0
+
+# 테스트 (개발용)
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
